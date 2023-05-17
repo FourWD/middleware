@@ -10,18 +10,18 @@ import (
 )
 
 func FiberReviewPayload(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status":0, "message":"review your payload"})
+	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "review your payload"})
 }
 
 func FiberSuccess(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status":1, "message":"success"})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
 }
 
 func FiberError(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status":0, "message":"error"})
+	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "error"})
 }
 
-func FiberGetData(c *fiber.Ctx, sql string) error {
+func FiberQuery(c *fiber.Ctx, sql string) error {
 	jsonBytes, err := queryToJSON(DatabaseMysql, sql)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
