@@ -27,9 +27,10 @@ func FiberQuery(c *fiber.Ctx, sql string) error {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c)
 	}
-
 	jsonData := `{"status":1, "message":"success", "data": ` + string(jsonBytes) + `}`
-	return c.Status(fiber.StatusOK).Type("application/json").SendString(jsonData)
+	// return c.Status(fiber.StatusOK).Type("application/json").SendString(jsonData)
+	c.Set("Content-Type", "application/json")
+	return c.SendString(string(jsonData))
 }
 
 func queryToJSON(db *sql.DB, query string) ([]byte, error) {
