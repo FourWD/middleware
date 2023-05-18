@@ -34,7 +34,7 @@ func FiberQuery(c *fiber.Ctx, sql string) error {
 	return c.SendString(string(jsonData))
 }
 
-func FiberDelete(c *fiber.Ctx, tableName string) error {
+func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
 	var payload payload.Delete
 	err := c.BodyParser(payload)
 	if err != nil {
@@ -54,7 +54,7 @@ func FiberDelete(c *fiber.Ctx, tableName string) error {
 	return FiberSuccess(c)
 }
 
-func FiberDeletePermanent(c *fiber.Ctx, tableName string) error {
+func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 	var payload payload.Delete
 	err := c.BodyParser(payload)
 	if err != nil {
