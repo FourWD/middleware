@@ -6,5 +6,11 @@
   },
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
-  "cSpell.words": ["Amphor", "GormModel"]
+  "cSpell.words": [
+    "Amphor",
+    "GormModel"
+  ],
+  "[go]": {
+    "editor.defaultFormatter": "golang.go"
+  }
 }
