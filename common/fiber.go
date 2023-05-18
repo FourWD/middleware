@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/HinekoTech/middleware/payload"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -31,6 +32,46 @@ func FiberQuery(c *fiber.Ctx, sql string) error {
 	// return c.Status(fiber.StatusOK).Type("application/json").SendString(jsonData)
 	c.Set("Content-Type", "application/json")
 	return c.SendString(string(jsonData))
+}
+
+func FiberDelete(c *fiber.Ctx, tableName string) error {
+	var payload payload.Delete
+	err := c.BodyParser(payload)
+	if err != nil {
+		return FiberReviewPayload(c)
+	}
+
+	if tableName == `` || payload.ID == `` || payload.DeleteBy == `` {
+		return FiberReviewPayload(c)
+	}
+
+	result := Database.Exec(`UPDATE ? SET deleted_at = now(), deleted_by = ? WHERE id = ?`, tableName, payload.DeleteBy, payload.ID)
+	if result.Error != nil {
+		PrintError(`FiberDelete`, result.Error.Error())
+		return FiberError(c)
+	} //fmt.Println("Affected Rows:", result.RowsAffected)
+
+	return FiberSuccess(c)
+}
+
+func FiberDeletePermanent(c *fiber.Ctx, tableName string) error {
+	var payload payload.Delete
+	err := c.BodyParser(payload)
+	if err != nil {
+		return FiberReviewPayload(c)
+	}
+
+	if tableName == `` || payload.ID == `` {
+		return FiberReviewPayload(c)
+	}
+
+	result := Database.Exec(`DELETE FROM ? WHERE id = ?`, tableName, payload.ID)
+	if result.Error != nil {
+		PrintError(`FiberDeletePermanent`, result.Error.Error())
+		return FiberError(c)
+	}
+
+	return FiberSuccess(c)
 }
 
 func queryToJSON(db *sql.DB, query string) ([]byte, error) {
