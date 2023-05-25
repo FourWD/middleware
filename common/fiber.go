@@ -28,10 +28,13 @@ func FiberQuery(c *fiber.Ctx, sql string) error {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c)
 	}
-	jsonData := `{"status":1, "message":"success", "data": ` + string(jsonBytes) + `}`
-	// return c.Status(fiber.StatusOK).Type("application/json").SendString(jsonData)
+	return FiberSendData(c, string(jsonBytes))
+}
+
+func FiberSendData(c *fiber.Ctx, json string) error {
+	message := `{"status":1, "message":"success", "data": ` + json + `}`
 	c.Set("Content-Type", "application/json")
-	return c.SendString(string(jsonData))
+	return c.SendString(string(message))
 }
 
 func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
