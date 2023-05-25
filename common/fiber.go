@@ -23,7 +23,7 @@ func FiberError(c *fiber.Ctx) error {
 }
 
 func FiberQuery(c *fiber.Ctx, sql string) error {
-	jsonBytes, err := queryToJSON(DatabaseMysql, sql)
+	jsonBytes, err := QueryToJSON(DatabaseMysql, sql)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c)
@@ -74,7 +74,7 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 	return FiberSuccess(c)
 }
 
-func queryToJSON(db *sql.DB, query string) ([]byte, error) {
+func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
 	if containsAny(strings.ToUpper(query), list) {
 		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
