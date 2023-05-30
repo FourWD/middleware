@@ -3,6 +3,7 @@ package common
 import (
 	"bufio"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -51,4 +52,10 @@ func PrepareHeaderForSSE(c *fiber.Ctx) {
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
 	c.Set("Transfer-Encoding", "chunked")
+}
+
+type EventMessage struct {
+	ID     string    `json:"id"`
+	Data   string    `json:"data"`
+	Create time.Time `json:"create_date"`
 }
