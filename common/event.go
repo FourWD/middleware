@@ -55,7 +55,10 @@ func PrepareHeaderForSSE(c *fiber.Ctx) {
 }
 
 type EventMessage struct {
-	ID     string    `json:"id"`
-	Data   string    `json:"data"`
-	Create time.Time `json:"create_date"`
+	Event string `json:"event"`
+	Data  struct {
+		ID      string    `json:"id"`
+		Message string    `json:"message"`
+		Created time.Time `json:"created"`
+	} `json:"data"`
 }
