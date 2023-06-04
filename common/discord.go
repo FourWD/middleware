@@ -43,6 +43,15 @@ func DiscordSendMessage(s *discordgo.Session, serverID, channelID, message, reci
 	return nil
 }
 
+func DiscordCheckOnlineStatus(status string) string {
+	strList := []string{string(discordgo.StatusOnline), string(discordgo.StatusDoNotDisturb), string(discordgo.StatusIdle)}
+
+	if StringExistsInList(string(status), strList) {
+		return "online"
+	}
+	return "offline"
+}
+
 func getUserByID(s *discordgo.Session, userID string) (*discordgo.User, error) {
 	user, err := s.User(userID)
 	if err != nil {
