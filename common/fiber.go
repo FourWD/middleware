@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/HinekoTech/middleware/payload"
+	"github.com/FourWD/middleware/payload"
 	"github.com/gofiber/fiber/v2"
 )
 

@@ -1,4 +1,4 @@
-module github.com/HinekoTech/middleware
+module github.com/FourWD/middleware
 
 go 1.19
 
@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/firestore v1.9.0
 	firebase.google.com/go/v4 v4.11.0
 	github.com/Shopify/sarama v1.38.0
+	github.com/bwmarrin/discordgo v0.27.1
 	github.com/gofiber/fiber/v2 v2.41.0
 	github.com/gofiber/jwt/v2 v2.2.7
 	github.com/joho/godotenv v1.4.0
@@ -24,7 +25,6 @@ require (
 	cloud.google.com/go/storage v1.30.1 // indirect
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
-	github.com/bwmarrin/discordgo v0.27.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.3.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
