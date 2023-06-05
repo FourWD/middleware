@@ -23,11 +23,10 @@ func CreateDSN(isGCP bool, dsn DSN) string {
 	var protocol string
 	setting := "?charset=utf8mb4&parseTime=True&loc=Local"
 	if isGCP {
-		protocol = fmt.Sprintf("unix(/cloudsql/%s", dsn.Instance)
+		protocol = fmt.Sprintf("unix(/cloudsql/%s)", dsn.Instance)
 	} else {
 		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
 	}
-
 	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
 }
 
