@@ -2,6 +2,7 @@ package common
 
 import (
 	"database/sql"
+	"fmt"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -9,6 +10,26 @@ import (
 
 var Database *gorm.DB
 var DatabaseMysql *sql.DB
+
+type DSN struct {
+	Username string
+	Password string
+	Database string
+	IP       string
+	Instance string
+}
+
+func CreateDSN(isGCP bool, dsn DSN) string {
+	var protocol string
+	setting := "?charset=utf8mb4&parseTime=True&loc=Local"
+	if isGCP {
+		protocol = fmt.Sprintf("unix(/cloudsql/%s", dsn.Instance)
+	} else {
+		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
+	}
+
+	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
+}
 
 func ConnectDatabase(dsn string) error {
 	var err error

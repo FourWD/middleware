@@ -8,7 +8,8 @@
   "editor.formatOnSave": true,
   "cSpell.words": [
     "Amphor",
-    "GormModel"
+    "GormModel",
+    "protocal"
   ],
   "[go]": {
     "editor.defaultFormatter": "golang.go"
