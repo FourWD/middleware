@@ -18,7 +18,10 @@ func FiberSuccess(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
 }
 
-func FiberError(c *fiber.Ctx) error {
+func FiberError(c *fiber.Ctx, errorCode ...string) error {
+	if errorCode[0] != "" {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode[0], "message": "error"})
+	}
 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "error"})
 }
 
