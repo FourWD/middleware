@@ -50,5 +50,9 @@ func ConnectDatabase(dsn string) error {
 		panic(err)
 	}
 
+	timeZone := "Asia/Bangkok"
+	Database.Raw("SET time_zone=?", timeZone)
+	DatabaseMysql.Exec("SET time_zone=?", timeZone)
+
 	return nil
 }
