@@ -28,7 +28,7 @@ func CreateDSN(isGCP bool, dsn DSN) string {
 		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
 		setting += "&loc=Local"
 	}
-	return fmt.Sprintf("%s:%s@%s/%s%s&loc=Asia/Bangkok", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
+	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
 }
 
 func ConnectDatabase(dsn string) error {
