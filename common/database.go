@@ -21,7 +21,7 @@ type DSN struct {
 
 func CreateDSN(isGCP bool, dsn DSN) string {
 	var protocol string
-	setting := "?charset=utf8mb4&parseTime=True&loc=Asia/Bangkok"
+	setting := "?charset=utf8mb4&parseTime=True&loc=Asia/Bangkok" //
 	if isGCP {
 		protocol = fmt.Sprintf("unix(/cloudsql/%s)", dsn.Instance)
 	} else {
