@@ -21,14 +21,14 @@ type DSN struct {
 
 func CreateDSN(isGCP bool, dsn DSN) string {
 	var protocol string
-	setting := "?charset=utf8mb4&parseTime=True&loc=Asia%%2FBangkok"
+	setting := "?charset=utf8mb4&parseTime=True"
 	if isGCP {
 		protocol = fmt.Sprintf("unix(/cloudsql/%s)", dsn.Instance)
 	} else {
 		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
 		setting += "&loc=Local"
 	}
-	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
+	return fmt.Sprintf("%s:%s@%s/%s%s&loc=Asia/Bangkok", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
 }
 
 func ConnectDatabase(dsn string) error {
