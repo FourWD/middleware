@@ -34,7 +34,7 @@ func CreateDSN(isGCP bool, dsn DSN) string {
 func ConnectDatabase(dsn string) error {
 	var err error
 
-	Database, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+	Database, err = gorm.Open(mysql.Open(dsn+"&loc=Asia%2FBangkok"), &gorm.Config{
 		SkipDefaultTransaction: true,
 		PrepareStmt:            true,
 	})

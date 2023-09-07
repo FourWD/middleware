@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/FourWD/middleware/payload"
@@ -11,25 +13,30 @@ import (
 )
 
 func FiberReviewPayload(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "review your payload"})
+	//return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "review your payload"})
+	return FiberError(c, "1002", "review your payload")
 }
 
 func FiberSuccess(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
 }
 
-func FiberError(c *fiber.Ctx, errorCode ...string) error {
+/* func FiberError(c *fiber.Ctx, errorCode ...string) error {
 	if errorCode[0] != "" {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode[0], "message": "error"})
 	}
 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "error"})
+} */
+
+func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
+	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
 }
 
 func FiberQuery(c *fiber.Ctx, sql string) error {
 	jsonBytes, err := QueryToJSON(DatabaseMysql, sql)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
-		return FiberError(c)
+		return FiberError(c, "1001", "sql error")
 	}
 	return FiberSendData(c, string(jsonBytes))
 }
@@ -54,7 +61,7 @@ func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
 	result := Database.Exec(`UPDATE ? SET deleted_at = now(), deleted_by = ? WHERE id = ?`, tableName, payload.DeleteBy, payload.ID)
 	if result.Error != nil {
 		PrintError(`FiberDelete`, result.Error.Error())
-		return FiberError(c)
+		return FiberError(c, "1001", "sql error")
 	} //fmt.Println("Affected Rows:", result.RowsAffected)
 
 	return FiberSuccess(c)
@@ -74,10 +81,18 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 	result := Database.Exec(`DELETE FROM ? WHERE id = ?`, tableName, payload.ID)
 	if result.Error != nil {
 		PrintError(`FiberDeletePermanent`, result.Error.Error())
-		return FiberError(c)
+		return FiberError(c, "1001", "sql error")
 	}
 
 	return FiberSuccess(c)
+}
+
+func FiberWarmUp(app *fiber.App) {
+	app.Get("/_ah/warmup", func(c *fiber.Ctx) error {
+		message := "Warm-up request succeeded"
+		fmt.Println(message)
+		return c.Status(http.StatusOK).SendString(message)
+	})
 }
 
 func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
