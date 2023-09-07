@@ -44,7 +44,7 @@ func ConnectDatabase(dsn string) error {
 		panic(err)
 	}
 
-	DatabaseMysql, err = sql.Open("mysql", dsn)
+	DatabaseMysql, err = sql.Open("mysql", dsn+"&loc=Asia%2FBangkok")
 	if err != nil {
 		PrintError(`DB Mysql`, `Connection Error !`)
 		panic(err)
