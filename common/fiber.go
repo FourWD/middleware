@@ -32,13 +32,17 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
 }
 
-func FiberQuery(c *fiber.Ctx, sql string) error {
-	jsonBytes, err := QueryToJSON(DatabaseMysql, sql)
+func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string) error {
+	jsonBytes, err := QueryToJSON(db, sql)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c, "1001", "sql error")
 	}
 	return FiberSendData(c, string(jsonBytes))
+}
+
+func FiberQuery(c *fiber.Ctx, sql string) error {
+	return FiberQueryWithCustomDB(c, DatabaseMysql, sql)
 }
 
 func FiberSendData(c *fiber.Ctx, json string) error {
