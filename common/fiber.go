@@ -46,7 +46,7 @@ func FiberQuery(c *fiber.Ctx, sql string) error {
 }
 
 func FiberSendData(c *fiber.Ctx, json string) error {
-	message := `{"status":1, code":1, "message":"success", "data": ` + json + `}`
+	message := `{"status":1, "code":1, "message":"success", "data": ` + json + `}`
 	c.Set("Content-Type", "application/json")
 	return c.SendString(string(message))
 }
