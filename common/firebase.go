@@ -2,7 +2,9 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strconv"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go/v4"
@@ -13,7 +15,6 @@ var FirebaseCtx context.Context
 var FirebaseClient *firestore.Client
 
 func ConnectFirebase(key string) {
-
 	// Use a service account
 	FirebaseCtx = context.Background()
 	sa := option.WithCredentialsFile(key)
@@ -28,5 +29,13 @@ func ConnectFirebase(key string) {
 	}
 
 	// defer client.Close()
+}
 
+func FirebaseValueToInt(a interface{}) int {
+	str := fmt.Sprintf("%d", a)
+	intValue, err := strconv.Atoi(str)
+	if err != nil {
+		return 0
+	}
+	return intValue
 }
