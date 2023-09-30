@@ -7,11 +7,11 @@ import (
 )
 
 type GormModel struct {
-	CreatedAt time.Time      `db:"created_at" json:"created_at" gorm:"<-:create"`
-	UpdatedAt time.Time      `db:"updated_at" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `db:"deleted_at" json:"deleted_at" gorm:"index"`
+	CreatedAt time.Time      `json:"created_at" query:"created_at" gorm:"<-:create"`
+	UpdatedAt time.Time      `json:"updated_at" query:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" query:"deleted_at" gorm:"index"`
 
-	CreatedBy string `db:"created_by"  json:"created_by" gorm:"type:varchar(36)"`
-	UpdatedBy string `db:"updated_by"  json:"updated_by" gorm:"type:varchar(36)"`
-	DeletedBy string `db:"deleted_by"  json:"deleted_by" gorm:"type:varchar(36)"`
+	CreatedBy string `json:"created_by" query:"created_by" gorm:"type:varchar(36)"`
+	UpdatedBy string `json:"updated_by" query:"updated_by" gorm:"type:varchar(36)"`
+	DeletedBy string `json:"deleted_by" query:"deleted_by" gorm:"type:varchar(36)"`
 }
