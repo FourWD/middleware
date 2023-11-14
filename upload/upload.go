@@ -51,6 +51,7 @@ func Upload(u model.UploadPayload, token string) (model.UploadResult, error) {
 			if err != nil {
 				return *r, err
 			}
+			r.FullPath = string(body)
 		}
 	}
 
