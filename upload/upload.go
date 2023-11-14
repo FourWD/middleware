@@ -51,7 +51,12 @@ func Upload(u model.UploadPayload, token string) (model.UploadResult, error) {
 			if err != nil {
 				return *r, err
 			}
-			r.FullPath = string(body)
+			// Unmarshal the JSON string into a MenuItem struct
+			errUnmars := json.Unmarshal([]byte(body), &r)
+			if errUnmars != nil {
+				fmt.Println("Error:", err)
+			}
+
 		}
 	}
 
