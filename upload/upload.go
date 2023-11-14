@@ -51,11 +51,17 @@ func Upload(u model.UploadPayload, token string) (model.UploadResult, error) {
 			if err != nil {
 				return *r, err
 			}
-			// Unmarshal the JSON string into a MenuItem struct
-			errUnmars := json.Unmarshal([]byte(body), &r)
-			if errUnmars != nil {
-				fmt.Println("Error:", err)
-			}
+			// // Unmarshal the JSON string into a MenuItem struct
+			// errUnmars := json.Unmarshal([]byte(body), &r)
+			// if errUnmars != nil {
+			// 	fmt.Println("Error:", err)
+			// }
+			r.ID = resp.Data.ID
+			r.Cdn = resp.Data.Cdn
+			r.Extension = resp.Data.Extension
+			r.FileName = resp.Data.FileName
+			r.Path = resp.Data.Path
+			r.FullPath = resp.Data.FullPath
 
 		}
 	}
