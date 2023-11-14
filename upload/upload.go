@@ -17,38 +17,13 @@ func Upload(u model.UploadPayload) (model.UploadResult, error) {
 
 	//start uploading
 	uploadUrl := "https://pakwan-service-dot-fourwd.as.r.appspot.com/api/v1/upload/upload"
-	type Body struct {
-		BucketName string `json:"bucket_name"`
-		Path       string `json:"path"`
-		FileName   string `json:"filename"`
-		FileBase64 string `json:"file_base_64"`
-	}
 
-	type Response struct {
-		CDN      string `json:"cdn"`
-		FileName string `json:"file_name"`
-		FileType string `json:"file_type"`
-		Path     string `json:"path"`
-		FullPath string `json:"full_path"`
-	}
+	var resp model.ApiResponse
+	u.FileBase64 = strings.Replace(u.FileBase64, "data:image/png;base64,", "", -1)
+	u.FileBase64 = strings.Replace(u.FileBase64, "data:image/jpeg;base64,", "", -1)
+	u.FileBase64 = strings.Replace(u.FileBase64, "data:image/jpg;base64,", "", -1)
 
-	type ApiResponse struct {
-		Status  int      `json:"status"`
-		Message string   `json:"message"`
-		Data    Response `json:"data"`
-	}
-	var resp ApiResponse
-	base64 := strings.Replace(u.FileBase64, "data:image/png;base64,", "", -1)
-	base64 = strings.Replace(base64, "data:image/jpeg;base64,", "", -1)
-	base64 = strings.Replace(base64, "data:image/jpg;base64,", "", -1)
-	bodyInstance := Body{
-		BucketName: "fourwd-auction",
-		Path:       "uploads",
-		FileName:   u.Filename + ".jpeg",
-		FileBase64: base64,
-	}
-
-	jsonData, err := json.Marshal(bodyInstance)
+	jsonData, err := json.Marshal(u)
 
 	if err != nil {
 		fmt.Println("there was an error with the JSON", err.Error())
@@ -57,6 +32,7 @@ func Upload(u model.UploadPayload) (model.UploadResult, error) {
 		req, err := http.NewRequest("POST", uploadUrl, bytes.NewBuffer(jsonData))
 		if err != nil {
 			fmt.Println(err)
+			return *r, err
 		}
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Authorization", "Bearer PA3KBCDIORypzCzD2fQdaqyLUHpPoM60BEaeP68O1GXmbP7dF0hyOBed9ZRcr6ti")
@@ -64,6 +40,7 @@ func Upload(u model.UploadPayload) (model.UploadResult, error) {
 		response, err := client.Do(req)
 		if err != nil {
 			fmt.Println(err)
+			return *r, err
 		}
 		defer response.Body.Close()
 		if err != nil {
