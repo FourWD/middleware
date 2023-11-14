@@ -11,7 +11,7 @@ import (
 	model "github.com/FourWD/middleware/model"
 )
 
-func Upload(u model.UploadPayload) (model.UploadResult, error) {
+func Upload(u model.UploadPayload, token string) (model.UploadResult, error) {
 
 	r := new(model.UploadResult)
 
@@ -35,7 +35,7 @@ func Upload(u model.UploadPayload) (model.UploadResult, error) {
 			return *r, err
 		}
 		req.Header.Add("Content-Type", "application/json")
-		req.Header.Add("Authorization", "Bearer PA3KBCDIORypzCzD2fQdaqyLUHpPoM60BEaeP68O1GXmbP7dF0hyOBed9ZRcr6ti")
+		req.Header.Add("Authorization", "Bearer "+token)
 
 		response, err := client.Do(req)
 		if err != nil {
