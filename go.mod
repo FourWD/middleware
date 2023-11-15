@@ -9,6 +9,7 @@ require (
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/gofiber/fiber/v2 v2.41.0
 	github.com/gofiber/jwt/v2 v2.2.7
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/joho/godotenv v1.4.0
 	github.com/spf13/viper v1.14.0
 	google.golang.org/api v0.114.0
@@ -31,7 +32,6 @@ require (
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
