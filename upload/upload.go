@@ -16,7 +16,7 @@ func Upload(u model.UploadPayload, appID string, token string) (model.UploadResu
 	r := new(model.UploadResult)
 
 	//start uploading
-	uploadUrl := "https://pakwan-service-dot-fourwd.as.r.appspot.com/api/v1/upload/upload"
+	uploadUrl := "https://pakwan-service-dot-fourwd.as.r.appspot.com/api/v1/upload/"
 
 	var resp model.ApiResponse
 	u.FileBase64 = strings.Replace(u.FileBase64, "data:image/png;base64,", "", -1)
