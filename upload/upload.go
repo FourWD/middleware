@@ -11,7 +11,7 @@ import (
 	model "github.com/FourWD/middleware/model"
 )
 
-func Upload(u model.UploadPayload, token string) (model.UploadResult, error) {
+func Upload(u model.UploadPayload, appID string, token string) (model.UploadResult, error) {
 
 	r := new(model.UploadResult)
 
