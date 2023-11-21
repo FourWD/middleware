@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type LogEmployeeLoing struct {
+type LogEmployeeLogin struct {
 	EmployeeID string `json:"employee_id" query:"employee_id" gorm:"type:varchar(36);primary_key;"`
 	GormModel
 
