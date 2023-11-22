@@ -1,8 +1,10 @@
 package orm
 
+import "github.com/FourWD/middleware/model"
+
 type RolePermission struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36);primary_key;"`
-	GormModel
+	model.GormModel
 	RoleID         string `json:"role_id" query:"role_id" gorm:"type:varchar(36); uniqueIndex:idx_role_permissions"`
 	RoleTemplateID string `json:"role_template_id" query:"role_template_id" gorm:"type:varchar(36); uniqueIndex:idx_role_permissions"`
 	IsCreate       bool   `json:"is_create" query:"is_create" gorm:"type:bool;"`

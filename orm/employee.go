@@ -1,8 +1,10 @@
 package orm
 
+import "github.com/FourWD/middleware/model"
+
 type Employee struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36);primary_key;"`
-	GormModel
+	model.GormModel
 	RoleID string `json:"role_id" query:"role_id" gorm:"type:varchar(36);"`
 
 	Code string `json:"code" query:"code" gorm:"type:varchar(10)"`
