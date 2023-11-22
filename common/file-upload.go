@@ -1,11 +1,11 @@
 package common
 
 import (
-	"github.com/FourWD/middleware/common"
 	"github.com/FourWD/middleware/model"
 	middlewareOrm "github.com/FourWD/middleware/orm"
 	midUpload "github.com/FourWD/middleware/upload"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
 )
 
 func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error) {
@@ -27,7 +27,7 @@ func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error)
 	logFile.FullPath = result.FullPath
 	err := db.Save(&logFile)
 	if err.Error != nil {
-		common.PrintError("error save file", "tb file")
+		PrintError("error save file", "tb file")
 	}
 	return result, nil
 }
