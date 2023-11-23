@@ -25,4 +25,5 @@ type Source struct {
 	CompanyName          string    `json:"company_name" query:"company_name" gorm:"type:varchar(255)"`
 	ContractSigningDate  time.Time `json:"contract_signing_date" query:"contract_signing_date"`
 	ContractClostingDate time.Time `json:"contract_closting_date" query:"contract_closting_date"`
+	IsActive             bool      `json:"is_active" query:"is_active" gorm:"type:bool"`
 }
