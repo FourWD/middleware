@@ -37,11 +37,20 @@ func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error)
 }
 
 func uploadFileToServer(p model.UploadPayload, appID string, token string) (model.UploadResult, error) {
-	result := new(model.UploadResult)
+	type ApiResponse struct {
+		Status     int                `json:"status"`
+		StatusCode string             `json:"status_code"`
+		Message    string             `json:"message"`
+		Data       model.UploadResult `json:"data"`
+	}
 
+	p.BucketName = getBucketName(appID)
+
+	result := new(model.UploadResult)
 	p.FileBase64 = strings.Replace(p.FileBase64, "data:image/png;base64,", "", -1)
 	p.FileBase64 = strings.Replace(p.FileBase64, "data:image/jpeg;base64,", "", -1)
 	p.FileBase64 = strings.Replace(p.FileBase64, "data:image/jpg;base64,", "", -1)
+
 	jsonData, err := json.Marshal(p)
 
 	if err != nil {
@@ -69,22 +78,12 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 			return *result, err
 		} else {
 			body, _ := io.ReadAll(response.Body)
-			var resp model.ApiResponse
+			var resp ApiResponse
 			err := json.Unmarshal(body, &resp)
 			if err != nil {
 				return *result, err
 			}
-			// // Unmarshal the JSON string into a MenuItem struct
-			// errUnmars := json.Unmarshal([]byte(body), &r)
-			// if errUnmars != nil {
-			// 	fmt.Println("Error:", err)
-			// }
-			result.ID = resp.Data.ID
-			result.Cdn = resp.Data.Cdn
-			result.Extension = resp.Data.Extension
-			result.FileName = resp.Data.FileName
-			result.Path = resp.Data.Path
-			result.FullPath = resp.Data.FullPath
+			result = &resp.Data
 		}
 	}
 

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/FourWD/middleware/payload"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -55,7 +54,12 @@ func FiberSendData(c *fiber.Ctx, json string) error {
 }
 
 func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
-	var payload payload.Delete
+	type Delete struct {
+		ID       string `json:"id"`
+		DeleteBy string `json:"delete_by"`
+	}
+
+	var payload Delete
 	err := c.BodyParser(payload)
 	if err != nil {
 		return FiberReviewPayload(c)
@@ -75,7 +79,12 @@ func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
 }
 
 func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
-	var payload payload.Delete
+	type Delete struct {
+		ID       string `json:"id"`
+		DeleteBy string `json:"delete_by"`
+	}
+
+	var payload Delete
 	err := c.BodyParser(payload)
 	if err != nil {
 		return FiberReviewPayload(c)

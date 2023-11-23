@@ -15,3 +15,7 @@ type GormModel struct {
 	UpdatedBy string `json:"updated_by" query:"updated_by" gorm:"type:varchar(36)"`
 	DeletedBy string `json:"deleted_by" query:"deleted_by" gorm:"type:varchar(36)"`
 }
+
+type GormRowOrder struct {
+	RowOrder int `json:"row_order" query:"row_order" gorm:"type:int(4);"`
+}
