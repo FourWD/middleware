@@ -5,7 +5,7 @@ import "github.com/FourWD/middleware/model"
 // midOrm "github.com/FourWD/middleware/orm"
 
 type BookingAccessorie struct { //
-	ID string `json:"id" query:"id" gorm:"type:varchar(2); primary_key"`
+	ID string `json:"id" query:"id" gorm:"type:varchar(36); primary_key"`
 	model.GormModel
 
 	BookingID    string  `json:"booking_id" query:"booking_id" gorm:"type:varchar(36)"`
