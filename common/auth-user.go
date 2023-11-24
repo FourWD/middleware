@@ -22,8 +22,8 @@ func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB) UserAuthorizationResult {
 		return UserAuthorizationResult{IsSuccess: false, Code: "401", Message: "INVALID REQUEST"}
 	}
 
-	sql := fmt.Sprintf(`SELECT * FROM users INNER JOIN log_logins ON users.id = log_logins.user_id 
-	WHERE token = "%s" ORDER BY log_logins.created_at DESC LIMIT 1`, token)
+	sql := fmt.Sprintf(`SELECT * FROM users INNER JOIN log_user_logins ON users.id = log_user_logins.user_id 
+	WHERE token = "%s" ORDER BY log_user_logins.created_at DESC LIMIT 1`, token)
 	type UserToken struct {
 		ID string `json:"id"`
 	}
