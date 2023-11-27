@@ -1,7 +1,10 @@
 package common
 
 import (
+	"time"
+
 	"github.com/FourWD/middleware/model"
+	"github.com/FourWD/middleware/orm"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
@@ -15,69 +18,89 @@ func OtpRequest(payload model.OtpRequestPayload, db gorm.DB) (model.OtpResult, e
 
 	// SAVE TO LOG
 
-	// logFile := new(middlewareOrm.File)
-	// logFile.ID = result.ID
-	// logFile.BucketName = getBucketName(viper.GetString("app_id"))
-	// logFile.Cdn = result.Cdn
-	// logFile.FileName = result.FileName
-	// logFile.Extension = result.Extension
-	// logFile.Path = result.Path
-	// logFile.FullPath = result.FullPath
-	// err := db.Save(&logFile)
-	// if err.Error != nil {
-	// 	PrintError("error save file", "tb file")
-	// }
+	logOtp := new(orm.LogOTP)
+	logOtp.OTP = result.Token
+	logOtp.RefCodeOTP = result.Refno
+	logOtp.RequestDate = time.Now()
+
+	err := db.Save(&logOtp)
+	if err.Error != nil {
+		PrintError("error save file", "tb file")
+	}
 	return result, nil
 }
 
 func otpRequestToServer(payload model.OtpRequestPayload, appID string, token string) (model.OtpResult, error) {
 	result := new(model.OtpResult)
 
-	// 	jsonData, err := json.Marshal(payload)
+	// type Payload struct {
+	// 	AppID  string `json:"app_id"`
+	// 	Mobile string `json:"mobile"`
+	// }
 
-	// 	if err != nil {
-	// 		fmt.Println("there was an error with the JSON", err.Error())
-	// 		return *result, err
-	// 	} else {
-	// 		client := &http.Client{}
-	// 		uploadUrl := "https://pakwan-service-dot-fourwd.as.r.appspot.com/api/v1/upload/"
-	// 		req, err := http.NewRequest("POST", uploadUrl, bytes.NewBuffer(jsonData))
-	// 		if err != nil {
-	// 			fmt.Println(err)
-	// 			return *result, err
-	// 		}
-	// 		req.Header.Add("Content-Type", "application/json")
-	// 		req.Header.Add("Authorization", "Bearer "+token)
+	type Params struct {
+		Key    string `json:"key"`
+		Secret string `json:"secret"`
+		Mobile string `json:"mobile"`
+	}
 
-	// 		response, err := client.Do(req)
-	// 		if err != nil {
-	// 			fmt.Println(err)
-	// 			return *result, err
-	// 		}
-	// 		defer response.Body.Close()
-	// 		if err != nil {
-	// 			fmt.Println("there was an error with the request", err.Error())
-	// 			return *result, err
-	// 		} else {
-	// 			body, _ := io.ReadAll(response.Body)
-	// 			var resp model.ApiResponse
-	// 			err := json.Unmarshal(body, &resp)
-	// 			if err != nil {
-	// 				return *result, err
-	// 			}
-	// 			// // Unmarshal the JSON string into a MenuItem struct
-	// 			// errUnmars := json.Unmarshal([]byte(body), &r)
-	// 			// if errUnmars != nil {
-	// 			// 	fmt.Println("Error:", err)
-	// 			// }
-	// 			// result.ID = resp.Data.ID
-	// 			// result.Cdn = resp.Data.Cdn
-	// 			// result.Extension = resp.Data.Extension
-	// 			// result.FileName = resp.Data.FileName
-	// 			// result.Path = resp.Data.Path
-	// 			// result.FullPath = resp.Data.FullPath
-	// 		}
-	// 	}
+	app, err := GetOtpApp(payload.AppID)
+	if err != nil {
+		println("error to get app key and secret")
+	}
+
+	params := new(Params)
+	params.Key = app.AppKey
+	params.Secret = app.AppSecret
+	params.Mobile = payload.Mobile
+
+	payloadString := "key=" + params.Key + "&secret=" + params.Secret + "&msisdn=" + params.Mobile
+	// req, _ := http.NewRequest("POST", viper.GetString("api.sms_request"), strings.NewReader(payloadString))
+
+	// req.Header.Add("accept", "application/json")
+	// req.Header.Add("content-type", "application/x-www-form-urlencoded")
+
+	// res, err := http.DefaultClient.Do(req)
+
+	// if res.StatusCode == 400 {
+	// 	return common.FiberError(c, "400", err.Error())
+	// }
+
+	// defer res.Body.Close()
+
+	// body, _ := io.ReadAll(res.Body)
+
+	// jsonBody := strings.ReplaceAll(string(body), "/", "")
+	// fmt.Println(string(body))
+	jsonBody := `{"status":"success",
+	"token":"1234567891011121314abcdefghijklm",
+	"refno":"REF12" }`
+
+	log := new(model.LogOtpRequest)
+	// log.ID = uuid.NewString()
+	// log.CreatedAt = time.Now()
+	log.Mobile = params.Mobile
+	log.AppID = payload.AppID
+	log.AppKey = app.AppKey
+	log.AppSecret = app.AppSecret
+	log.Payload = payloadString
+	log.Response = jsonBody
+	Database.Save(log)
+
+	// if res.StatusCode == 400 {
+	// 	return common.FiberError(c, "400", "")
+	// }
+
+	//use mock	//message := `{"status":1, "message":"success", "data":` + jsonBody + `}`
+	// c.Set("Content-Type", "application/json")
+	// return c.SendString(string(message))
 
 	return *result, nil
+}
+
+func GetOtpApp(appID string) (model.AppOtp, error) {
+	app := new(model.AppOtp)
+	app.AppKey = "1781967575388019"
+	app.AppSecret = "a3c4a409ac4d7282a9adcf2600534149"
+	return *app, nil
 }
