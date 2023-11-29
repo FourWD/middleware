@@ -42,5 +42,5 @@ type Booking struct {
 	Vat         float64 `json:"vat" query:"vat" gorm:"type:decimal(14,2)"`
 	Price       float64 `json:"price" query:"price" gorm:"type:decimal(14,2)"`
 
-	RunningNo int `json:"running_no" query:"running_no" gorm:"primary_key;auto_increment;not_null"`
+	RunningNo int `json:"running_no" query:"running_no" gorm:"primary_key;"`
 }
