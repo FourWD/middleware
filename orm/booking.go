@@ -7,7 +7,8 @@ import "github.com/FourWD/middleware/model"
 type Booking struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36)"` //
 	model.GormModel
-	BookingNo string `json:"booking_no" query:"booking_no" gorm:"type:varchar(20)"` //หมายเลขรายการ
+	BookingNo       string `json:"booking_no" query:"booking_no" gorm:"type:varchar(20)"` //หมายเลขรายการ
+	BookingStatusID string `json:"booking_status_id" query:"booking_status_id" gorm:"type:varchar(2)"`
 
 	PrefixID  string `json:"prefix_id" query:"prefix_id" gorm:"type:varchar(2)"`
 	FirstName string `json:"first_name" query:"name" gorm:"type:varchar(255)"`
