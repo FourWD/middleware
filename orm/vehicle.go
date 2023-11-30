@@ -12,7 +12,7 @@ type Vehicle struct {
 
 	SourceID          string `json:"source_id" query:"source_id" gorm:"type:varchar(36)"`
 	SKU               string `json:"sku" query:"sku" gorm:"type:varchar(20)"`
-	VehicleSubmodelID string `json:"vehicle_submodel_id" query:"vehicle_submodel_id" gorm:"type:varchar(36)"`
+	VehicleSubModelID string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
 	VehicleColorID    string `json:"vehicle_color_id" query:"vehicle_color_id" gorm:"type:varchar(36)"`
 	ChassisNo         string `json:"chassis_no" query:"chassis_no" gorm:"type:varchar(20)"`
 	EngineNo          string `json:"engine_no" query:"engine_no" gorm:"type:varchar(20)"`
@@ -28,17 +28,17 @@ type Vehicle struct {
 	Remark            string `json:"remark" query:"remark" gorm:"type:text"`
 	IsRecommend       bool   `json:"is_recommend" query:"is_recommend" gorm:"type:bool"`
 	//IsSpecialInterest     bool      `json:"is_special_interest" query:"is_special_interest" gorm:"type:bool"`
-	EngineCapacity     int       `json:"engine_capacity" query:"engine_capacity" gorm:"type:int"`
-	EngineSize         int       `json:"engine_size" query:"engine_size" gorm:"type:int"`
-	EngineSizeActual   int       `json:"engine_size_actual" query:"engine_size_actual" gorm:"type:int"`
-	VehicleModelID     string    `json:"vehicle_model_id" query:"vehicle_model_id" gorm:"type:varchar(36)"`
-	VehicleDriveTypeID string    `json:"vehicle_drive_type_id" query:"vehicle_drive_type_id" gorm:"type:varchar(2)"`
-	VehicleGearID      string    `json:"vehicle_gear_id" query:"vehicle_gear_id" gorm:"type:varchar(2)"`
-	VehicleFuelTypeID  string    `json:"vehicle_fuel_type_id" query:"vehicle_fuel_type_id" gorm:"type:varchar(2)"`
-	Seat               int       `json:"seat" query:"seat" gorm:"type:int(2)"`
-	VehicleTypeID      string    `json:"vehicle_type_id" query:"vehicle_type_id" gorm:"type:varchar(10)"`
-	VehicleSubTypeID   string    `json:"vehicle_sub_type_id" query:"vehicle_sub_type_id" gorm:"type:varchar(2)"`
-	VehicleBrandID     string    `json:"vehicle_brand_id" query:"vehicle_brand_id" gorm:"type:varchar(36)"`
+	EngineCapacity     int    `json:"engine_capacity" query:"engine_capacity" gorm:"type:int"`
+	EngineSize         int    `json:"engine_size" query:"engine_size" gorm:"type:int"`
+	EngineSizeActual   int    `json:"engine_size_actual" query:"engine_size_actual" gorm:"type:int"`
+	VehicleModelID     string `json:"vehicle_model_id" query:"vehicle_model_id" gorm:"type:varchar(36)"`
+	VehicleDriveTypeID string `json:"vehicle_drive_type_id" query:"vehicle_drive_type_id" gorm:"type:varchar(2)"`
+	VehicleGearID      string `json:"vehicle_gear_id" query:"vehicle_gear_id" gorm:"type:varchar(2)"`
+	VehicleFuelTypeID  string `json:"vehicle_fuel_type_id" query:"vehicle_fuel_type_id" gorm:"type:varchar(2)"`
+	Seat               int    `json:"seat" query:"seat" gorm:"type:int(2)"`
+	// VehicleTypeID      string    `json:"vehicle_type_id" query:"vehicle_type_id" gorm:"type:varchar(10)"`
+	VehicleSubTypeID string `json:"vehicle_sub_type_id" query:"vehicle_sub_type_id" gorm:"type:varchar(2)"`
+	// VehicleBrandID     string    `json:"vehicle_brand_id" query:"vehicle_brand_id" gorm:"type:varchar(36)"`
 	RegisterTypeCode   string    `json:"register_type_code" query:"register_type_code" gorm:"type:varchar(36)"`
 	RegisterType       string    `json:"register_type" query:"register_type" gorm:"type:varchar(36)"`
 	LicenseReceiveDate time.Time `json:"license_receive_data" query:"license_receive_data" `
