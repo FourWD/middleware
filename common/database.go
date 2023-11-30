@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -55,4 +56,21 @@ func ConnectDatabase(dsn string) error {
 	DatabaseMysql.Exec("SET time_zone=?", timeZone)
 
 	return nil
+}
+
+func ConnectDatabaseViper() error {
+	dns := DSN{
+		Username: viper.GetString("database.username"),
+		Password: viper.GetString("database.password"),
+		Database: viper.GetString("database.database"),
+		IP:       viper.GetString("database.ip"),
+		Instance: viper.GetString("database.instance"),
+	}
+
+	isGCP := false
+	if viper.GetString("production") == "true" {
+		isGCP = true
+	}
+
+	return ConnectDatabase(CreateDSN(isGCP, dns))
 }

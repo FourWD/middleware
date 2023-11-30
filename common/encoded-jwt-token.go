@@ -5,11 +5,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"
 )
 
-func EncodedJwtToken(req string, res string) (string, error) {
-	tokenString := strings.Replace(req, "Bearer ", "", 1)
+func EncodedJwtToken(c *fiber.Ctx, res string) (string, error) {
+	authorizeToken := c.Get("Authorization")
+	tokenString := strings.Replace(authorizeToken, "Bearer ", "", 1)
 	secretKeyToken := []byte(os.Getenv("secretKey"))
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

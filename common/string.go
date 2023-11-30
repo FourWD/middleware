@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -41,4 +42,12 @@ func StringExistsInList(target string, strList []string) bool {
 		}
 	}
 	return false
+}
+
+func StringToFloat(value string, fieldName string) float64 {
+	parsedValue, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0
+	}
+	return parsedValue
 }
