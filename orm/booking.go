@@ -13,7 +13,7 @@ type Booking struct {
 	PrefixID  string `json:"prefix_id" query:"prefix_id" gorm:"type:varchar(2)"`
 	FirstName string `json:"first_name" query:"name" gorm:"type:varchar(255)"`
 	LastName  string `json:"last_name" query:"name" gorm:"type:varchar(255)"`
-	Mobile    string `json:"mobile" query:"mobile" gorm:"type:varchar(20); unique"`
+	Mobile    string `json:"mobile" query:"mobile" gorm:"type:varchar(20)"`
 	Email     string `json:"email" query:"email" gorm:"type:varchar(50)"`
 
 	VehicleID         string `json:"vehicle_id" query:"vehicle_id" gorm:"type:varchar(36)"`
