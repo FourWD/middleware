@@ -4,35 +4,43 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/FourWD/middleware/orm"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
-type UserAuthorizationResult struct {
+type UserAuthorization struct {
 	IsSuccess bool
 	Code      string
 	Message   string
 }
 
-func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB) UserAuthorizationResult {
+func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB) UserAuthorization {
+	path := getLastPathComponent(c.Path())
+	if path == "login" || path == "logout" || path == "register" {
+		return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
+	}
+
 	bearerToken := c.Get("Authorization")
 	token := strings.Replace(bearerToken, "Bearer ", "", 1)
-
 	if token == "" {
-		return UserAuthorizationResult{IsSuccess: false, Code: "401", Message: "INVALID REQUEST"}
+		return UserAuthorization{IsSuccess: false, Code: "401", Message: "invalid request"}
 	}
 
 	sql := fmt.Sprintf(`SELECT * FROM users INNER JOIN log_user_logins ON users.id = log_user_logins.user_id 
 	WHERE token = "%s" ORDER BY log_user_logins.created_at DESC LIMIT 1`, token)
-	type UserToken struct {
-		ID string `json:"id"`
-	}
-	userToken := new(UserToken)
-	db.Raw(sql).Scan(&userToken)
+	logLogin := new(orm.LogUserLogin)
+	db.Raw(sql).Scan(&logLogin)
 
-	if userToken.ID == "" {
-		return UserAuthorizationResult{IsSuccess: false, Code: "401", Message: "UNAUTHORIZED"}
+	if logLogin.ID == "" {
+		return UserAuthorization{IsSuccess: false, Code: "401", Message: "unauthorized"}
 	}
 
-	return UserAuthorizationResult{IsSuccess: true, Code: "200", Message: "OK"}
+	return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
+}
+
+func getLastPathComponent(path string) string {
+	components := strings.Split(path, "/")
+	lastComponent := components[len(components)-1]
+	return lastComponent
 }
