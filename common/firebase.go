@@ -39,3 +39,8 @@ func FirebaseValueToInt(a interface{}) int {
 	}
 	return intValue
 }
+
+func UpdateFirebaseField(client *firestore.Client, path string, updateData map[string]interface{}) error {
+	_, err := client.Doc(path).Set(context.Background(), updateData, firestore.MergeAll)
+	return err
+}

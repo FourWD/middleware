@@ -13,6 +13,7 @@ import (
 
 func FiberReviewPayload(c *fiber.Ctx) error {
 	//return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "review your payload"})
+	PrintError("FiberReviewPayload", "")
 	return FiberError(c, "1002", "review your payload")
 }
 
