@@ -48,10 +48,11 @@ type Vehicle struct {
 	ContractDate       time.Time `json:"contract_date" query:"contract_date"`
 	//VehiclePickupDate     time.Time `json:"vehicle_pickup_date" query:"vehicle_pickup_date"`
 	//VehicleAuctionReceipt string    `json:"vehicle_auction_receipt" query:"vehicle_auction_receipt" gorm:"type:varchar(20)"` // เลขที่ใบรับรถขายทอดตลาด
-	Accessories    string `json:"accessories" query:"accessories" gorm:"type:varchar(500)"`
-	PeriodOfUse    int    `json:"period_of_use" query:"period_of_use" gorm:"type:int(2)"`
-	Display        bool   `json:"display" query:"display" gorm:"type:bool"`
-	AdditionalInfo string `json:"additional_info" query:"additional_info" gorm:"type:text"`
+	Accessories           string `json:"accessories" query:"accessories" gorm:"type:varchar(500)"`
+	PeriodOfUse           int    `json:"period_of_use" query:"period_of_use" gorm:"type:int(2)"`
+	Display               bool   `json:"display" query:"display" gorm:"type:bool"`
+	AdditionalInfo        string `json:"additional_info" query:"additional_info" gorm:"type:text"`
+	VehicleRegisterTypeID string `json:"vehicle_register_type_id" query:"vehicle_register_type_id" gorm:"type:varchar(2)"`
 	// A3FirstName           string    `json:"a3_first_name" query:"a3_first_name" gorm:"type:varchar(50)"`
 	// A3LastName            string    `json:"a3_last_name" query:"a3_last_name" gorm:"type:varchar(50)"`
 	// A3CarOwnerNumber      int       `json:"a3_car_owner_number" query:"a3_car_owner_number" gorm:"type:int(2)"`
