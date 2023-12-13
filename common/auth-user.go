@@ -17,8 +17,14 @@ type UserAuthorization struct {
 
 func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) UserAuthorization {
 	path := getLastPathComponent(c.Path())
-	if path == "login" || path == "logout" || path == "register" || StringExistsInList(path, excludePath[0]) {
-		return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
+	if len(excludePath) < 1 {
+		if path == "login" || path == "logout" || path == "register" {
+			return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
+		}
+	} else {
+		if path == "login" || path == "logout" || path == "register" || StringExistsInList(path, excludePath[0]) {
+			return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
+		}
 	}
 
 	bearerToken := c.Get("Authorization")
