@@ -69,7 +69,6 @@ func StringToDateTime(strDateTime string) (time.Time, error) {
 		return NilDate(), err
 	}
 	// Output the time in Bangkok timezone
-	fmt.Println("Parsed time in Bangkok timezone:", parsedTime)
 	return parsedTime, nil
 }
 
@@ -90,6 +89,5 @@ func StringToDate(strDateTime string) (time.Time, error) {
 		return NilDate(), err
 	}
 	// Output the time in Bangkok timezone
-	fmt.Println("Parsed time in Bangkok timezone:", parsedTime)
 	return parsedTime, nil
 }
