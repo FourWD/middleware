@@ -51,3 +51,17 @@ func StringToFloat(value string, fieldName string) float64 {
 	}
 	return parsedValue
 }
+
+func StringToDateTime(strDateTime string) time.Time {
+	layout := "2006-12-01 15:04"
+	loc, _ := time.LoadLocation("Asia/Bangkok")
+	dt, _ := time.ParseInLocation(layout, strDateTime, loc)
+	return dt
+}
+
+func StringToDate(strDateTime string) time.Time {
+	layout := "2006-12-01"
+	loc, _ := time.LoadLocation("Asia/Bangkok")
+	dt, _ := time.ParseInLocation(layout, strDateTime, loc)
+	return dt
+}
