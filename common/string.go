@@ -52,16 +52,44 @@ func StringToFloat(value string, fieldName string) float64 {
 	return parsedValue
 }
 
-func StringToDateTime(strDateTime string) time.Time {
-	layout := "2006-12-01 15:04"
-	loc, _ := time.LoadLocation("Asia/Bangkok")
-	dt, _ := time.ParseInLocation(layout, strDateTime, loc)
-	return dt
+func StringToDateTime(strDateTime string) (time.Time, error) {
+	// Layout of the input string
+	layout := "2006-01-02 15:04"
+
+	// Bangkok timezone
+	location, err := time.LoadLocation("Asia/Bangkok")
+	if err != nil {
+		fmt.Println("parsed error:", err)
+		return NilDate(), err
+	}
+	// Parse the input string into a time.Time object
+	parsedTime, err := time.ParseInLocation(layout, strDateTime, location)
+	if err != nil {
+		fmt.Println("parsed error:", err)
+		return NilDate(), err
+	}
+	// Output the time in Bangkok timezone
+	fmt.Println("Parsed time in Bangkok timezone:", parsedTime)
+	return parsedTime, nil
 }
 
-func StringToDate(strDateTime string) time.Time {
-	layout := "2006-12-01"
-	loc, _ := time.LoadLocation("Asia/Bangkok")
-	dt, _ := time.ParseInLocation(layout, strDateTime, loc)
-	return dt
+func StringToDate(strDateTime string) (time.Time, error) {
+	// Layout of the input string
+	layout := "2006-01-02"
+
+	// Bangkok timezone
+	location, err := time.LoadLocation("Asia/Bangkok")
+	if err != nil {
+		fmt.Println("parsed error:", err)
+		return NilDate(), err
+	}
+	// Parse the input string into a time.Time object
+	parsedTime, err := time.ParseInLocation(layout, strDateTime, location)
+	if err != nil {
+		fmt.Println("parsed error:", err)
+		return NilDate(), err
+	}
+	// Output the time in Bangkok timezone
+	fmt.Println("Parsed time in Bangkok timezone:", parsedTime)
+	return parsedTime, nil
 }
