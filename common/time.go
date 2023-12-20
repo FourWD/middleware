@@ -20,3 +20,13 @@ func SetThailandTimezone() {
 	// Set the default timezone for the application
 	time.Local = location
 }
+
+func UTCToThailandTime(t time.Time) time.Time {
+	//fmt.Println("UTC Time:", t)
+	bangkokLocation, _ := time.LoadLocation("Asia/Bangkok")
+	//bangkokTime := t.In(bangkokLocation)
+	//bangkokTime = bangkokTime.Round(0)
+	//fmt.Println("Bangkok Time:", bangkokTime)
+
+	return t.In(bangkokLocation)
+}
