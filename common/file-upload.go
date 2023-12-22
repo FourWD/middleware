@@ -14,8 +14,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error) {
-	result, errUpload := uploadFileToServer(payload, viper.GetString("app_id"), viper.GetString("token.upload"))
+func Upload(payload *model.UploadPayload, db gorm.DB) (model.UploadResult, error) {
+	result, errUpload := uploadFileToServer(*payload, viper.GetString("app_id"), viper.GetString("token.upload"))
 	if errUpload != nil {
 		return result, errUpload
 	}
