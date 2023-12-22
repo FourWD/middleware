@@ -20,7 +20,8 @@ func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error)
 		return result, errUpload
 	}
 
-	print(result.ID + " : " + result.FileName + " : " + result.FullPath)
+	println(payload.Filename + " : " + payload.FileBase64 + " : " + payload.Path)
+	println(result.ID + " : " + result.FileName + " : " + result.FullPath)
 
 	// SAVE TO LOG
 	logFile := new(orm.File)
