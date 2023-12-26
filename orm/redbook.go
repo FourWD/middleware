@@ -3,7 +3,7 @@ package orm
 import "time"
 
 type Redbook struct {
-	AuctionID     string    `json:"auction_id" query:"auction_id" gorm:"type:varchar(2);"`
+	AuctionID     string    `json:"auction_id" query:"auction_id" gorm:"type:varchar(36);"`
 	ChassisNo     string    `json:"chassis_no" query:"chassis_no" gorm:"type:varchar(20)"`
 	CRP           int       `json:"crp" query:"crp" gorm:"type:int"`
 	CRPPreVat     int       `json:"crp_pre_vat" query:"crp_pre_vat" gorm:"type:int"`
