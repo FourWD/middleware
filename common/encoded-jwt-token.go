@@ -20,6 +20,9 @@ func EncodedJwtToken(c *fiber.Ctx, res string) (string, error) {
 		}
 		return secretKeyToken, nil
 	})
+	if err != nil {
+		return err.Error(), err
+	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		claimToken := claims[res].(string)
