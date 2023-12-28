@@ -18,6 +18,7 @@ func FiberReviewPayload(c *fiber.Ctx) error {
 }
 
 func FiberSuccess(c *fiber.Ctx) error {
+	Print("FiberSuccess", getFiberInfo(c))
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
 }
 
@@ -29,6 +30,10 @@ func FiberSuccess(c *fiber.Ctx) error {
 } */
 
 func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
+	logDesc := getFiberInfo(c)
+	logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
+	logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
+	PrintError("FiberError", logDesc)
 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
 }
 
@@ -114,7 +119,7 @@ func FiberWarmUp(app *fiber.App) {
 
 func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
-	if containsAny(strings.ToUpper(query), list) {
+	if StringExistsInList(strings.ToUpper(query), list) {
 		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
 	}
 
@@ -160,11 +165,36 @@ func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
 	return json.Marshal(result)
 }
 
-func containsAny(target string, list []string) bool {
+/* func containsAny(target string, list []string) bool {
 	for _, str := range list {
 		if strings.Contains(target, str) {
 			return true
 		}
 	}
 	return false
+} */
+
+func getFiberInfo(c *fiber.Ctx) string {
+	logDesc := fmt.Sprintf("API Path: %s", c.Path())
+	logDesc += fmt.Sprintf("\n Method: %s", c.Method())
+	logDesc += fmt.Sprintf("\n Authorization: %s", c.Get("Authorization"))
+	body, _ := getBodyJson(c)
+	logDesc += fmt.Sprintf("\n Body: %s", body)
+	return logDesc
+}
+
+func getBodyJson(c *fiber.Ctx) (string, error) {
+	rawBody := c.Request().Body()
+
+	var params map[string]interface{}
+	if err := json.Unmarshal(rawBody, &params); err != nil {
+		return "", errors.New("invalid json")
+	}
+
+	jsonString, err := json.Marshal(params)
+	if err != nil {
+		return "", errors.New("error marshaling json")
+	}
+
+	return string(jsonString), nil
 }

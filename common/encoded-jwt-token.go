@@ -13,12 +13,12 @@ import (
 func EncodedJwtToken(c *fiber.Ctx, res string) (string, error) {
 	authorizeToken := c.Get("Authorization")
 	if authorizeToken == "" {
-		return "", errors.New("authorizeToken = nil ")
+		return "", errors.New("authorize = nil ")
 
 	}
 	tokenString := strings.Replace(authorizeToken, "Bearer ", "", 1)
 	if tokenString == "" {
-		return "", errors.New("tokenString = nil ")
+		return "", errors.New("token = nil ")
 
 	}
 	secretKeyToken := []byte(os.Getenv("secretKey"))
