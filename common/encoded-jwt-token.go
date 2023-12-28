@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -11,7 +12,15 @@ import (
 
 func EncodedJwtToken(c *fiber.Ctx, res string) (string, error) {
 	authorizeToken := c.Get("Authorization")
+	if authorizeToken == "" {
+		return "", errors.New("authorizeToken = nil ")
+
+	}
 	tokenString := strings.Replace(authorizeToken, "Bearer ", "", 1)
+	if tokenString == "" {
+		return "", errors.New("tokenString = nil ")
+
+	}
 	secretKeyToken := []byte(os.Getenv("secretKey"))
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
