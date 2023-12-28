@@ -3,11 +3,11 @@ package common
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"
+	"github.com/spf13/viper"
 )
 
 func EncodedJwtToken(c *fiber.Ctx, res string) (string, error) {
@@ -21,8 +21,8 @@ func EncodedJwtToken(c *fiber.Ctx, res string) (string, error) {
 		return "", errors.New("token = nil ")
 
 	}
-	secretKeyToken := []byte(os.Getenv("secretKey"))
-	//secretKeyToken := []byte(viper.GetString("jwt_secret_key"))
+	//secretKeyToken := []byte(os.Getenv("secretKey"))
+	secretKeyToken := []byte(viper.GetString("jwt_secret_key"))
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
