@@ -22,6 +22,7 @@ func EncodedJwtToken(c *fiber.Ctx, res string) (string, error) {
 
 	}
 	secretKeyToken := []byte(os.Getenv("secretKey"))
+	//secretKeyToken := []byte(viper.GetString("jwt_secret_key"))
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
