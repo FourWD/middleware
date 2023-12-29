@@ -28,7 +28,7 @@ type User struct {
 	LastLoginDate            time.Time `json:"last_login_date" query:"last_login_date"`
 	LastReadNotificationDate time.Time `json:"last_read_notification_date" query:"last_read_notification_date"`
 
-	UserStatus         string `json:"user_status" query:"user_status" gorm:"type:varchar(15)"`                   // ban approve
-	UserRegisterStatus string `json:"user_register_status" query:"user_register_status" gorm:"type:varchar(15)"` //สถานะหน้าสมัคร ถึงขันไหนละ 1 otp เสร็จ 2 กรอกข้อมูลเสร็จ 3 แอดมินแอพ
-	IsRegisterComplete bool   `json:"is_register_complete" query:"is_register_complete" gorm:"type:bool"`
+	UserStatusID         string `json:"user_status_id" query:"user_status_id" gorm:"type:varchar(2)"`                   // ban approve
+	UserRegisterStatusID string `json:"user_register_status_id" query:"user_register_status_id" gorm:"type:varchar(2)"` //สถานะหน้าสมัคร ถึงขันไหนละ 1 otp เสร็จ 2 กรอกข้อมูลเสร็จ 3 แอดมินแอพ
+	IsRegisterComplete   bool   `json:"is_register_complete" query:"is_register_complete" gorm:"type:bool"`
 }
