@@ -30,3 +30,22 @@ func UTCToThailandTime(t time.Time) time.Time {
 
 	return t.In(bangkokLocation)
 }
+
+func RoundUpToMinute(t time.Time) time.Time {
+	rounded := time.Date(
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		t.Hour(),
+		t.Minute(),
+		0, // seconds
+		0, // nanoseconds
+		t.Location(),
+	)
+
+	if t.Second() > 0 || t.Nanosecond() > 0 {
+		rounded = rounded.Add(time.Minute)
+	}
+
+	return rounded
+}
