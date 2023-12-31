@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -81,4 +82,12 @@ func StringToDate(strDateTime string) (time.Time, error) {
 	}
 
 	return parsedTime, nil
+}
+
+func StructToString(data interface{}) string {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "Format Error"
+	}
+	return string(jsonData)
 }

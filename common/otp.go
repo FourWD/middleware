@@ -20,7 +20,7 @@ func OtpRequest(payload model.OtpRequestPayload, db gorm.DB) (model.OtpResult, e
 
 	logOtp := new(orm.LogOTP)
 	logOtp.OTP = result.Token
-	logOtp.RefCodeOTP = result.Refno
+	logOtp.RefCodeOTP = result.RefNo
 	logOtp.RequestDate = time.Now()
 
 	err := db.Save(&logOtp)
