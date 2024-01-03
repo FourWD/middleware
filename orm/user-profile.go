@@ -6,7 +6,7 @@ type UserProfile struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36);primary_key"`
 	model.GormModel
 
-	UserID        string `json:"user_id" query:"user_id" gorm:"type:varchar(36)"`
+	UserID        string `json:"user_id" query:"user_id" gorm:"type:varchar(36); uniqueIndex:idx_user_id"`
 	Address       string `json:"address" query:"address" gorm:"type:text"`
 	Building      string `json:"building" query:"building" gorm:"type:varchar(100)"`
 	Room          string `json:"room" query:"room" gorm:"type:varchar(20)"`
