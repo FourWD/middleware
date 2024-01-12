@@ -27,7 +27,8 @@ type User struct {
 	CountWrongLogin          int       `json:"count_wrong_login" query:"count_wrong_login" gorm:"type:int(1)"`
 	LastLoginDate            time.Time `json:"last_login_date" query:"last_login_date"`
 	LastReadNotificationDate time.Time `json:"last_read_notification_date" query:"last_read_notification_date"`
-	AuctionCode              string    `json:"auction_code" query:"auction_code" gorm:"type:varchar(20)"`
+	AuctionCode              string    `json:"auction_code" query:"auction_code" gorm:"type:varchar(20)"` //รหัสผู้ประมูล
+	VerifyCode               string    `json:"verify_code" query:"verify_code" gorm:"type:varchar(20)"`   //รหัสยื่นเรื่อง
 
 	UserStatusID         string `json:"user_status_id" query:"user_status_id" gorm:"type:varchar(2)"`                   // ban approve
 	UserRegisterStatusID string `json:"user_register_status_id" query:"user_register_status_id" gorm:"type:varchar(2)"` //สถานะหน้าสมัคร ถึงขันไหนละ 1 otp เสร็จ 2 กรอกข้อมูลเสร็จ 3 แอดมินแอพ
