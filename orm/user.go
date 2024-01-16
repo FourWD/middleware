@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	ID string `json:"id" query:"id" gorm:"type:varchar(36);primary_key"`
+	ID string `json:"id" query:"id" gorm:"type:varchar(36);uniqueIndex:idx_id"`
 	model.GormModel
 
 	Code                     string    `json:"code" query:"code" gorm:"type:varchar(20)"`
@@ -23,7 +23,7 @@ type User struct {
 	Facebook                 string    `json:"facebook" query:"facebook" gorm:"type:varchar(50)"`
 	Line                     string    `json:"line" query:"line" gorm:"type:varchar(20)"`
 	Tiktok                   string    `json:"tiktok" query:"tiktok" gorm:"type:varchar(50)"`
-	RunningNo                int       `json:"running_no" query:"running_no" gorm:"type:tinyint"`
+	RunningNo                int       `json:"running_no" query:"running_no" gorm:"type:int"`
 	CountWrongLogin          int       `json:"count_wrong_login" query:"count_wrong_login" gorm:"type:int(1)"`
 	LastLoginDate            time.Time `json:"last_login_date" query:"last_login_date"`
 	LastReadNotificationDate time.Time `json:"last_read_notification_date" query:"last_read_notification_date"`
