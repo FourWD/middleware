@@ -10,7 +10,7 @@ type User struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36);primary_key"`
 	model.GormModel
 
-	Code                     string    `json:"code" query:"code" gorm:"type:varchar(500)"`
+	Code                     string    `json:"code" query:"code" gorm:"type:varchar(20)"`
 	UserTypeID               string    `json:"user_type_id" query:"user_type_id" gorm:"type:varchar(2)"`
 	Username                 string    `json:"username" query:"username" gorm:"type:varchar(20)"`
 	Password                 string    `json:"password" query:"password" gorm:"type:varchar(20)"`
@@ -18,7 +18,7 @@ type User struct {
 	Firstname                string    `json:"firstname" query:"firstname" gorm:"type:varchar(100)"`
 	Lastname                 string    `json:"lastname" query:"lastname" gorm:"type:varchar(100)"`
 	FileAvatarID             string    `json:"file_avartar_id" query:"file_avartar_id" gorm:"type:varchar(36)"`
-	Mobile                   string    `json:"mobile" query:"mobile" gorm:"type:varchar(20); unique"`
+	Mobile                   string    `json:"mobile" query:"mobile" gorm:"type:varchar(20);unique"`
 	Email                    string    `json:"email" query:"email" gorm:"type:varchar(50)"`
 	Facebook                 string    `json:"facebook" query:"facebook" gorm:"type:varchar(50)"`
 	Line                     string    `json:"line" query:"line" gorm:"type:varchar(20)"`
