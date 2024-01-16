@@ -10,7 +10,7 @@ type SurveyOption struct {
 
 	SurveyID  string `json:"survey_id" query:"survey_id" gorm:"type:varchar(36)"`
 	Answer    string `json:"answer" query:"answer" gorm:"not null;type:varchar(100)"`
-	ImagePath string `json:"image_path" query:"image_path" gorm:"type:varchar(255)"`
+	ImagePath string `json:"image_path" query:"image_path" gorm:"type:varchar(256)"`
 	model.GormRowOrder
 }
 
