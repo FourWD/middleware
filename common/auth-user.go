@@ -33,12 +33,17 @@ func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) 
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "invalid request"}
 	}
 
-	sql := fmt.Sprintf(`SELECT * FROM users INNER JOIN log_user_logins ON users.id = log_user_logins.user_id 
-	WHERE token = "%s" ORDER BY log_user_logins.created_at DESC LIMIT 1`, token)
-	logLogin := new(orm.LogUserLogin)
-	db.Raw(sql).Scan(&logLogin)
+	// sql := fmt.Sprintf(`SELECT * FROM users INNER JOIN log_user_logins ON users.id = log_user_logins.user_id
+	// WHERE token = "%s" ORDER BY log_user_logins.created_at DESC LIMIT 1`, token)
+	// logLogin := new(orm.LogUserLogin)
+	// db.Raw(sql).Scan(&logLogin)
 
-	if logLogin.ID == "" {
+	var logUserLogin orm.LogUserLogin
+	if err := db.Where("token = ?", token).Order("created_at DESC").First(&logUserLogin).Error; err != nil {
+		fmt.Println("***** LogUserLogin not found, token: ", token)
+	}
+
+	if logUserLogin.ID == "" {
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "unauthorized"}
 	}
 
