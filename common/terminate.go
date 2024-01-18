@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -8,7 +9,7 @@ import (
 )
 
 func Terminate() {
-	log.Println("Terminate App Version: ", viper.GetString("app_version"))
+	fmt.Printf("Terminate App Version: %s [%s]\n", viper.GetString("app_version"), os.Getenv("GAE_VERSION"))
 	zero := 0
 	i := 1 / zero
 	log.Panic(i)
