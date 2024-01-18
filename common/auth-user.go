@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/FourWD/middleware/orm"
@@ -30,6 +29,7 @@ func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) 
 	bearerToken := c.Get("Authorization")
 	token := strings.Replace(bearerToken, "Bearer ", "", 1)
 	if token == "" {
+		PrintError("LogUserLogin invalid request", token)
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "invalid request"}
 	}
 
@@ -40,10 +40,13 @@ func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) 
 
 	var logUserLogin orm.LogUserLogin
 	if err := db.Where("token = ?", token).Order("created_at DESC").First(&logUserLogin).Error; err != nil {
-		fmt.Println("***** LogUserLogin not found, token: ", token)
+		//fmt.Println("***** LogUserLogin not found, token: ", token)
+		PrintError("LogUserLogin not found", token)
+		return UserAuthorization{IsSuccess: false, Code: "401", Message: "log_login not found"}
 	}
 
 	if logUserLogin.ID == "" {
+		PrintError("LogUserLogin unauthorized", token)
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "unauthorized"}
 	}
 
