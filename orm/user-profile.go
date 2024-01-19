@@ -14,5 +14,5 @@ type UserProfile struct {
 	DistrictID    string `json:"district_id" query:"district_id" gorm:"type:varchar(4)"`         //อำเภอ
 	SubDistrictID string `json:"sub_district_id" query:"sub_district_id" gorm:"type:varchar(6)"` //ตำบล
 	ProvinceID    string `json:"province_id" query:"province_id" gorm:"type:varchar(2)"`
-	PostCode      string `json:"post_code" query:"post_code" gorm:"type:varchar(5)"`
+	PostCode      string `json:"post_code" query:"post_code" gorm:"type:varchar(5)"` //รหัส
 }
