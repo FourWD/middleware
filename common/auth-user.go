@@ -17,6 +17,7 @@ type UserAuthorization struct {
 func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) UserAuthorization {
 	path := getLastPathComponent(c.Path())
 	defaultExcludePath := []string{"login", "logout", "register", "wake-up", "warmup"}
+	Print("CheckUserAuthorization", path)
 
 	if StringExistsInList(path, defaultExcludePath) {
 		return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
