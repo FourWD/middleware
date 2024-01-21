@@ -1,7 +1,6 @@
 package common
 
 import (
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -12,24 +11,28 @@ import (
 	"github.com/spf13/viper"
 )
 
-// var (
-// 	secretKey     = []byte("jwt_secret_key")
-// 	refreshSecret = []byte("jwt_refresh_secret_key")
-// )
+var (
+	//viper.GetString("jwt_secret_key")
+	// secretKey     = []byte("your-secret-key")
+	// refreshSecret = []byte("your-refresh-secret")
+	secretKey     = []byte(viper.GetString("jwt_secret_key"))
+	refreshSecret = []byte(viper.GetString("jwt_refresh_secret_key"))
+)
 
+// JWTClaims struct represents the claims we want to include in the token.
 type JWTClaims struct {
 	UserID string `json:"user_id"`
 	jwt.StandardClaims
 }
 
-func GenerateJWTToken(userID string, key1 string, expiresIn time.Duration) (string, error) {
+func GenerateJWTToken(userID string, key []byte, expiresIn time.Duration) (string, error) {
 	claims := JWTClaims{
 		UserID: userID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(expiresIn).Unix(),
 		},
 	}
-	key := []byte(key1)
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString(key)
 	if err != nil {
@@ -54,6 +57,7 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 		return c.Next()
 	}
 
+	// Extract token from the Authorization header
 	authHeader := c.Get("Authorization")
 	if authHeader == "" {
 		return c.Status(http.StatusUnauthorized).SendString("No token provided")
@@ -61,37 +65,60 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 
 	tokenString := authHeader[len("Bearer "):]
 
+	// Parse the token
 	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return viper.GetString("jwt_secret_key"), nil
+		return secretKey, nil
 	})
 
 	if err != nil {
-		log.Println(err)
 		if err == jwt.ErrSignatureInvalid {
 			return c.Status(http.StatusUnauthorized).SendString("Invalid token signature")
 		}
 		return c.Status(http.StatusBadRequest).SendString("Bad request")
 	}
-	log.Println(token)
 
 	if !token.Valid {
 		return c.Status(http.StatusUnauthorized).SendString("Invalid token")
 	}
 
+	// Token is valid, do something with the claims
 	c.Locals("user", claims)
 	return c.Next()
 }
 
-func authenticate(username, password string) (orm.User, bool) {
-	var user orm.User
-	result := Database.Where("username = ? AND password = ?", username, HashPassword(password)).First(&user)
-	if result.Error != nil {
-		return orm.User{}, false
-	}
+// func refreshTokenHandler(c *fiber.Ctx) error {
+// 	// Extract refresh token from the request
+// 	refreshToken := c.FormValue("refresh_token")
+// 	if refreshToken == "" {
+// 		return c.Status(http.StatusBadRequest).SendString("Refresh token not provided")
+// 	}
 
-	return user, true
-}
+// 	// Parse the refresh token
+// 	claims := &JWTClaims{}
+// 	token, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
+// 		return refreshSecret, nil
+// 	})
+
+// 	if err != nil {
+// 		if err == jwt.ErrSignatureInvalid {
+// 			return c.Status(http.StatusUnauthorized).SendString("Invalid refresh token signature")
+// 		}
+// 		return c.Status(http.StatusBadRequest).SendString("Bad request")
+// 	}
+
+// 	if !token.Valid {
+// 		return c.Status(http.StatusUnauthorized).SendString("Invalid refresh token")
+// 	}
+
+// 	// Refresh token is valid, generate a new access token
+// 	newAccessToken, err := GenerateJWTToken(claims.UserID, secretKey, time.Hour*24)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return c.JSON(fiber.Map{"access_token": newAccessToken})
+// }
 
 func FiberLogin(app *fiber.App) {
 	app.Post("/login", func(c *fiber.Ctx) error {
@@ -101,12 +128,12 @@ func FiberLogin(app *fiber.App) {
 		}
 
 		if authenticatedUser, ok := authenticate(user.Username, user.Password); ok {
-			accessToken, err := GenerateJWTToken(authenticatedUser.ID, viper.GetString("jwt_secret_key"), time.Hour*24)
+			accessToken, err := GenerateJWTToken(authenticatedUser.ID, secretKey, time.Hour*24)
 			if err != nil {
 				return err
 			}
 
-			refreshToken, err := GenerateJWTToken(authenticatedUser.ID, viper.GetString("jwt_refresh_secret_key"), time.Hour*24*30) // 30 days
+			refreshToken, err := GenerateJWTToken(authenticatedUser.ID, refreshSecret, time.Hour*24*30) // 30 days
 			if err != nil {
 				return err
 			}
@@ -141,7 +168,7 @@ func FiberRefreshToken(c *fiber.Ctx) error {
 	}
 
 	// Refresh token is valid, generate a new access token
-	newAccessToken, err := GenerateJWTToken(claims.UserID, viper.GetString("jwt_secret_key"), time.Hour*24)
+	newAccessToken, err := GenerateJWTToken(claims.UserID, secretKey, time.Hour*24)
 	if err != nil {
 		return err
 	}
@@ -157,7 +184,29 @@ func FiberTestProtection(app *fiber.App) {
 }
 
 func GetSessionUserID(c *fiber.Ctx) string {
-	return c.Locals("user").(*JWTClaims).UserID
+	return c.Locals("user_id").(*JWTClaims).UserID
+}
+
+// func authenticate(username, password string) (orm.User, bool) {
+// 	var user orm.User
+// 	result := Database.Where("username = ? AND password = ?", username, HashPassword(password)).First(&user)
+// 	if result.Error != nil {
+// 		return orm.User{}, false
+// 	}
+
+// 	return user, true
+// }
+
+func authenticate(username, password string) (orm.User, bool) {
+	// Replace this with your actual authentication logic
+	// For simplicity, return a predefined user if credentials are valid
+	if username == "user" && password == "password" {
+		user := new(orm.User)
+		user.ID = "1234"
+		user.Username = "Admin"
+		return *user, true
+	}
+	return orm.User{}, false
 }
 
 // func main() {
