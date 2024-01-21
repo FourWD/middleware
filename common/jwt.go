@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	secretKey     = []byte(viper.GetString("jwt_secret_key"))
-	refreshSecret = []byte(viper.GetString("jwt_refresh_secret_key"))
+	secretKey     = viper.GetString("jwt_secret_key")
+	refreshSecret = viper.GetString("jwt_refresh_secret_key")
 )
 
 type JWTClaims struct {
@@ -21,7 +21,7 @@ type JWTClaims struct {
 	jwt.StandardClaims
 }
 
-func GenerateJWTToken(userID string, key []byte, expiresIn time.Duration) (string, error) {
+func GenerateJWTToken(userID string, key string, expiresIn time.Duration) (string, error) {
 	claims := JWTClaims{
 		UserID: userID,
 		StandardClaims: jwt.StandardClaims{
@@ -30,22 +30,12 @@ func GenerateJWTToken(userID string, key []byte, expiresIn time.Duration) (strin
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString(key)
+	signedToken, err := token.SignedString([]byte(key))
 	if err != nil {
 		return "", err
 	}
 
 	return signedToken, nil
-}
-
-func authenticate(username, password string) (orm.User, bool) {
-	var user orm.User
-	result := Database.Where("username = ? AND password = ?", username, HashPassword(password)).First(&user)
-	if result.Error != nil {
-		return orm.User{}, false
-	}
-
-	return user, true
 }
 
 func isExcludedPath(path string) bool {
@@ -88,6 +78,16 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 
 	c.Locals("user", claims)
 	return c.Next()
+}
+
+func authenticate(username, password string) (orm.User, bool) {
+	var user orm.User
+	result := Database.Where("username = ? AND password = ?", username, HashPassword(password)).First(&user)
+	if result.Error != nil {
+		return orm.User{}, false
+	}
+
+	return user, true
 }
 
 func FiberLogin(app *fiber.App) {
