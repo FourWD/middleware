@@ -53,5 +53,8 @@ func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) 
 func getLastPathComponent(path string) string {
 	components := strings.Split(path, "/")
 	lastComponent := components[len(components)-1]
+	if lastComponent == "favicon.ico" {
+		return ""
+	}
 	return lastComponent
 }
