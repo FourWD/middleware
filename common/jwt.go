@@ -152,6 +152,10 @@ func FiberTestProtection(app *fiber.App) {
 	})
 }
 
+func GetSessionUserID(c *fiber.Ctx) string {
+	return c.Locals("user").(*JWTClaims).UserID
+}
+
 // func main() {
 // 	app := fiber.New()
 
