@@ -12,10 +12,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	secretKey     = viper.GetString("jwt_secret_key")
-	refreshSecret = viper.GetString("jwt_refresh_secret_key")
-)
+// var (
+// 	secretKey     = viper.GetString("jwt_secret_key")
+// 	refreshSecret = viper.GetString("jwt_refresh_secret_key")
+// )
 
 type JWTClaims struct {
 	UserID string `json:"user_id"`
@@ -63,7 +63,7 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 
 	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
+		return viper.GetString("jwt_secret_key"), nil
 	})
 
 	if err != nil {
@@ -101,12 +101,12 @@ func FiberLogin(app *fiber.App) {
 		}
 
 		if authenticatedUser, ok := authenticate(user.Username, user.Password); ok {
-			accessToken, err := GenerateJWTToken(authenticatedUser.ID, secretKey, time.Hour*24)
+			accessToken, err := GenerateJWTToken(authenticatedUser.ID, viper.GetString("jwt_secret_key"), time.Hour*24)
 			if err != nil {
 				return err
 			}
 
-			refreshToken, err := GenerateJWTToken(authenticatedUser.ID, refreshSecret, time.Hour*24*30) // 30 days
+			refreshToken, err := GenerateJWTToken(authenticatedUser.ID, viper.GetString("jwt_refresh_secret_key"), time.Hour*24*30) // 30 days
 			if err != nil {
 				return err
 			}
@@ -126,7 +126,7 @@ func FiberRefreshToken(c *fiber.Ctx) error {
 
 	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
-		return refreshSecret, nil
+		return viper.GetString("jwt_refresh_secret_key"), nil
 	})
 
 	if err != nil {
@@ -141,7 +141,7 @@ func FiberRefreshToken(c *fiber.Ctx) error {
 	}
 
 	// Refresh token is valid, generate a new access token
-	newAccessToken, err := GenerateJWTToken(claims.UserID, secretKey, time.Hour*24)
+	newAccessToken, err := GenerateJWTToken(claims.UserID, viper.GetString("jwt_secret_key"), time.Hour*24)
 	if err != nil {
 		return err
 	}
