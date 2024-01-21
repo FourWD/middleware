@@ -45,9 +45,11 @@ func GenerateJWTToken(userID string, key []byte, expiresIn time.Duration) (strin
 
 func AuthenticationMiddleware(c *fiber.Ctx) error {
 	publicPaths := viper.GetStringSlice("public_path")
-	log.Println("path:", c.Path())
+	log.Println("full_path:", c.Path())
+	path := getLastPathComponent(c.Path())
+	log.Println("path:", path)
 	log.Println("publicPaths:", publicPaths)
-	if StringExistsInList(c.Path(), publicPaths) {
+	if StringExistsInList(path, publicPaths) {
 		return c.Next()
 	}
 
