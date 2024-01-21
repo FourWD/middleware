@@ -18,11 +18,11 @@ func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) 
 	path := getLastPathComponent(c.Path())
 	defaultExcludePath := []string{"login", "logout", "register", "wake-up", "warmup"}
 
-	if len(excludePath) < 1 {
-		if StringExistsInList(path, defaultExcludePath) {
-			return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
-		}
-	} else {
+	if StringExistsInList(path, defaultExcludePath) {
+		return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
+	}
+
+	if len(excludePath) > 1 {
 		if StringExistsInList(path, defaultExcludePath) || StringExistsInList(path, excludePath[0]) {
 			return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
 		}
@@ -35,14 +35,8 @@ func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) 
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "invalid request"}
 	}
 
-	// sql := fmt.Sprintf(`SELECT * FROM users INNER JOIN log_user_logins ON users.id = log_user_logins.user_id
-	// WHERE token = "%s" ORDER BY log_user_logins.created_at DESC LIMIT 1`, token)
-	// logLogin := new(orm.LogUserLogin)
-	// db.Raw(sql).Scan(&logLogin)
-
 	var logUserLogin orm.LogUserLogin
 	if err := db.Where("token = ?", token).Order("created_at DESC").First(&logUserLogin).Error; err != nil {
-		//fmt.Println("***** LogUserLogin not found, token: ", token)
 		PrintError("LogUserLogin not found", token)
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "log_login not found"}
 	}
