@@ -188,7 +188,7 @@ func FiberTestProtection(app *fiber.App) {
 }
 
 func GetSessionUserID(c *fiber.Ctx) string {
-	return c.Locals("user_id").(*JWTClaims).UserID
+	return c.Locals("user").(*JWTClaims).UserID
 }
 
 // func authenticate(username, password string) (orm.User, bool) {
