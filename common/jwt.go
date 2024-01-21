@@ -9,11 +9,12 @@ import (
 	"github.com/FourWD/middleware/orm"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
+	"github.com/spf13/viper"
 )
 
 var (
-	secretKey     = []byte("jwt_secret_key")
-	refreshSecret = []byte("jwt_refresh_secret_key")
+	secretKey     = []byte(viper.GetString("jwt_secret_key"))
+	refreshSecret = []byte(viper.GetString("jwt_refresh_secret_key"))
 )
 
 type JWTClaims struct {
