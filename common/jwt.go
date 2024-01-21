@@ -1,6 +1,7 @@
 package common
 
 import (
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -66,11 +67,13 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
+		log.Println(err)
 		if err == jwt.ErrSignatureInvalid {
 			return c.Status(http.StatusUnauthorized).SendString("Invalid token signature")
 		}
 		return c.Status(http.StatusBadRequest).SendString("Bad request")
 	}
+	log.Println(token)
 
 	if !token.Valid {
 		return c.Status(http.StatusUnauthorized).SendString("Invalid token")
