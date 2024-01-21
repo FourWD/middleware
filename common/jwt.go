@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	secretKey     = []byte(viper.GetString("secret-key"))
-	refreshSecret = []byte(viper.GetString("refresh-secret-key"))
+	secretKey     = []byte(viper.GetString("jwt_secret_key"))
+	refreshSecret = []byte(viper.GetString("jwt_refresh_secret_key"))
 )
 
 type JWTClaims struct {
@@ -57,7 +57,7 @@ func isExcludedPath(path string) bool {
 	return false
 }
 
-func AuthenticationMiddleware(c *fiber.Ctx, excludePath ...[]string) error {
+func AuthenticationMiddleware(c *fiber.Ctx) error {
 	if isExcludedPath(c.Path()) {
 		return c.Next()
 	}
@@ -89,7 +89,7 @@ func AuthenticationMiddleware(c *fiber.Ctx, excludePath ...[]string) error {
 	return c.Next()
 }
 
-func Login(app *fiber.App) {
+func FiberLogin(app *fiber.App) {
 	app.Post("/login", func(c *fiber.Ctx) error {
 		var user orm.User
 		if err := c.BodyParser(&user); err != nil {
@@ -114,7 +114,7 @@ func Login(app *fiber.App) {
 	})
 }
 
-func RefreshToken(c *fiber.Ctx) error {
+func FiberRefreshToken(c *fiber.Ctx) error {
 	refreshToken := c.FormValue("refresh_token")
 	if refreshToken == "" {
 		return c.Status(http.StatusBadRequest).SendString("Refresh token not provided")
