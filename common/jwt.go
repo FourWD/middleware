@@ -12,13 +12,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	//viper.GetString("jwt_secret_key")
-	// secretKey     = []byte("your-secret-key")
-	// refreshSecret = []byte("your-refresh-secret")
-	secretKey     = []byte(viper.GetString("jwt_secret_key"))
-	refreshSecret = []byte(viper.GetString("jwt_refresh_secret_key"))
-)
+// var (
+// 	//viper.GetString("jwt_secret_key")
+// 	// secretKey     = []byte("your-secret-key")
+// 	// refreshSecret = []byte("your-refresh-secret")
+// 	secretKey     = []byte(viper.GetString("jwt_secret_key"))
+// 	refreshSecret = []byte(viper.GetString("jwt_refresh_secret_key"))
+// )
 
 // JWTClaims struct represents the claims we want to include in the token.
 type JWTClaims struct {
@@ -69,7 +69,7 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 	// Parse the token
 	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
+		return []byte(viper.GetString("jwt_secret_key")), nil
 	})
 
 	if err != nil {
@@ -132,12 +132,12 @@ func FiberLogin(app *fiber.App) {
 		}
 
 		if authenticatedUser, ok := authenticate(user.Username, user.Password); ok {
-			accessToken, err := GenerateJWTToken(authenticatedUser.ID, secretKey, time.Hour*24)
+			accessToken, err := GenerateJWTToken(authenticatedUser.ID, []byte(viper.GetString("jwt_secret_key")), time.Hour*24)
 			if err != nil {
 				return err
 			}
 
-			refreshToken, err := GenerateJWTToken(authenticatedUser.ID, refreshSecret, time.Hour*24*30) // 30 days
+			refreshToken, err := GenerateJWTToken(authenticatedUser.ID, []byte(viper.GetString("jwt_refresh_secret_key")), time.Hour*24*30) // 30 days
 			if err != nil {
 				return err
 			}
@@ -172,7 +172,7 @@ func FiberRefreshToken(c *fiber.Ctx) error {
 	}
 
 	// Refresh token is valid, generate a new access token
-	newAccessToken, err := GenerateJWTToken(claims.UserID, secretKey, time.Hour*24)
+	newAccessToken, err := GenerateJWTToken(claims.UserID, []byte(viper.GetString("jwt_secret_key")), time.Hour*24)
 	if err != nil {
 		return err
 	}
