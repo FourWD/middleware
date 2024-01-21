@@ -2,8 +2,8 @@ package common
 
 import (
 	"fmt"
+	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/FourWD/middleware/orm"
@@ -43,18 +43,10 @@ func GenerateJWTToken(userID string, key []byte, expiresIn time.Duration) (strin
 	return signedToken, nil
 }
 
-func isExcludedPath(path string) bool {
-	excludedPaths := []string{"login", "logout", "register", "wake-up", "warmup"}
-	for _, p := range excludedPaths {
-		if strings.Contains(path, p) {
-			return true
-		}
-	}
-	return false
-}
-
 func AuthenticationMiddleware(c *fiber.Ctx) error {
-	if isExcludedPath(c.Path()) {
+	publicPaths := viper.GetStringSlice("exclude_path")
+	log.Println("publicPaths:", publicPaths)
+	if StringExistsInList(c.Path(), publicPaths) {
 		return c.Next()
 	}
 
