@@ -145,6 +145,13 @@ func FiberRefreshToken(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"access_token": newAccessToken})
 }
 
+func FiberTestProtection(app *fiber.App) {
+	app.Get("/test-protection", func(c *fiber.Ctx) error {
+		userClaims := c.Locals("user").(*JWTClaims)
+		return c.JSON(fiber.Map{"user_id": userClaims.UserID, "username": userClaims.Username})
+	})
+}
+
 // func main() {
 // 	app := fiber.New()
 
