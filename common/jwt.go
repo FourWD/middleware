@@ -1,6 +1,7 @@
 package common
 
 import (
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -121,6 +122,9 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 // }
 
 func FiberLogin(app *fiber.App) {
+	log.Println("mid", viper.GetString("jwt_secret_key"))
+	log.Println("mid", viper.GetString("jwt_refresh_secret_key"))
+
 	app.Post("/login", func(c *fiber.Ctx) error {
 		var user orm.User
 		if err := c.BodyParser(&user); err != nil {
