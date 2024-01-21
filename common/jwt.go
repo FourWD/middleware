@@ -17,15 +17,13 @@ var (
 )
 
 type JWTClaims struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
+	UserID string `json:"user_id"`
 	jwt.StandardClaims
 }
 
-func generateToken(userID string, username string, key []byte, expiresIn time.Duration) (string, error) {
+func GenerateJWTToken(userID string, key []byte, expiresIn time.Duration) (string, error) {
 	claims := JWTClaims{
-		UserID:   userID,
-		Username: username,
+		UserID: userID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(expiresIn).Unix(),
 		},
@@ -41,10 +39,13 @@ func generateToken(userID string, username string, key []byte, expiresIn time.Du
 }
 
 func authenticate(username, password string) (orm.User, bool) {
-	if username == "user" && password == "password" {
-		return orm.User{ID: "1", Username: "user", Password: "password"}, true
+	var user orm.User
+	result := Database.Where("username = ? AND password = ?", username, HashPassword(password)).First(&user)
+	if result.Error != nil {
+		return orm.User{}, false
 	}
-	return orm.User{}, false
+
+	return user, true
 }
 
 func isExcludedPath(path string) bool {
@@ -97,17 +98,17 @@ func FiberLogin(app *fiber.App) {
 		}
 
 		if authenticatedUser, ok := authenticate(user.Username, user.Password); ok {
-			accessToken, err := generateToken(authenticatedUser.ID, authenticatedUser.Username, secretKey, time.Hour*24)
+			accessToken, err := GenerateJWTToken(authenticatedUser.ID, secretKey, time.Hour*24)
 			if err != nil {
 				return err
 			}
 
-			refreshToken, err := generateToken(authenticatedUser.ID, authenticatedUser.Username, refreshSecret, time.Hour*24*30) // 30 days
+			refreshToken, err := GenerateJWTToken(authenticatedUser.ID, refreshSecret, time.Hour*24*30) // 30 days
 			if err != nil {
 				return err
 			}
 
-			return c.JSON(fiber.Map{"access_token": accessToken, "refresh_token": refreshToken})
+			return c.JSON(fiber.Map{"token": accessToken, "refresh_token": refreshToken})
 		}
 
 		return c.Status(http.StatusUnauthorized).SendString("Invalid credentials")
@@ -137,18 +138,18 @@ func FiberRefreshToken(c *fiber.Ctx) error {
 	}
 
 	// Refresh token is valid, generate a new access token
-	newAccessToken, err := generateToken(claims.UserID, claims.Username, secretKey, time.Hour*24)
+	newAccessToken, err := GenerateJWTToken(claims.UserID, secretKey, time.Hour*24)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(fiber.Map{"access_token": newAccessToken})
+	return c.JSON(fiber.Map{"token": newAccessToken})
 }
 
 func FiberTestProtection(app *fiber.App) {
 	app.Get("/test-protection", func(c *fiber.Ctx) error {
 		userClaims := c.Locals("user").(*JWTClaims)
-		return c.JSON(fiber.Map{"user_id": userClaims.UserID, "username": userClaims.Username})
+		return c.JSON(fiber.Map{"user_id": userClaims.UserID})
 	})
 }
 
