@@ -10,6 +10,7 @@ type Booking struct {
 	BookingNo       string `json:"booking_no" query:"booking_no" gorm:"type:varchar(20)"` //หมายเลขรายการ
 	BookingStatusID string `json:"booking_status_id" query:"booking_status_id" gorm:"type:varchar(2)"`
 
+	UserID    string `json:"user_id" query:"user_id" gorm:"type:varchar(36)"`
 	PrefixID  string `json:"prefix_id" query:"prefix_id" gorm:"type:varchar(2)"`
 	FirstName string `json:"first_name" query:"name" gorm:"type:varchar(256)"`
 	LastName  string `json:"last_name" query:"name" gorm:"type:varchar(256)"`
