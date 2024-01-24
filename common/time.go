@@ -49,3 +49,18 @@ func RoundUpToMinute(t time.Time) time.Time {
 
 	return rounded
 }
+
+func RoundDownToMinute(t time.Time) time.Time {
+	rounded := time.Date(
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		t.Hour(),
+		t.Minute(),
+		0, // seconds
+		0, // nanoseconds
+		t.Location(),
+	)
+
+	return rounded
+}
