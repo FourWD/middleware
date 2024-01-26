@@ -21,7 +21,7 @@ type Source struct {
 	ProvinceID           string    `json:"province_id" query:"province_id" gorm:"type:varchar(2)"`
 	DistrictID           string    `json:"district_id" query:"district_id" gorm:"type:varchar(4)"`
 	SubdistrictID        string    `json:"subdistrict_id" query:"subdistrict_id" gorm:"type:varchar(36)"`
-	PostCode             string    `json:"postcode" query:"postcode" gorm:"type:varchar(5)"`
+	Postcode             string    `json:"postcode" query:"postcode" gorm:"type:varchar(5)"`
 	RegistrationNumber   string    `json:"registration_number" query:"registration_number" gorm:"type:varchar(36)"`
 	CompanyName          string    `json:"company_name" query:"company_name" gorm:"type:varchar(256)"`
 	ContractSigningDate  time.Time `json:"contract_signing_date" query:"contract_signing_date"`

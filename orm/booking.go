@@ -33,7 +33,7 @@ type Booking struct {
 	DistrictID    string `json:"district_id" query:"district_id" gorm:"type:varchar(4)"`         //อำเภอ
 	SubDistrictID string `json:"sub_district_id" query:"sub_district_id" gorm:"type:varchar(6)"` //ตำบล
 	ProvinceID    string `json:"province_id" query:"province_id" gorm:"type:varchar(2)"`
-	PostCode      string `json:"post_code" query:"post_code" gorm:"type:varchar(5)"`
+	Postcode      string `json:"postcode" query:"postcode" gorm:"type:varchar(5)"`
 
 	Facebook string `json:"facebook" query:"facebook" gorm:"type:varchar(50)"`
 	Line     string `json:"line" query:"line" gorm:"type:varchar(20)"`
