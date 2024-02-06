@@ -38,7 +38,7 @@ func UploadFileToGoogle(filePath string, appID string, bucket string) (string, e
 	newFilename := substrings[len(substrings)-1]
 	month := fmt.Sprintf("%02d", int(time.Now().Month()))
 	year := fmt.Sprintf("%04d", int(time.Now().Year()))
-	savePath := fmt.Sprintf("uploads/pdf/%s/%s/%s", month, year, newFilename)
+	savePath := fmt.Sprintf("uploads/pdf/%s/%s/%s", year, month, newFilename)
 
 	//os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
 	// bucket := "bucket-name"
