@@ -12,7 +12,7 @@ type Branch struct {
 
 	Name             string  `json:"name" query:"name" gorm:"type:varchar(100)"`
 	TextColor        string  `json:"text_color" query:"text_color" gorm:"type:varchar(7)"`
-	Background_Color string  `json:"background_color" query:"background_color" gorm:"type:varchar(7)"`
+	BackgroundColor string  `json:"background_color" query:"background_color" gorm:"type:varchar(7)"`
 	Address          string  `json:"address" query:"address" gorm:"type:text"`
 	ProvinceID       string  `json:"province_id" query:"province_id" gorm:"type:varchar(36)"`
 	Phone1           string  `json:"phone_1" query:"phone_1" gorm:"type:varchar(20)"`

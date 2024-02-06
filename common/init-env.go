@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -9,6 +10,7 @@ import (
 )
 
 func InitEnv() {
+	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
