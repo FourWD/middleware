@@ -4,7 +4,7 @@ import (
 	"github.com/FourWD/middleware/model"
 )
 
-type SocialSource struct { //แหล่งที่มา
+type UserSource struct { //แหล่งที่มา
 	ID string `json:"id" query:"id" gorm:"type:varchar(2);primary_key"`
 	model.GormModel
 
