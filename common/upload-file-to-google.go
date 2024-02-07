@@ -20,19 +20,15 @@ func UploadFileToGoogle(filePath string, appID string, bucket string) (string, e
 	}
 	defer file.Close()
 
-	// Get the file size
 	stat, err := file.Stat()
 	if err != nil {
 		return "", err
 	}
-
-	// Read the file into a byte slice
 	bs := make([]byte, stat.Size())
 	_, err = bufio.NewReader(file).Read(bs)
 	if err != nil && err != io.EOF {
 		return "", err
 	}
-	// fmt.Println(bs)
 
 	substrings := strings.Split(filePath, "/")
 	newFilename := substrings[len(substrings)-1]
@@ -66,11 +62,9 @@ func UploadFileToGoogle(filePath string, appID string, bucket string) (string, e
 	// Data can continue to be added to the file until the writer is closed.
 	if err := wc.Close(); err != nil {
 		return "", err
-		// return fmt.Errorf("Writer.Close: %w", err)
 	}
-	// fmt.Fprintf(, "%v uploaded to %v.\n", object, bucket)
+
 	resultPath := fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, savePath)
-	// common.Print("last pdf to google path", resultPath)
 
 	return resultPath, nil
 }

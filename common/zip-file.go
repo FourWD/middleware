@@ -10,7 +10,6 @@ import (
 )
 
 func ZipFile(pathFile string, filename string) (string, error) {
-
 	type fileMeta struct {
 		Path  string
 		IsDir bool
