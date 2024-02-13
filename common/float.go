@@ -10,11 +10,14 @@ func FloatWithCommas(value float64, digit int) string {
 	format := fmt.Sprintf(digitFormat, value)
 	parts := strings.Split(format, ".")
 	integerPart := addCommas(parts[0])
-	decimalPart := parts[1]
-	if len(decimalPart) < digit {
-		decimalPart += strings.Repeat("0", digit-len(decimalPart))
+	if len(parts) > 1 {
+		decimalPart := parts[1]
+		if len(decimalPart) < digit {
+			decimalPart += strings.Repeat("0", digit-len(decimalPart))
+		}
+		return integerPart + "." + decimalPart
 	}
-	return integerPart + "." + decimalPart
+	return integerPart
 }
 
 func addCommas(amount string) string {
