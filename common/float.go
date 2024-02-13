@@ -6,6 +6,12 @@ import (
 )
 
 func FloatWithCommas(value float64, digit int) string {
+	if digit < 0 {
+		digit = 0
+	} else if digit > 5 {
+		digit = 5
+	}
+
 	digitFormat := fmt.Sprintf("%%.%df", digit)
 	format := fmt.Sprintf(digitFormat, value)
 	parts := strings.Split(format, ".")
