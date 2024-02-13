@@ -1,5 +1,7 @@
 package common
 
+import "strings"
+
 var ThaiNumeralMap = map[int]string{
 	0: "ศูนย์",
 	1: "หนึ่ง",
@@ -21,12 +23,12 @@ func ConvertFloatToThaiText(number float64) string {
 
 	thaiText := ""
 
-	thaiText += convertIntToThaiText(integerPart)
-	if fractionalPart > 0 {
-		thaiText += "บาท"
+	if integerPart == 0 {
+		thaiText = ThaiNumeralMap[0]
 	} else {
-		thaiText += "บาทถ้วน"
+		thaiText += convertIntToThaiText(integerPart)
 	}
+	thaiText += "บาท"
 
 	if fractionalPart > 0 {
 		thaiText += convertIntToThaiText(fractionalPart)
@@ -37,21 +39,26 @@ func ConvertFloatToThaiText(number float64) string {
 }
 
 func convertIntToThaiText(number int) string {
+	if number == 0 {
+		return ""
+	}
+
 	thaiText := ""
 
-	for number > 0 {
+	for i := 0; number > 0; i++ {
 		digit := number % 10
 		if digit > 0 {
-			if string(thaiText[0]) == "ห" && digit == 1 && len(thaiText) > 0 {
+			if digit == 1 && i%6 == 1 && number/10%10 == 0 {
 				thaiText = "เอ็ด" + thaiText
-			} else if digit == 1 && len(thaiText) == 0 && number/10%10 == 0 {
-				thaiText = "หนึ่ง"
 			} else {
-				thaiText = ThaiNumeralMap[digit] + thaiText
+				thaiText = ThaiNumeralMap[digit] + ThaiPlaces[i%7] + thaiText
 			}
 		}
 		number /= 10
 	}
 
+	thaiText = strings.Replace(thaiText, "หนึ่งสิบหนึ่ง", "สิบเอ็ด", -1)
+	thaiText = strings.Replace(thaiText, "หนึ่งสิบ", "สิบ", -1)
+	thaiText = strings.Replace(thaiText, "สองสิบ", "ยี่สิบ", -1)
 	return thaiText
 }
