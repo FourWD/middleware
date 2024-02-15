@@ -9,5 +9,5 @@ type GiftType struct {
 	model.GormModel
 
 	Name               string `json:"name" query:"name" gorm:"type:varchar(256)"`
-	model.GormRowOrder        //
+	model.GormRowOrder        
 }

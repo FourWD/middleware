@@ -7,7 +7,6 @@ import (
 type LogUserLogin struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36);primary_key"`
 	model.GormModel
-
 	UserID            string  `json:"user_id" query:"user_id" gorm:"type:varchar(36)"`
 	DeviceID          string  `json:"device_id" query:"device_id" gorm:"type:varchar(256)"`
 	DeviceName        string  `json:"device_name" query:"device_name" gorm:"type:varchar(256)"`
