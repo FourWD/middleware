@@ -2,7 +2,7 @@ package common
 
 import "strings"
 
-var ThaiNumeralMap = map[int]string{
+var thaiNumeralMap = map[int]string{
 	0: "ศูนย์",
 	1: "หนึ่ง",
 	2: "สอง",
@@ -15,7 +15,7 @@ var ThaiNumeralMap = map[int]string{
 	9: "เก้า",
 }
 
-var ThaiPlaces = []string{"", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"}
+var thaiPlaces = []string{"", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"}
 
 func ConvertFloatToThaiText(number float64) string {
 	integerPart := int(number)
@@ -24,7 +24,7 @@ func ConvertFloatToThaiText(number float64) string {
 	thaiText := ""
 
 	if integerPart == 0 {
-		thaiText = ThaiNumeralMap[0]
+		thaiText = thaiNumeralMap[0]
 	} else {
 		thaiText += convertIntToThaiText(integerPart)
 	}
@@ -51,7 +51,7 @@ func convertIntToThaiText(number int) string {
 			if digit == 1 && i%6 == 1 && number/10%10 == 0 {
 				thaiText = "เอ็ด" + thaiText
 			} else {
-				thaiText = ThaiNumeralMap[digit] + ThaiPlaces[i%7] + thaiText
+				thaiText = thaiNumeralMap[digit] + thaiPlaces[i%7] + thaiText
 			}
 		}
 		number /= 10
