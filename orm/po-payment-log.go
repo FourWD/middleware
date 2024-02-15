@@ -9,7 +9,7 @@ import (
 // midOrm "github.com/FourWD/middleware/orm"
 
 type PoPaymentLog struct {
-	ID string `json:"id" query:"id" gorm:"type:varchar(36); uniqueIndex:idx_id "` //
+	ID string `json:"id" query:"id" gorm:"type:varchar(36)"` //
 	model.GormModel
 
 	Title         string    `json:"title" query:"title" gorm:"type:varchar(50)"`
