@@ -4,12 +4,12 @@ import "github.com/FourWD/middleware/model"
 
 // midOrm "github.com/FourWD/middleware/orm"
 
-type PoGift struct {
+type PoAccessorie struct { //
 	ID string `json:"id" query:"id" gorm:"type:varchar(36); primary_key"`
 	model.GormModel
 
 	PoID        string  `json:"po_id" query:"po_id" gorm:"type:varchar(36)"`
-	GiftID      string  `json:"gift_id" query:"gift_id" gorm:"type:varchar(36)"`
+	AccessoryID string  `json:"accessory_id" query:"accessory_id" gorm:"type:varchar(36)"`
 	UnitPreVat  float64 `json:"unit_price_pre_vat" query:"unit_price_pre_vat" gorm:"type:decimal(14,2)"`
 	UnitVat     float64 `json:"unit_vat" query:"unit_vat" gorm:"type:decimal(14,2)"`
 	UnitPrice   float64 `json:"unit_price" query:"unit_price" gorm:"type:decimal(14,2)"`

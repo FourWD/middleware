@@ -6,8 +6,6 @@ import (
 	"github.com/FourWD/middleware/model"
 )
 
-// midOrm "github.com/FourWD/middleware/orm"
-
 type Po struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36);"` //
 
@@ -16,7 +14,6 @@ type Po struct {
 	PoNo         string `json:"po_no" query:"po_no" gorm:"type:varchar(20)"` //หมายเลขรายการ
 	PoStatusID   string `json:"po_status_id" query:"po_status_id" gorm:"type:varchar(2)"`
 	EmployeeRmID string `json:"employee_rm_id" query:"employee_rm_id" gorm:"type:varchar(36)"`
-	// EmployeeRmBranchID string `json:"employee_rm_branch_id" query:"employee_rm_branch_id" gorm:"type:varchar(36)"` JOIN
 	PoEvidenceTypeID string `json:"po_evidence_type_id" query:"po_evidence_type_id" gorm:"type:varchar(2)"`
 
 	UserID     string `json:"user_id" query:"user_id" gorm:"type:varchar(36)"`
@@ -47,25 +44,21 @@ type Po struct {
 	ProvinceID    string `json:"province_id" query:"province_id" gorm:"type:varchar(2)"`
 	Postcode      string `json:"postcode" query:"postcode" gorm:"type:varchar(5)"`
 
-	// PoAccessorieID         string `json:"po_accessorie_id" query:"po_accessorie_id" gorm:"type:varchar(36)"`
-	// PoGiftID               string `json:"po_gift_id" query:"po_gift_id" gorm:"type:varchar(36)"`
-	// PoMaintenanceServiceID string `json:"po_maintenance_service_id" query:"po_maintenance_service_id" gorm:"type:varchar(36)"`
-
 	DiscountPrice  float64 `json:"discount_price" query:"discount_price" gorm:"type:decimal(14,2)"`
 	DiscountRemark float64 `json:"discount_remark" query:"discount_remark" gorm:"type:decimal(14,2)"`
 
-	PricePreVat         float64 `json:"price_pre_vat" query:"price_pre_vat" gorm:"type:decimal(14,2)"`
-	Vat                 float64 `json:"vat" query:"vat" gorm:"type:decimal(14,2)"`
-	Price               float64 `json:"price" query:"price" gorm:"type:decimal(14,2)"`
-	TotalAcessoriePrice float64 `json:"total_acessorie_price" query:"total_acessorie_price" gorm:"type:decimal(14,2)"`
-	TotalPrice          float64 `json:"total_price" query:"total_price" gorm:"type:decimal(14,2)"`
+	PricePreVat          float64 `json:"price_pre_vat" query:"price_pre_vat" gorm:"type:decimal(14,2)"`
+	Vat                  float64 `json:"vat" query:"vat" gorm:"type:decimal(14,2)"`
+	Price                float64 `json:"price" query:"price" gorm:"type:decimal(14,2)"`
+	TotalAccessoriePrice float64 `json:"total_accessorie_price" query:"total_accessorie_price" gorm:"type:decimal(14,2)"`
+	TotalPrice           float64 `json:"total_price" query:"total_price" gorm:"type:decimal(14,2)"`
 
 	PaymentTypeID string  `json:"payment_type_id" query:"payment_type_id" gorm:"type:varchar(2)"`
 	Paid          float64 `json:"paid" query:"paid" gorm:"type:decimal(14,2)"`
 	UnPaid        float64 `json:"un_paid" query:"un_paid" gorm:"type:decimal(14,2)"`
-	//table po payment log
 
 	ExpectDeliveryDate time.Time `json:"expect_delivery_date" query:"expect_delivery_date"`
+	ActualDeliveryDate time.Time `json:"actual_delivery_date" query:"actual_delivery_date"`
 	Remark             string    `json:"remark" query:"remark" gorm:"type:text"`
 
 	RunningNo int `json:"running_no" query:"running_no" gorm:"primary_key;auto_increment;not_null"`
