@@ -5,7 +5,7 @@ import "github.com/FourWD/middleware/model"
 // midOrm "github.com/FourWD/middleware/orm"
 
 type Booking struct {
-	ID string `json:"id" query:"id" gorm:"type:varchar(36); uniqueIndex:idx_id "` //
+	ID string `json:"id" query:"id" gorm:"type:varchar(36);uniqueIndex:idx_id"` //
 	model.GormModel
 	BookingNo       string `json:"booking_no" query:"booking_no" gorm:"type:varchar(20)"` //หมายเลขรายการ
 	BookingStatusID string `json:"booking_status_id" query:"booking_status_id" gorm:"type:varchar(2)"`
@@ -22,9 +22,9 @@ type Booking struct {
 	VehicleSubModelID string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
 	VehicleColorID    string `json:"vehicle_color_id" query:"vehicle_color_id" gorm:"type:varchar(36)"`
 	IsPaid            bool   `json:"is_paid" query:"is_paid" gorm:"type:tinyint(1)"`
-	IsCancle          bool   `json:"is_cancle" query:"is_cancle" gorm:"type:tinyint(1)"`
+	IsCancel          bool   `json:"is_cancel" query:"is_cancel" gorm:"type:tinyint(1)"`
 	Remark            string `json:"remark" query:"remark" gorm:"type:text"`
-	EmpolyeeID        string `json:"empolyee_id" query:"empolyee_id" gorm:"type:varchar(36)"`
+	EmployeeID        string `json:"employee_id" query:"employee_id" gorm:"type:varchar(36)"`
 
 	Address       string `json:"address" query:"address" gorm:"type:text"`
 	Building      string `json:"building" query:"building" gorm:"type:varchar(100)"`
