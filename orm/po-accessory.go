@@ -4,7 +4,7 @@ import "github.com/FourWD/middleware/model"
 
 // midOrm "github.com/FourWD/middleware/orm"
 
-type PoAccessorie struct { //
+type PoAccessory struct { //
 	ID string `json:"id" query:"id" gorm:"type:varchar(36); primary_key"`
 	model.GormModel
 
