@@ -11,9 +11,9 @@ type Po struct {
 
 	model.GormModel
 
-	PoNo         string `json:"po_no" query:"po_no" gorm:"type:varchar(20)"` //หมายเลขรายการ
-	PoStatusID   string `json:"po_status_id" query:"po_status_id" gorm:"type:varchar(2)"`
-	EmployeeRmID string `json:"employee_rm_id" query:"employee_rm_id" gorm:"type:varchar(36)"`
+	PoNo             string `json:"po_no" query:"po_no" gorm:"type:varchar(20)"` //หมายเลขรายการ
+	PoStatusID       string `json:"po_status_id" query:"po_status_id" gorm:"type:varchar(2)"`
+	EmployeeRmID     string `json:"employee_rm_id" query:"employee_rm_id" gorm:"type:varchar(36)"`
 	PoEvidenceTypeID string `json:"po_evidence_type_id" query:"po_evidence_type_id" gorm:"type:varchar(2)"`
 
 	UserID     string `json:"user_id" query:"user_id" gorm:"type:varchar(36)"`
@@ -24,14 +24,14 @@ type Po struct {
 	Mobile     string `json:"mobile" query:"mobile" gorm:"type:varchar(20)"`
 	Email      string `json:"email" query:"email" gorm:"type:varchar(50)"`
 	Salary     int    `json:"salary" query:"salary" gorm:"type:int"`
-	IsUseCar   string `json:"is_use_car" query:"is_use_car" gorm:"type:tinyint(1)"`
+	IsUseCar   bool   `json:"is_use_car" query:"is_use_car" gorm:"type:bool"`
 
 	VehicleID                string `json:"vehicle_id" query:"vehicle_id" gorm:"type:varchar(36)"`
 	VehicleModelID           string `json:"vehicle_model_id" query:"vehicle_model_id" gorm:"type:varchar(36)"`
 	VehicleSubModelID        string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
 	VehicleColorID           string `json:"vehicle_color_id" query:"vehicle_color_id" gorm:"type:varchar(36)"`
-	IsPaid                   bool   `json:"is_paid" query:"is_paid" gorm:"type:tinyint(1)"`
-	LicenseRegisterCondition bool   `json:"license_register_condition" query:"license_register_condition" gorm:"type:tinyint(1)"`
+	IsPaid                   bool   `json:"is_paid" query:"is_paid" gorm:"type:bool"`
+	LicenseRegisterCondition bool   `json:"license_register_condition" query:"license_register_condition" gorm:type:"bool"`
 
 	// IsCancel          bool   `json:"is_cancel" query:"is_cancel" gorm:"type:varchar(50)"`
 

@@ -21,8 +21,8 @@ type Booking struct {
 	VehicleModelID    string `json:"vehicle_model_id" query:"vehicle_model_id" gorm:"type:varchar(36)"`
 	VehicleSubModelID string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
 	VehicleColorID    string `json:"vehicle_color_id" query:"vehicle_color_id" gorm:"type:varchar(36)"`
-	IsPaid            bool   `json:"is_paid" query:"is_paid" gorm:"type:tinyint(1)"`
-	IsCancel          bool   `json:"is_cancel" query:"is_cancel" gorm:"type:tinyint(1)"`
+	IsPaid            bool   `json:"is_paid" query:"is_paid" gorm:"type:bool"`
+	IsCancel          bool   `json:"is_cancel" query:"is_cancel" gorm:"type:bool"`
 	Remark            string `json:"remark" query:"remark" gorm:"type:text"`
 	EmployeeID        string `json:"employee_id" query:"employee_id" gorm:"type:varchar(36)"`
 
