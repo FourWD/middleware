@@ -27,7 +27,8 @@ func ConnectFirebaseNotification(key string) error {
 	return nil
 }
 
-func SendNotificationToUser(userToken string, data map[string]string) error {
+func SendMessagrToUser(userToken string, data map[string]string) error { // 1 : 1
+	// Title Body
 	message := &messaging.Message{
 		Data:  data,
 		Token: userToken,
@@ -42,7 +43,7 @@ func SendNotificationToUser(userToken string, data map[string]string) error {
 	return nil
 }
 
-func AddNotificationSubscribe(userToken string, topic string) error {
+func AddUserToSubscribe(userToken string, topic string) error { // เอาคน (topic) เข้า กรุป auction
 	_, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
 		log.Fatalf("error subscribing user to topic: %v\n", err)
@@ -51,7 +52,7 @@ func AddNotificationSubscribe(userToken string, topic string) error {
 	return nil
 }
 
-func RemoveNotificationSubscribe(userToken string, topic string) error {
+func RemoveUserSubscribe(userToken string, topic string) error { // เอาคน (topic) ออก กรุป auction
 	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
 		log.Fatalf("error unsubscribing user from topic: %v\n", err)
@@ -60,8 +61,9 @@ func RemoveNotificationSubscribe(userToken string, topic string) error {
 	return nil
 }
 
-func SendNotificationToSubscribe(userToken string, topic string, data map[string]string) error {
+func SendMessagrToSubscriber(topic string, data map[string]string) error {
 	message := &messaging.Message{
+		// Title Body // R001 = ประกาศผล
 		Data:  data,
 		Topic: topic, // all_users
 	}
@@ -74,11 +76,3 @@ func SendNotificationToSubscribe(userToken string, topic string, data map[string
 
 	return nil
 }
-
-// message := &messaging.Message{
-// 	Notification: &messaging.Notification{
-// 		Title: "Title of Notification",
-// 		Body:  "Body of Notification",
-// 	},
-// 	Token: "device_token_or_topic",
-// }
