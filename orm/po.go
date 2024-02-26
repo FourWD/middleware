@@ -31,7 +31,7 @@ type Po struct {
 	VehicleSubModelID        string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
 	VehicleColorID           string `json:"vehicle_color_id" query:"vehicle_color_id" gorm:"type:varchar(36)"`
 	IsPaid                   bool   `json:"is_paid" query:"is_paid" gorm:"type:bool"`
-	LicenseRegisterCondition bool   `json:"license_register_condition" query:"license_register_condition" gorm:type:"bool"`
+	LicenseRegisterCondition bool   `json:"license_register_condition" query:"license_register_condition" gorm:"type:bool"`
 
 	// IsCancel          bool   `json:"is_cancel" query:"is_cancel" gorm:"type:varchar(50)"`
 
