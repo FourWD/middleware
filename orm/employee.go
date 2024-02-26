@@ -18,4 +18,5 @@ type Employee struct {
 	Email        string `json:"email" query:"email" gorm:"type:varchar(20);"`
 	RunningNo    int    `json:"running_no" query:"running_no" gorm:"type:int;"`
 	IsActive     bool   `json:"is_active" query:"is_active" gorm:"type:bool"`
+	SourceID     string `json:"source_id" query:"source_id" gorm:"type:varchar(36)"`
 }
