@@ -10,7 +10,7 @@ type User struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36);uniqueIndex:idx_id"`
 	model.GormModel
 
-	Code                     string    `json:"code" query:"code" gorm:"type:varchar(20)"`
+	Code                     string    `json:"code" query:"code" gorm:"type:varchar(20);unique"`
 	UserTypeID               string    `json:"user_type_id" query:"user_type_id" gorm:"type:varchar(2)"`
 	Username                 string    `json:"username" query:"username" gorm:"type:varchar(20)"`
 	Password                 string    `json:"password" query:"password" gorm:"type:varchar(20)"`
