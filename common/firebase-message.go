@@ -29,9 +29,14 @@ func ConnectFirebaseNotification(key string) error {
 
 func SendMessageToUser(userToken string, data map[string]string) error { // 1 : 1
 	// Title Body
+
 	message := &messaging.Message{
 		Data:  data,
 		Token: userToken,
+		Notification: &messaging.Notification{
+			Title: "fourwd-test",
+			Body:  "อเมริกาโน่หวานน้อยหนึ่งแก้ว",
+		},
 	}
 
 	_, err := FirebaseMessageClient.Send(context.Background(), message)
