@@ -72,9 +72,9 @@ func otpRequestToServer(payload model.OtpRequestPayload, appID string, token str
 	if err != nil {
 		return *result, errors.New(err.Error())
 	}
-	if res.StatusCode == 400 {
-		return *result, errors.New("error code 400")
-	}
+	// if res.StatusCode == 400 {
+	// 	return *result, errors.New("error code 400")
+	// }
 
 	defer res.Body.Close()
 
@@ -156,9 +156,9 @@ func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, erro
 	if err != nil {
 		return *result, errors.New(err.Error())
 	}
-	if res.StatusCode == 400 {
-		return *result, errors.New("error code 400")
-	}
+	// if res.StatusCode == 400 {
+	// 	return *result, errors.New("error code 400")
+	// }
 
 	defer res.Body.Close()
 
