@@ -97,8 +97,8 @@ func otpRequestToServer(payload model.OtpRequestPayload, appID string, token str
 	// "refno":"REF12" }`
 
 	log := new(model.LogOtpRequest)
-	// log.ID = uuid.NewString()
-	// log.CreatedAt = time.Now()
+	log.ID = uuid.NewString()
+	log.CreatedAt = time.Now()
 	log.Mobile = params.Mobile
 	log.AppID = payload.AppID
 	log.AppKey = app.AppKey
