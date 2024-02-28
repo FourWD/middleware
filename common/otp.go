@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/FourWD/middleware/model"
-	"github.com/FourWD/middleware/orm"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
@@ -23,17 +22,17 @@ func OtpRequest(payload model.OtpRequestPayload, db gorm.DB) (model.OtpResult, e
 		return result, errUpload
 	}
 
-	// SAVE TO LOG
+	// // SAVE TO LOG
 
-	logOtp := new(orm.LogOTP)
-	logOtp.OTP = result.Token
-	logOtp.RefCodeOTP = result.RefNo
-	logOtp.RequestDate = time.Now()
+	// logOtp := new(orm.LogOTP)
+	// logOtp.OTP = result.Token
+	// logOtp.RefCodeOTP = result.RefNo
+	// logOtp.RequestDate = time.Now()
 
-	err := db.Save(&logOtp)
-	if err.Error != nil {
-		PrintError("error save file", "tb file")
-	}
+	// err := db.Save(&logOtp)
+	// if err.Error != nil {
+	// 	PrintError("error save file", "tb file")
+	// }
 	return result, nil
 }
 
@@ -128,13 +127,13 @@ func OtpVerify(payload model.OtpVerifyPayload, db gorm.DB) (model.OtpVeriyResult
 
 	// SAVE TO LOG
 
-	logOtp := new(orm.LogOTP)
-	logOtp.VerifyDate = time.Now()
+	// logOtp := new(orm.LogOTP)
+	// logOtp.VerifyDate = time.Now()
 
-	err := db.Save(&logOtp)
-	if err.Error != nil {
-		PrintError("error save file", "tb file")
-	}
+	// err := db.Save(&logOtp)
+	// if err.Error != nil {
+	// 	PrintError("error save file", "tb file")
+	// }
 	return result, nil
 }
 func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, error) {
