@@ -2,21 +2,23 @@ package common
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/spf13/viper"
 )
 
+var ENV string
+
 func InitEnv() {
 	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
-
-	env := os.Getenv("ENV")
-	if env == "" {
-		env = "local"
+	ENV = os.Getenv("ENV")
+	if ENV == "" {
+		ENV = "local"
 	}
 
-	viper.SetConfigName(fmt.Sprintf("config.%s", env))
+	viper.SetConfigName(fmt.Sprintf("config.%s", ENV))
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AutomaticEnv()
@@ -25,6 +27,8 @@ func InitEnv() {
 		fmt.Println("Error loading config")
 		panic(err)
 	}
+
+	log.Println("ENV = ", ENV)
 
 	// err := godotenv.Load(".env")
 	// if err != nil {
