@@ -3,6 +3,7 @@ package common
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
@@ -67,9 +68,19 @@ func ConnectDatabaseViper() error {
 		Instance: viper.GetString("database.instance"),
 	}
 
-	isGCP := false
-	if viper.GetString("production") == "true" {
-		isGCP = true
+	// isGCP := false
+	// if viper.GetString("production") == "true" {
+	// 	isGCP = true
+	// }
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	isGCP := true
+	if env == "local" {
+		isGCP = false
 	}
 
 	return ConnectDatabase(CreateDSN(isGCP, dns))

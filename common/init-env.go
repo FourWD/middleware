@@ -8,15 +8,21 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitEnv(name string) {
-	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
-	viper.SetConfigName(name)
+func InitEnv() {
+	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	viper.SetConfigName(fmt.Sprintf("config.%s", env))
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Printf("Error loading %s.yaml", name)
+		fmt.Println("Error loading config")
 		panic(err)
 	}
 
