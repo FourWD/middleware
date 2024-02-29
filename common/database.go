@@ -73,7 +73,7 @@ func ConnectDatabaseViper() error {
 	// }
 
 	isGCP := true
-	if ENV == "local" {
+	if App.Env == "local" {
 		isGCP = false
 	}
 

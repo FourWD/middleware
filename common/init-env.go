@@ -6,19 +6,23 @@ import (
 	"os"
 	"strings"
 
+	"github.com/FourWD/middleware/model"
 	"github.com/spf13/viper"
 )
 
-var ENV string
+var App model.AppInfo
 
 func InitEnv() {
 	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
-	ENV = os.Getenv("ENV")
-	if ENV == "" {
-		ENV = "local"
-	}
 
-	viper.SetConfigName(fmt.Sprintf("config.%s", ENV))
+	App.Env = os.Getenv("ENV")
+	if App.Env == "" {
+		App.Env = "local"
+	}
+	App.GaeService = os.Getenv("GAE_SERVICE")
+	App.GaeVersion = os.Getenv("GAE_VERSION")
+
+	viper.SetConfigName(fmt.Sprintf("config.%s", App.Env))
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AutomaticEnv()
@@ -28,7 +32,7 @@ func InitEnv() {
 		panic(err)
 	}
 
-	log.Println("ENV = ", ENV)
+	log.Println("ENV = ", App.Env)
 
 	// err := godotenv.Load(".env")
 	// if err != nil {
