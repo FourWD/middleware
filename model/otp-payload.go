@@ -1,12 +1,11 @@
 package model
 
-type OtpRequestPayload struct {
-	AppID  string `json:"app_id"`
-	Mobile string `json:"mobile"`
-}
+// type OtpRequestPayload struct {
+// 	AppID  string `json:"app_id"`
+// 	Mobile string `json:"mobile"`
+// }
 
 type OtpVerifyPayload struct {
-	AppID string `json:"app_id"`
 	Token string `json:"token"`
 	Pin   string `json:"pin"`
 }

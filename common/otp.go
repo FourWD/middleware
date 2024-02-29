@@ -15,9 +15,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func OtpRequest(payload model.OtpRequestPayload, db gorm.DB) (model.OtpResult, error) {
+func OtpRequest(mobile string, db gorm.DB) (model.OtpResult, error) {
 
-	result, errUpload := otpRequestToServer(payload, viper.GetString("app_id"), viper.GetString("token.upload"))
+	result, errUpload := otpRequestToServer(mobile)
 	if errUpload != nil {
 		return result, errUpload
 	}
@@ -36,7 +36,7 @@ func OtpRequest(payload model.OtpRequestPayload, db gorm.DB) (model.OtpResult, e
 	return result, nil
 }
 
-func otpRequestToServer(payload model.OtpRequestPayload, appID string, token string) (model.OtpResult, error) {
+func otpRequestToServer(mobile string) (model.OtpResult, error) {
 	result := new(model.OtpResult)
 
 	// type Payload struct {
@@ -50,7 +50,7 @@ func otpRequestToServer(payload model.OtpRequestPayload, appID string, token str
 		Mobile string `json:"mobile"`
 	}
 
-	app, err := GetOtpApp(payload.AppID)
+	app, err := getOtpApp()
 	if err != nil {
 		println("error to get app key and secret")
 	}
@@ -58,11 +58,11 @@ func otpRequestToServer(payload model.OtpRequestPayload, appID string, token str
 	params := new(Params)
 	params.Key = app.AppKey
 	params.Secret = app.AppSecret
-	params.Mobile = payload.Mobile
+	params.Mobile = mobile
 
 	// payloadss := strings.NewReader("key=1792158286047316&secret=10da83ff9be3f7007eaa9ef3250c2547&msisdn=0908979774")
 	payloadString := "key=" + params.Key + "&secret=" + params.Secret + "&msisdn=" + params.Mobile
-	req, _ := http.NewRequest("POST", viper.GetString("api.sms_request"), strings.NewReader(payloadString))
+	req, _ := http.NewRequest("POST", viper.GetString("sms.url_request"), strings.NewReader(payloadString))
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
@@ -100,7 +100,7 @@ func otpRequestToServer(payload model.OtpRequestPayload, appID string, token str
 	log.ID = uuid.NewString()
 	log.CreatedAt = time.Now()
 	log.Mobile = params.Mobile
-	log.AppID = payload.AppID
+	log.AppID = viper.GetString("app_id")
 	log.AppKey = app.AppKey
 	log.AppSecret = app.AppSecret
 	log.Payload = payloadString
@@ -140,14 +140,14 @@ func OtpVerify(payload model.OtpVerifyPayload, db gorm.DB) (model.OtpVeriyResult
 func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, error) {
 	result := new(model.OtpVeriyResult)
 
-	app, err := GetOtpApp(payload.AppID)
+	app, err := getOtpApp()
 	if err != nil {
 		PrintError("cant get", "OTP init")
 	}
 
 	payloadString := "key=" + app.AppKey + "&secret=" + app.AppSecret + "&token=" + payload.Token + "&pin=" + payload.Pin
-	// results, err := request(viper.GetString("api.sms_verify"), payloadString)
-	req, _ := http.NewRequest("POST", viper.GetString("api.sms_verify"), strings.NewReader(payloadString))
+
+	req, _ := http.NewRequest("POST", viper.GetString("sms.url_verify"), strings.NewReader(payloadString))
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
@@ -183,10 +183,11 @@ func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, erro
 	return *result, nil
 }
 
-func GetOtpApp(appID string) (model.AppOtp, error) {
+func getOtpApp() (model.AppOtp, error) {
 	app := new(model.AppOtp)
-	app.AppKey = "1792158286047316"
-	app.AppSecret = "10da83ff9be3f7007eaa9ef3250c2547"
+	app.ID = viper.GetString("app_id")
+	app.AppKey = viper.GetString("sms.sms_key")
+	app.AppSecret = viper.GetString("sms.sms_secret")
 	return *app, nil
 }
 
