@@ -4,16 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	"github.com/spf13/viper"
 )
 
 func Terminate() {
-	if viper.GetString("production") == "true" {
-		fmt.Printf("Terminate App Version: %s [%s]\n", viper.GetString("app_version"), os.Getenv("GAE_VERSION"))
-		zero := 0
-		i := 1 / zero
-		log.Panic(i)
-		os.Exit(0)
-	}
+	//if App.Env != "local" {
+	fmt.Printf("Terminate %s [%s] Version: [%s - %s]\n", App.GaeService, App.Env, App.AppVersion, App.GaeVersion)
+	zero := 0
+	i := 1 / zero
+	log.Panic(i)
+	os.Exit(0)
+	//}
 }
