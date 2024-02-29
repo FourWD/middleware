@@ -88,7 +88,7 @@ func otpRequestToServer(payload model.OtpRequestPayload, appID string, token str
 		fmt.Println("Error unmarshalling JSON:", errUnmar)
 	}
 
-	result.RefNo = otpUnmar.RefNo
+	result.Refno = otpUnmar.Refno
 	result.Status = otpUnmar.Status
 	result.Token = otpUnmar.Token
 
