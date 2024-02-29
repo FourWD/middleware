@@ -15,4 +15,6 @@ type LogOtpRequest struct {
 	AppSecret string `json:"app_secret" query:"app_secret" gorm:"type:text"`
 	Payload   string `json:"payload" query:"payload" gorm:"type:text"`
 	Response  string `json:"response" query:"response" gorm:"type:text"`
+	RefNo     string `json:"ref_no" query:"ref_no" gorm:"type:varchar(10)"`
+	Token     string `json:"token" query:"token" gorm:"type:varchar(50)"`
 }

@@ -136,6 +136,7 @@ func OtpVerify(payload model.OtpVerifyPayload, db gorm.DB) (model.OtpVeriyResult
 	// }
 	return result, nil
 }
+
 func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, error) {
 	result := new(model.OtpVeriyResult)
 
