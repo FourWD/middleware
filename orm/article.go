@@ -18,6 +18,8 @@ type Article struct {
 	Tag           string `json:"tag" query:"tag" gorm:"type:varchar(100)"`
 	CountView     int    `json:"count_view" query:"count_view" gorm:"type:int"`
 	URL           string `json:"url" query:"url" gorm:"type:varchar(500)"`
+	OpenType      string `json:"open_type" query:"open_type" gorm:"type:varchar(11)"`
+	ViewCount     int    `json:"view_count" query:"view_count" gorm:"type:int"`
 
 	model.GormRowOrder
 }
