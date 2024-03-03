@@ -28,7 +28,7 @@ type Vehicle struct {
 	Remark            string `json:"remark" query:"remark" gorm:"type:text"`
 	IsRecommend       bool   `json:"is_recommend" query:"is_recommend" gorm:"type:bool"`
 	//IsSpecialInterest     bool      `json:"is_special_interest" query:"is_special_interest" gorm:"type:bool"`
-	EngineCapacity     int    `json:"engine_capacity" query:"engine_capacity" gorm:"type:int"`
+	EngineCapacity     string `json:"engine_capacity" query:"engine_capacity" gorm:"type:varchar(20)"`
 	EngineSize         int    `json:"engine_size" query:"engine_size" gorm:"type:int"`
 	EngineSizeActual   int    `json:"engine_size_actual" query:"engine_size_actual" gorm:"type:int"`
 	VehicleModelID     string `json:"vehicle_model_id" query:"vehicle_model_id" gorm:"type:varchar(36)"`
