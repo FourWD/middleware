@@ -18,7 +18,7 @@ type User2 struct {
 	Firstname                []byte    `json:"firstname" query:"firstname" gorm:"type:blob"`
 	Lastname                 []byte    `json:"lastname" query:"lastname" gorm:"type:blob"`
 	FileAvatarID             string    `json:"file_avartar_id" query:"file_avartar_id" gorm:"type:varchar(36)"`
-	Mobile                   []byte    `json:"mobile" query:"mobile" gorm:"type:blob;unique"`
+	Mobile                   []byte    `json:"mobile" query:"mobile" gorm:"type:blob"`
 	Email                    []byte    `json:"email" query:"email" gorm:"type:blob"`
 	Facebook                 []byte    `json:"facebook" query:"facebook" gorm:"type:blob"`
 	Line                     []byte    `json:"line" query:"line" gorm:"type:blob"`
