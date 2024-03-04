@@ -21,6 +21,7 @@ func InitEnv() {
 	}
 	App.GaeService = os.Getenv("GAE_SERVICE")
 	App.GaeVersion = os.Getenv("GAE_VERSION")
+	App.BucketName = viper.GetString("bucket_name")
 
 	viper.SetConfigName(fmt.Sprintf("config.%s", App.Env))
 	viper.SetConfigType("yaml")
