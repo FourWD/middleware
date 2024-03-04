@@ -12,7 +12,7 @@ type User struct {
 
 	Code                     string    `json:"code" query:"code" gorm:"type:varchar(20);unique"`
 	UserTypeID               string    `json:"user_type_id" query:"user_type_id" gorm:"type:varchar(2)"`
-	Username                 string    `json:"username" query:"username" gorm:"type:varchar(20)"`
+	Username                 string    `json:"username" query:"username" gorm:"type:varchar(36);unique "` // md5 mobile_no
 	Password                 string    `json:"password" query:"password" gorm:"type:varchar(20)"`
 	PrefixID                 string    `json:"prefix_id" query:"prefix_id" gorm:"type:varchar(2)"`
 	Firstname                string    `json:"firstname" query:"firstname" gorm:"type:varchar(100)"`
