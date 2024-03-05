@@ -10,7 +10,7 @@ type Maintenance struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(36);primary_key"`
 	model.GormModel
 
-	MaintenanceTypeID     string    `json:"maintenance_type_id" query:"maintenance_type_id" gorm:"type:varchar(2)"`
+	MaintenanceType       string    `json:"maintenance_type" query:"maintenance_type" gorm:"type:varchar(500)"`
 	MaintenanceLocationID string    `json:"maintenance_location_id" query:"maintenance_location_id" gorm:"type:varchar(36)"`
 	ChassisNumber         string    `json:"chassis_number" query:"chassis_number" gorm:"type:varchar(20)"`
 	Mile                  int       `json:"mile" query:"mile" gorm:"type:int"`
