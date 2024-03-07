@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	firebase "firebase.google.com/go/v4"
@@ -49,6 +50,7 @@ func SendMessageToUser(userToken string, data map[string]string) error { // 1 : 
 }
 
 func AddUserToSubscription(userToken string, topic string) error { // เอาคน (topic) เข้า กรุป auction
+	fmt.Println("UserToken: %s, Topic: %s", userToken, topic)
 	_, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
 		log.Fatalf("error subscribing user to topic: %v\n", err)
