@@ -70,10 +70,16 @@ func RemoveUserFromSubscription(userToken string, topic string) error { // เ�
 }
 
 func SendMessageToSubscriber(topic string, data map[string]string) error {
+	title := data["title"]
+	body := data["body"]
 	message := &messaging.Message{
 		// Title Body // R001 = ประกาศผล
 		Data:  data,
 		Topic: topic, // all_users
+		Notification: &messaging.Notification{
+			Title: title,
+			Body:  body,
+		},
 	}
 
 	_, err := FirebaseMessageClient.Send(context.Background(), message)
