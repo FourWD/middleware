@@ -11,8 +11,8 @@ type Employee struct {
 	model.GormModel
 	RoleID string `json:"role_id" query:"role_id" gorm:"type:varchar(36);"`
 
-	Code string `json:"code" query:"code" gorm:"type:varchar(10)"`
-
+	Code            string    `json:"code" query:"code" gorm:"type:varchar(10)"`
+	PrefixID        string    `json:"prefix_id" query:"prefix_id" gorm:"type:varchar(2);"`
 	EmployeeTypeID  string    `json:"employee_type_id" query:"employee_type_id" gorm:"type:varchar(36);"`
 	Username        string    `json:"username" query:"username" gorm:"type:varchar(20);"`
 	Firstname       string    `json:"firstname" query:"firstname" gorm:"type:varchar(100);"`
@@ -25,4 +25,5 @@ type Employee struct {
 	IsActive        bool      `json:"is_active" query:"is_active" gorm:"type:bool"`
 	CountWrongLogin int       `json:"count_wrong_login" query:"count_wrong_login" gorm:"type:int(1)"`
 	LastLoginDate   time.Time `json:"last_login_date" query:"last_login_date"`
+	BranchID        string    `json:"branch_id" query:"branch_id" gorm:"type:varchar(2);"`
 }
