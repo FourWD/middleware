@@ -28,10 +28,8 @@ func ConnectFirebaseNotification(key string) error {
 	return nil
 }
 
-func SendMessageToUser(userToken string, data map[string]string) error {
+func SendMessageToUser(userToken string, title string, body string, data map[string]string) error {
 	// Access title and body directly from the data map
-	title := data["title"]
-	body := data["body"]
 
 	message := &messaging.Message{
 		Data:  data,
@@ -70,9 +68,8 @@ func RemoveUserFromSubscription(userToken string, topic string) error { // เ�
 	return nil
 }
 
-func SendMessageToSubscriber(topic string, data map[string]string) error {
-	title := data["title"]
-	body := data["body"]
+func SendMessageToSubscriber(topic string, title string, body string, data map[string]string) error {
+
 	message := &messaging.Message{
 		// Title Body // R001 = ประกาศผล
 		Data:  data,
