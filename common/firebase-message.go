@@ -28,20 +28,24 @@ func ConnectFirebaseNotification(key string) error {
 	return nil
 }
 
-func SendMessageToUser(userToken string, data map[string]string) error { // 1 : 1
-	// Title Body
+func SendMessageToUser(userToken string, data map[string]string) error {
+	// Access title and body directly from the data map
+	title := data["title"]
+	body := data["body"]
+
 	message := &messaging.Message{
 		Data:  data,
 		Token: userToken,
 		Notification: &messaging.Notification{
-			Title: "fourwd-test",
-			Body:  "อเมริกาโน่หวานน้อยหนึ่งแก้ว",
+			Title: title,
+			Body:  body,
 		},
 	}
+
 	_, err := FirebaseMessageClient.Send(context.Background(), message)
 	if err != nil {
-		log.Fatalf("error sending message: %v\n", err)
-		return err
+		// Instead of log.Fatalf, return the error
+		return fmt.Errorf("error sending message: %v", err)
 	}
 
 	return nil
