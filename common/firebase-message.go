@@ -30,17 +30,14 @@ func ConnectFirebaseNotification(key string) error {
 
 func SendMessageToUser(userToken string, data map[string]string) error { // 1 : 1
 	// Title Body
-	title := data["title"]
-	body := data["body"]
 	message := &messaging.Message{
 		Data:  data,
 		Token: userToken,
 		Notification: &messaging.Notification{
-			Title: title,
-			Body:  body,
+			Title: "fourwd-test",
+			Body:  "อเมริกาโน่หวานน้อยหนึ่งแก้ว",
 		},
 	}
-
 	_, err := FirebaseMessageClient.Send(context.Background(), message)
 	if err != nil {
 		log.Fatalf("error sending message: %v\n", err)
