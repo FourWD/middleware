@@ -8,5 +8,5 @@ type FinanceInterest struct {
 	FinanceGroupID string  `json:"finance_group_id" query:"finance_group_id" gorm:"type:varchar(36)"`
 	IMonth         int     `json:"i_month" query:"i_month" gorm:"type:int"`
 	Interest       float64 `json:"interest" query:"interest" gorm:"type:decimal(5,3)"`
-	DownAmount     float64 `json:"down_amount" query:"down_amount" gorm:"type:decimal(14,2)"`
+	DownPercent    float64 `json:"down_percent" query:"down_percent" gorm:"type:decimal(14,2)"`
 }
