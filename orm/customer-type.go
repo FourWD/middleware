@@ -4,7 +4,7 @@ import (
 	"github.com/FourWD/middleware/model"
 )
 
-type UserType struct {
+type CustomerType struct {
 	ID string `json:"id" query:"id" gorm:"type:varchar(2);primary_key"`
 	model.GormModel
 
