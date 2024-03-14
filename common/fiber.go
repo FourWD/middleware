@@ -162,16 +162,19 @@ func queryToJSON(db *sql.DB, query string) ([]byte, error) {
 		// m := make(map[string]interface{})
 		m := make(map[string]string)
 		for i, col := range columns {
-			var v interface{}
-			val := values[i]
-			b, ok := val.([]byte)
-			if ok {
-				v = string(b)
+			var v string
+			if values[i] == nil {
+				v = "" // Replace NULL values with "ABC"
 			} else {
-				v = val
+				val := values[i]
+				b, ok := val.([]byte)
+				if ok {
+					v = string(b)
+				} else {
+					v = fmt.Sprintf("%v", val)
+				}
 			}
-			// m[col] = v
-			m[col] = fmt.Sprintf("%v", v)
+			m[col] = v
 		}
 		result = append(result, m)
 	}
