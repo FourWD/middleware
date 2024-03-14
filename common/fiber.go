@@ -143,6 +143,11 @@ func queryToJSON(db *sql.DB, query string) ([]byte, error) {
 		return nil, err
 	}
 
+	// types, err := rows.ColumnTypes()
+	// if err != nil {
+	// 	return nil, err
+	// }
+
 	result := make([]map[string]interface{}, 0)
 	//result := make([]map[string]string, 0)
 	for rows.Next() {
@@ -171,7 +176,7 @@ func queryToJSON(db *sql.DB, query string) ([]byte, error) {
 					v = fmt.Sprintf("%v", val)
 				}
 			}
-			m[col] = v
+			m[col] = strings.Replace(v, " +0700 +07", "", -1)
 		}
 		result = append(result, m)
 	}
