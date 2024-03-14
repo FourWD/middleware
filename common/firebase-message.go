@@ -40,17 +40,17 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 		},
 	}
 
-	_, err := FirebaseMessageClient.Send(context.Background(), message)
+	result, err := FirebaseMessageClient.Send(context.Background(), message)
 	if err != nil {
 		// Instead of log.Fatalf, return the error
-		return fmt.Errorf("error sending message: %v", err)
+		return fmt.Errorf("error sending message: %s, %v", result, err)
 	}
 
 	return nil
 }
 
 func AddUserToSubscription(userToken string, topic string) error { // เอาคน (topic) เข้า กรุป auction
-	fmt.Println("UserToken: %s, Topic: %s", userToken, topic)
+	fmt.Printf("UserToken: %s, Topic: %s\n", userToken, topic)
 	_, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
 		log.Fatalf("error subscribing user to topic: %v\n", err)

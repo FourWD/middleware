@@ -29,16 +29,25 @@ func FiberSuccess(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "error"})
 } */
 
-func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
+func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string) error {
 	logDesc := getFiberInfo(c)
 	logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
 	logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
 	PrintError("FiberError", logDesc)
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
+	return c.Status(status).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
+}
+
+func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
+	// logDesc := getFiberInfo(c)
+	// logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
+	// logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
+	// PrintError("FiberError", logDesc)
+	// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
+	return FiberCustom(c, fiber.StatusInternalServerError, errorCode, errorMessage)
 }
 
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string) error {
-	jsonBytes, err := QueryToJSON(db, sql)
+	jsonBytes, err := queryToJSON(db, sql)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c, "1001", "sql error")
@@ -117,7 +126,7 @@ func FiberWarmUp(app *fiber.App) {
 	})
 }
 
-func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
+func queryToJSON(db *sql.DB, query string) ([]byte, error) {
 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
 	if StringExistsInList(strings.ToUpper(query), list) {
 		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
