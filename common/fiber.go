@@ -165,17 +165,15 @@ func queryToJSON(db *sql.DB, query string) ([]byte, error) {
 		m := make(map[string]interface{})
 		for i, col := range columns {
 			var v string
-			if values[i] == nil {
-				v = "" // Replace NULL values with "ABC"
+
+			val := values[i]
+			b, ok := val.([]byte)
+			if ok {
+				v = string(b)
 			} else {
-				val := values[i]
-				b, ok := val.([]byte)
-				if ok {
-					v = string(b)
-				} else {
-					v = fmt.Sprintf("%v", val)
-				}
+				v = fmt.Sprintf("%v", val)
 			}
+
 			m[col] = strings.Replace(v, " +0700 +07", "", -1)
 		}
 		result = append(result, m)
