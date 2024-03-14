@@ -47,7 +47,7 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
 }
 
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string) error {
-	jsonBytes, err := QueryToJSON(db, sql)
+	jsonBytes, err := queryToJSON(db, sql)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c, "1001", "sql error")
@@ -126,7 +126,56 @@ func FiberWarmUp(app *fiber.App) {
 	})
 }
 
-func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
+// return int
+// func queryToJSON(db *sql.DB, query string) ([]byte, error) {
+// 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
+// 	if StringExistsInList(strings.ToUpper(query), list) {
+// 		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
+// 	}
+
+// 	rows, err := db.Query(query)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
+
+// 	columns, err := rows.Columns()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	result := make([]map[string]interface{}, 0)
+// 	for rows.Next() {
+// 		values := make([]interface{}, len(columns))
+// 		valuePtrs := make([]interface{}, len(columns))
+// 		for i := range columns {
+// 			valuePtrs[i] = &values[i]
+// 		}
+
+// 		err := rows.Scan(valuePtrs...)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		m := make(map[string]interface{})
+// 		for i, col := range columns {
+// 			var v interface{}
+// 			val := values[i]
+// 			b, ok := val.([]byte)
+// 			if ok {
+// 				v = string(b)
+// 			} else {
+// 				v = val
+// 			}
+// 			m[col] = v
+// 		}
+// 		result = append(result, m)
+// 	}
+
+// 	return json.Marshal(result)
+// }
+
+func queryToJSON(db *sql.DB, query string) ([]byte, error) {
 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
 	if StringExistsInList(strings.ToUpper(query), list) {
 		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
@@ -143,9 +192,9 @@ func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
 		return nil, err
 	}
 
-	result := make([]map[string]interface{}, 0)
+	result := make([]map[string]string, 0) // Change to map[string]string
 	for rows.Next() {
-		values := make([]interface{}, len(columns))
+		values := make([]string, len(columns)) // Change to []string
 		valuePtrs := make([]interface{}, len(columns))
 		for i := range columns {
 			valuePtrs[i] = &values[i]
@@ -156,17 +205,9 @@ func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
 			return nil, err
 		}
 
-		m := make(map[string]interface{})
+		m := make(map[string]string) // Change to map[string]string
 		for i, col := range columns {
-			var v interface{}
-			val := values[i]
-			b, ok := val.([]byte)
-			if ok {
-				v = string(b)
-			} else {
-				v = val
-			}
-			m[col] = v
+			m[col] = values[i] // Store values as strings directly
 		}
 		result = append(result, m)
 	}
