@@ -47,7 +47,7 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
 }
 
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string) error {
-	jsonBytes, err := queryToJSON(db, sql)
+	jsonBytes, err := QueryToJSON(db, sql)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c, "1001", "sql error")
@@ -126,7 +126,7 @@ func FiberWarmUp(app *fiber.App) {
 	})
 }
 
-func queryToJSON(db *sql.DB, query string) ([]byte, error) {
+func QueryToJSON(db *sql.DB, query string) ([]byte, error) {
 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
 	if StringExistsInList(strings.ToUpper(query), list) {
 		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
