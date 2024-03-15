@@ -15,6 +15,7 @@ type UserProfile struct {
 	SubDistrictID          string `json:"sub_district_id" query:"sub_district_id" gorm:"type:varchar(6)"`
 	ProvinceID             string `json:"province_id" query:"province_id" gorm:"type:varchar(2)"`
 	Postcode               string `json:"postcode" query:"postcode" gorm:"type:varchar(5)"`
+	TaxName                string `json:"tax_name" query:"tax_name" gorm:"type:varchar(500)"`
 	TaxBranchName          string `json:"tax_branch_name" query:"tax_branch_name" gorm:"type:varchar(500)"`
 	TaxAddress             string `json:"tax_address" query:"tax_address" gorm:"type:text"`
 	TaxBuilding            string `json:"tax_building" query:"tax_building" gorm:"type:varchar(100)"`
