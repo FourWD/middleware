@@ -69,7 +69,7 @@ func RemoveUserFromSubscription(userToken string, topic string) error { // เ�
 }
 
 func SendMessageToSubscriber(topic string, title string, body string, data map[string]string) error {
-
+	Print("data", title)
 	message := &messaging.Message{
 		// Title Body // R001 = ประกาศผล
 		Data:  data,
