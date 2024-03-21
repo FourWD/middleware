@@ -47,7 +47,7 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
 }
 
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string) error {
-	Print(fmt.Sprintf("Fiber Query [UserID: %s]", GetSessionUserID(c)), fmt.Sprintf("Query: %s", sql))
+	// Print(fmt.Sprintf("Fiber Query [UserID: %s]", GetSessionUserID(c)), fmt.Sprintf("Query: %s", sql))
 
 	jsonBytes, err := queryToJSON(db, sql)
 	if err != nil {
