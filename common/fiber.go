@@ -176,7 +176,13 @@ func queryToJSON(db *sql.DB, query string) ([]byte, error) {
 			} else {
 				if val != nil {
 					temp := fmt.Sprintf("%v", val)
-					v = strings.Replace(temp, " +0700 +07", "", -1)
+					temp = strings.Replace(temp, " +0700 +07", "", -1)
+					v = temp
+					if len(temp) >= 10 {
+						if temp[0:10] == "1900-01-01" {
+							v = nil
+						}
+					}
 				} else {
 					v = val
 				}
