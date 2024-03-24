@@ -12,7 +12,7 @@ import (
 var Database *gorm.DB
 var DatabaseMysql *sql.DB
 
-type DSN struct {
+type DNS struct {
 	Username string
 	Password string
 	Database string
@@ -20,7 +20,7 @@ type DSN struct {
 	Instance string
 }
 
-func CreateDSN(isGCP bool, dsn DSN) string {
+func CreateDSN(isGCP bool, dsn DNS) string {
 	var protocol string
 	setting := "?charset=utf8mb4&parseTime=True"
 	if isGCP {
@@ -32,10 +32,10 @@ func CreateDSN(isGCP bool, dsn DSN) string {
 	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
 }
 
-func ConnectDatabase(dsn string) error {
+func ConnectDatabase(dns string) error {
 	var err error
 
-	Database, err = gorm.Open(mysql.Open(dsn+"&loc=Asia%2FBangkok"), &gorm.Config{
+	Database, err = gorm.Open(mysql.Open(dns+"&loc=Asia%2FBangkok"), &gorm.Config{
 		SkipDefaultTransaction: true,
 		PrepareStmt:            true,
 	})
@@ -45,7 +45,7 @@ func ConnectDatabase(dsn string) error {
 		panic(err)
 	}
 
-	DatabaseMysql, err = sql.Open("mysql", dsn+"&loc=Asia%2FBangkok")
+	DatabaseMysql, err = sql.Open("mysql", dns+"&loc=Asia%2FBangkok")
 	if err != nil {
 		PrintError(`DB Mysql`, `Connection Error !`)
 		panic(err)
@@ -58,8 +58,27 @@ func ConnectDatabase(dsn string) error {
 	return nil
 }
 
+func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
+	isGCP := true
+	if App.Env == "local" {
+		isGCP = false
+	}
+
+	dsn := CreateDSN(isGCP, DNS)
+
+	database, err := sql.Open("mysql", dsn+"&loc=Asia%2FBangkok")
+	if err != nil {
+		return nil, err
+	}
+
+	timeZone := "Asia/Bangkok"
+	database.Exec("SET time_zone=?", timeZone)
+
+	return database, nil
+}
+
 func ConnectDatabaseViper() error {
-	dns := DSN{
+	dns := DNS{
 		Username: viper.GetString("database.username"),
 		Password: viper.GetString("database.password"),
 		Database: viper.GetString("database.database"),
