@@ -3,6 +3,7 @@ package common
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
@@ -68,6 +69,7 @@ func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
 
 	database, err := sql.Open("mysql", dsn+"&loc=Asia%2FBangkok")
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 
