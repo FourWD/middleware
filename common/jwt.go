@@ -21,13 +21,15 @@ import (
 // JWTClaims struct represents the claims we want to include in the token.
 type JWTClaims struct {
 	UserID string `json:"user_id"`
+	Role   string `json:"role"`
 	Remark string `json:"remark"`
 	jwt.StandardClaims
 }
 
-func GenerateJWTToken(userID string, remark string, key []byte, expiresIn time.Duration) (string, error) {
+func GenerateJWTToken(userID string, role string, remark string, key []byte, expiresIn time.Duration) (string, error) {
 	claims := JWTClaims{
 		UserID: userID,
+		Role:   role,
 		Remark: remark,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(expiresIn).Unix(),
@@ -191,9 +193,9 @@ func GetSessionUserID(c *fiber.Ctx) string {
 	return userClaims.UserID //
 }
 
-func GetSession(c *fiber.Ctx) (string, string) {
+func GetSession(c *fiber.Ctx) *JWTClaims {
 	userClaims := c.Locals("user").(*JWTClaims)
-	return userClaims.UserID, userClaims.Remark
+	return userClaims
 }
 
 // func authenticate(username, password string) (orm.User, bool) {
