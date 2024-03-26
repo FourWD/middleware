@@ -2,14 +2,17 @@ package common
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 func StructToString(data interface{}) string {
-	jsonData, err := json.MarshalIndent(data, "", "  ")
+	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return "Format Error"
+		return ""
 	}
-	return string(jsonData)
+	jsonString := string(jsonData)
+	jsonString = strings.Replace(jsonString, "\"", "", -1)
+	return jsonString
 }
 
 func StructToJson(data interface{}) (string, error) {
@@ -17,6 +20,7 @@ func StructToJson(data interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	return string(jsonData), nil
+	jsonString := string(jsonData)
+	jsonString = strings.Replace(jsonString, "\\\"", "\"", -1)
+	return jsonString, nil
 }
