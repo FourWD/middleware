@@ -19,8 +19,8 @@ type Redbook struct {
 	AuctionID string `json:"auction_id" query:"auction_id" gorm:"type:varchar(36);"`
 	model.GormModel
 
-	ChassisNo string `json:"chassis_no" query:"chassis_no" gorm:"type:varchar(20)"`
+	ChassisNo string `json:"chassis_no" query:"chassis_no" gorm:"type:varchar(30)"`
 	CRP       int    `json:"crp" query:"crp" gorm:"type:int"`
-	License   string `json:"license" query:"license" gorm:"type:varchar(10)"`
+	License   string `json:"license" query:"license" gorm:"type:varchar(30)"`
 	Redbook   int    `json:"redbook" query:"redbook" gorm:"type:int"`
 }
