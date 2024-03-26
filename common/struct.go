@@ -11,7 +11,7 @@ func StructToString(data interface{}) string {
 		return ""
 	}
 	jsonString := string(jsonData)
-	jsonString = strings.Replace(jsonString, "\"", "", -1)
+	jsonString = strings.Replace(jsonString, `\"`, `"`, -1)
 	return jsonString
 }
 
@@ -21,6 +21,6 @@ func StructToJson(data interface{}) (string, error) {
 		return "", err
 	}
 	jsonString := string(jsonData)
-	jsonString = strings.Replace(jsonString, "\\\"", "\"", -1)
+	jsonString = strings.Replace(jsonString, `\"`, `"`, -1)
 	return jsonString, nil
 }
