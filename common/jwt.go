@@ -20,13 +20,13 @@ import (
 
 // JWTClaims struct represents the claims we want to include in the token.
 type JWTClaims struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
-	Remark string `json:"remark"`
+	UserID string                 `json:"user_id"`
+	Role   string                 `json:"role"`
+	Remark map[string]interface{} `json:"remark"`
 	jwt.StandardClaims
 }
 
-func GenerateJWTToken(userID string, role string, remark string, key []byte, expiresIn time.Duration) (string, error) {
+func GenerateJWTToken(userID string, role string, remark map[string]interface{}, key []byte, expiresIn time.Duration) (string, error) {
 	claims := JWTClaims{
 		UserID: userID,
 		Role:   role,
