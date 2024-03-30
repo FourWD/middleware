@@ -46,11 +46,11 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
 	return FiberCustom(c, fiber.StatusInternalServerError, errorCode, errorMessage)
 }
 
-func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string) error {
+func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
 	// Print(fmt.Sprintf("Fiber Query [UserID: %s]", GetSessionUserID(c)), fmt.Sprintf("Query: %s", sql))
-	Print("Fiber Query", fmt.Sprintf("Query: %s", sql))
+	//Print("Fiber Query", fmt.Sprintf("Query: %s", sql))
 
-	jsonBytes, err := queryToJSON(db, sql)
+	jsonBytes, err := queryToJSON(db, sql, values...)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c, "1001", "sql error")
@@ -129,13 +129,13 @@ func FiberWarmUp(app *fiber.App) {
 	})
 }
 
-func queryToJSON(db *sql.DB, query string) ([]byte, error) {
+func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, error) {
 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
-	if StringExistsInList(strings.ToUpper(query), list) {
+	if StringExistsInList(strings.ToUpper(sql), list) {
 		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
 	}
 
-	rows, err := db.Query(query)
+	rows, err := db.Query(sql, values...)
 	if err != nil {
 		return nil, err
 	}
