@@ -58,8 +58,8 @@ func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...inte
 	return FiberSendData(c, string(jsonBytes))
 }
 
-func FiberQuery(c *fiber.Ctx, sql string) error {
-	return FiberQueryWithCustomDB(c, DatabaseMysql, sql)
+func FiberQuery(c *fiber.Ctx, sql string, values ...interface{}) error {
+	return FiberQueryWithCustomDB(c, DatabaseMysql, sql, values...)
 }
 
 func FiberSendData(c *fiber.Ctx, json string) error {
