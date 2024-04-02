@@ -77,7 +77,7 @@ func MD5(text string) string {
 	return hex.EncodeToString(hashText.Sum(nil))
 }
 
-func ISUUID(input string) bool {
+func IsUUID(input string) bool {
 	// Regular expression to match UUID format
 	uuidRegex := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 	return uuidRegex.MatchString(input)
