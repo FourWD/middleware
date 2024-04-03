@@ -9,6 +9,7 @@ type Booking struct {
 	model.GormModel
 	BookingNo       string `json:"booking_no" query:"booking_no" gorm:"type:varchar(20)"` //หมายเลขรายการ
 	BookingStatusID string `json:"booking_status_id" query:"booking_status_id" gorm:"type:varchar(2)"`
+	BookingCancelID string `json:"booking_cancel_id" query:"booking_cancel_id" gorm:"type:varchar(2)"`
 
 	UserID    string `json:"user_id" query:"user_id" gorm:"type:varchar(36)"`
 	PrefixID  string `json:"prefix_id" query:"prefix_id" gorm:"type:varchar(2)"`
@@ -17,14 +18,15 @@ type Booking struct {
 	Mobile    string `json:"mobile" query:"mobile" gorm:"type:varchar(20)"`
 	Email     string `json:"email" query:"email" gorm:"type:varchar(50)"`
 
-	VehicleID         string `json:"vehicle_id" query:"vehicle_id" gorm:"type:varchar(36)"`
-	VehicleModelID    string `json:"vehicle_model_id" query:"vehicle_model_id" gorm:"type:varchar(36)"`
-	VehicleSubModelID string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
-	VehicleColorID    string `json:"vehicle_color_id" query:"vehicle_color_id" gorm:"type:varchar(36)"`
-	IsPaid            bool   `json:"is_paid" query:"is_paid" gorm:"type:bool"`
-	IsCancel          bool   `json:"is_cancel" query:"is_cancel" gorm:"type:bool"`
-	Remark            string `json:"remark" query:"remark" gorm:"type:text"`
-	EmployeeID        string `json:"employee_id" query:"employee_id" gorm:"type:varchar(36)"`
+	VehicleID           string `json:"vehicle_id" query:"vehicle_id" gorm:"type:varchar(36)"`
+	VehicleModelID      string `json:"vehicle_model_id" query:"vehicle_model_id" gorm:"type:varchar(36)"`
+	VehicleSubModelID   string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
+	VehicleColorID      string `json:"vehicle_color_id" query:"vehicle_color_id" gorm:"type:varchar(36)"`
+	IsPaid              bool   `json:"is_paid" query:"is_paid" gorm:"type:bool"`
+	IsCancel            bool   `json:"is_cancel" query:"is_cancel" gorm:"type:bool"`
+	Remark              string `json:"remark" query:"remark" gorm:"type:text"`
+	BookingCancelRemark string `json:"booking_cancel_remark" query:"booking_cancel_remark" gorm:"type:text"`
+	EmployeeID          string `json:"employee_id" query:"employee_id" gorm:"type:varchar(36)"`
 
 	Address       string `json:"address" query:"address" gorm:"type:text"`
 	Building      string `json:"building" query:"building" gorm:"type:varchar(100)"`
