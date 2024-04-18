@@ -69,7 +69,7 @@ func Logout(c *fiber.Ctx) error {
 		return errors.New("no token")
 	}
 
-	return Database.Model(&orm.JwtBlacklist{}).Create(orm.JwtBlacklist{
+	return Database.Model(&orm.JwtBlacklist{}).Create(&orm.JwtBlacklist{
 		ID:    uuid.NewString(),
 		Md5:   MD5(token),
 		Token: token,
