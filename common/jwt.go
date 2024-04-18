@@ -206,7 +206,7 @@ func GetSession(c *fiber.Ctx) *JWTClaims {
 
 func isJwtValid(token string) bool {
 	var bl orm.JwtBlacklist
-	result := Database.Model(orm.JwtBlacklist{Md5: MD5(token)}).First(&bl)
+	result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
 	return result.RowsAffected == 0
 }
 
