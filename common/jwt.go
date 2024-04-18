@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/FourWD/middleware/orm"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
@@ -63,6 +64,11 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 	authHeader := c.Get("Authorization")
 	if authHeader == "" {
 		return c.Status(http.StatusUnauthorized).SendString("No token provided")
+	}
+
+	// Check Blacklist
+	if !isJwtValid(authHeader) {
+		return c.Status(http.StatusUnauthorized).SendString("token blacklist")
 	}
 
 	tokenString := authHeader[len("Bearer "):]
@@ -196,6 +202,12 @@ func GetSessionUserID(c *fiber.Ctx) string {
 func GetSession(c *fiber.Ctx) *JWTClaims {
 	userClaims := c.Locals("user").(*JWTClaims)
 	return userClaims
+}
+
+func isJwtValid(token string) bool {
+	var bl orm.JwtBlacklist
+	result := Database.Model(orm.JwtBlacklist{Md5: MD5(token)}).First(&bl)
+	return result.RowsAffected == 0
 }
 
 // func authenticate(username, password string) (orm.User, bool) {

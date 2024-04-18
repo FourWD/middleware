@@ -1,10 +1,12 @@
 package common
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/FourWD/middleware/orm"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -57,4 +59,20 @@ func getLastPathComponent(path string) string {
 		return ""
 	}
 	return lastComponent
+}
+
+func Logout(c *fiber.Ctx) error {
+
+	token := c.Get("Authorization")
+
+	if token == "" {
+		return errors.New("no token")
+	}
+
+	return Database.Model(&orm.JwtBlacklist{}).Create(orm.JwtBlacklist{
+		ID:    uuid.NewString(),
+		Md5:   MD5(token),
+		Token: token,
+	}).Error
+
 }
