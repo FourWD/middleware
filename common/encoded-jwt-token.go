@@ -34,8 +34,9 @@ func EncodedJwtToken(c *fiber.Ctx, res string) (string, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		claimToken := claims[res].(string)
-		return claimToken, nil
+		if claimToken, ok := claims[res].(string); ok {
+			return claimToken, nil
+		}
 	}
 
 	return "", err
