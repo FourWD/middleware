@@ -11,7 +11,7 @@ import (
 func CheckRolePermission(c *fiber.Ctx, path string, action string) error {
 	userID := GetSessionUserID(c)
 
-	sqlEmployee := `SELECT role_id FROM employees WHERE id = ?`
+	sqlEmployee := `SELECT * FROM employees WHERE id = ?`
 	employee := new(orm.Employee)
 	Database.Raw(sqlEmployee, userID).Scan(&employee)
 
@@ -46,10 +46,7 @@ func CheckRolePermission(c *fiber.Ctx, path string, action string) error {
 			return nil
 		} else if action == "DELETE" && permission.Delete == 1 {
 			return nil
-		} else {
-			return errors.New("Unauthorized")
 		}
-	} else {
-		return errors.New("Unauthorized")
 	}
+	return errors.New("Unauthorized")
 }
