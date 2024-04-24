@@ -12,7 +12,7 @@ type RoleMenu struct {
 
 	Name     string `json:"name" query:"name" gorm:"type:varchar(100);"`
 	IsActive bool   `json:"is_active" query:"is_active" gorm:"type:bool;"`
-	Path     string `json:"path" query:"path" gorm:"type:varchar(100);"`
+	Path     string `json:"path" query:"path" gorm:"type:varchar(100);unique"`
 	Icon     string `json:"icon" query:"icon" gorm:"type:varchar(256);"`
 
 	model.GormRowOrder
