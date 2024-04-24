@@ -38,13 +38,13 @@ func CheckRolePermission(c *fiber.Ctx, path string, action string) error {
 
 		Database.Raw(sql, employee.RoleID, strings.ToLower(path)).Scan(&permission)
 
-		if action == "READ" && permission.Read == 0 {
+		if action == "READ" && permission.Read == 1 {
 			return nil
-		} else if action == "CREATE" && permission.Create == 0 {
+		} else if action == "CREATE" && permission.Create == 1 {
 			return nil
-		} else if action == "UPDATE" && permission.Update == 0 {
+		} else if action == "UPDATE" && permission.Update == 1 {
 			return nil
-		} else if action == "DELETE" && permission.Delete == 0 {
+		} else if action == "DELETE" && permission.Delete == 1 {
 			return nil
 		}
 	}
