@@ -77,6 +77,13 @@ func MD5(text string) string {
 	return hex.EncodeToString(hashText.Sum(nil))
 }
 
+func Hash(text string) string {
+	hashText := md5.New()
+	hashText.Write([]byte(text))
+	//Print(" md5 pass : ", hex.EncodeToString(hashPassword.Sum(nil)))
+	return hex.EncodeToString(hashText.Sum(nil))
+}
+
 func IsUUID(input string) bool {
 	// Regular expression to match UUID format
 	uuidRegex := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
