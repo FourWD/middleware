@@ -34,7 +34,7 @@ func CheckRolePermission(c *fiber.Ctx, path string, action string) error {
 		COALESCE(rp.is_delete, 0) "delete"
 		FROM role_menus AS rm
 		LEFT JOIN role_permissions rp ON rp.role_menu_id = rm.id AND rp.role_id = ?
-		WHERE rm.path = ?`
+		WHERE LOWER(rm.path) = ?`
 
 		Database.Raw(sql, employee.RoleID, strings.ToLower(path)).Scan(&permission)
 
