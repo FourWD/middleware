@@ -47,12 +47,12 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
 	return FiberCustom(c, fiber.StatusInternalServerError, errorCode, errorMessage)
 }
 
-func FiberErrorSql(c *fiber.Ctx, errorCode string, errorMessage string) error {
+func FiberErrorSql(c *fiber.Ctx, errorMessage string) error {
 	log.Println("Error", errorMessage)
 	return FiberCustom(c, fiber.StatusInternalServerError, "500", "SQL ERROR")
 }
 
-func FiberErrorFirebase(c *fiber.Ctx, errorCode string, errorMessage string) error {
+func FiberErrorFirebase(c *fiber.Ctx, errorMessage string) error {
 	log.Println("Error", errorMessage)
 	return FiberCustom(c, fiber.StatusInternalServerError, "501", "FIREBASE ERROR")
 }
