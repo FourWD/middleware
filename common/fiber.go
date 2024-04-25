@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -44,6 +45,16 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
 	// PrintError("FiberError", logDesc)
 	// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
 	return FiberCustom(c, fiber.StatusInternalServerError, errorCode, errorMessage)
+}
+
+func FiberErrorSql(c *fiber.Ctx, errorCode string, errorMessage string) error {
+	log.Println("Error", errorMessage)
+	return FiberCustom(c, fiber.StatusInternalServerError, "500", "SQL ERROR")
+}
+
+func FiberErrorFirebase(c *fiber.Ctx, errorCode string, errorMessage string) error {
+	log.Println("Error", errorMessage)
+	return FiberCustom(c, fiber.StatusInternalServerError, "501", "FIREBASE ERROR")
 }
 
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
