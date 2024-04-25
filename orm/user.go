@@ -33,6 +33,4 @@ type User struct {
 	UserStatusID         string `json:"user_status_id" query:"user_status_id" gorm:"type:varchar(2)"`                   // ban approve
 	UserRegisterStatusID string `json:"user_register_status_id" query:"user_register_status_id" gorm:"type:varchar(2)"` //สถานะหน้าสมัคร ถึงขันไหนละ 1 otp เสร็จ 2 กรอกข้อมูลเสร็จ 3 แอดมินแอพ
 	IsRegisterComplete   bool   `json:"is_register_complete" query:"is_register_complete" gorm:"type:bool"`
-
-	SecretKey string `json:"secret_key" query:"secret_key" gorm:"type:varchar(200)"`
 }

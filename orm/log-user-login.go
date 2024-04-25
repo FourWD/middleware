@@ -17,5 +17,6 @@ type LogUserLogin struct {
 	NotificationToken string  `json:"notification_token" query:"notification_token" gorm:"type:varchar(256)"`
 	IsActive          bool    `json:"is_active" query:"is_active" gorm:"type:bool"`
 	IsLoginSuccess    bool    `json:"is_login_success" query:"is_login_success" gorm:"type:bool"`
+	SecretKey         string  `json:"secret_key" query:"secret_key" gorm:"type:varchar(200)"`
 	model.GormRowOrder
 }
