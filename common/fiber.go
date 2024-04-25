@@ -38,7 +38,8 @@ func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string
 	return c.Status(status).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
 }
 
-func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
+func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...error) error {
+	log.Println("Error", err)
 	// logDesc := getFiberInfo(c)
 	// logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
 	// logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
@@ -47,15 +48,15 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
 	return FiberCustom(c, fiber.StatusInternalServerError, errorCode, errorMessage)
 }
 
-func FiberErrorSql(c *fiber.Ctx, errorMessage string) error {
-	log.Println("Error", errorMessage)
-	return FiberCustom(c, fiber.StatusInternalServerError, "500", "SQL ERROR")
-}
+// func FiberErrorSql(c *fiber.Ctx, errorMessage string) error {
+// 	log.Println("Error", errorMessage)
+// 	return FiberCustom(c, fiber.StatusInternalServerError, "500", "SQL ERROR")
+// }
 
-func FiberErrorFirebase(c *fiber.Ctx, errorMessage string) error {
-	log.Println("Error", errorMessage)
-	return FiberCustom(c, fiber.StatusInternalServerError, "501", "FIREBASE ERROR")
-}
+// func FiberErrorFirebase(c *fiber.Ctx, errorMessage string) error {
+// 	log.Println("Error", errorMessage)
+// 	return FiberCustom(c, fiber.StatusInternalServerError, "501", "FIREBASE ERROR")
+// }
 
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
 	// Print(fmt.Sprintf("Fiber Query [UserID: %s]", GetSessionUserID(c)), fmt.Sprintf("Query: %s", sql))
