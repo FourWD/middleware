@@ -2,6 +2,7 @@ package common
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"regexp"
@@ -77,9 +78,10 @@ func MD5(text string) string {
 	return hex.EncodeToString(hashText.Sum(nil))
 }
 
-func Hash(text string) string {
-	hashText := md5.New()
-	hashText.Write([]byte(text))
+func Hash(text string, salt string) string {
+
+	hashText := sha256.New()
+	hashText.Write([]byte(text + salt))
 	//Print(" md5 pass : ", hex.EncodeToString(hashPassword.Sum(nil)))
 	return hex.EncodeToString(hashText.Sum(nil))
 }
