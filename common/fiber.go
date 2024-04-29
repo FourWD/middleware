@@ -18,7 +18,7 @@ func FiberDisableXFrame(c *fiber.Ctx) error {
 }
 
 func FiberNoSniff(c *fiber.Ctx) error {
-	c.Set("X-Frame-Options", "DENY")
+	c.Set("X-Content-Type-Options", "nosniff")
 	return c.Next()
 }
 
