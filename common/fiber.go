@@ -12,6 +12,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+func FiberDisableXFrame(c *fiber.Ctx) error {
+	c.Set("X-Frame-Options", "DENY")
+	return c.Next()
+}
+
+func FiberNoSniff(c *fiber.Ctx) error {
+	c.Set("X-Frame-Options", "DENY")
+	return c.Next()
+}
+
 func FiberReviewPayload(c *fiber.Ctx) error {
 	//return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "review your payload"})
 	PrintError("FiberReviewPayload", "")
