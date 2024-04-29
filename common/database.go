@@ -56,6 +56,8 @@ func ConnectDatabase(dns string) error {
 	Database.Raw("SET time_zone=?", timeZone)
 	DatabaseMysql.Exec("SET time_zone=?", timeZone)
 
+	log.Println("CONNECT DB GOOGLE SUCCESS")
+
 	return nil
 }
 
@@ -75,6 +77,8 @@ func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
 
 	timeZone := "Asia/Bangkok"
 	database.Exec("SET time_zone=?", timeZone)
+
+	log.Println("CONNECT DB MYSQL SUCCESS")
 
 	return database, nil
 }
