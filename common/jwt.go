@@ -57,6 +57,11 @@ func IsPublicPath(c *fiber.Ctx) bool {
 	return StringExistsInList(path, publicPaths)
 }
 
+func DisableXFrame(c *fiber.Ctx) error {
+	c.Set("X-Frame-Options", "DENY")
+	return c.Next()
+}
+
 func AuthenticationMiddleware(c *fiber.Ctx) error {
 	if IsPublicPath(c) {
 		return c.Next()
