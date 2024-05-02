@@ -42,4 +42,5 @@ type UserProfile struct {
 	FilePP20ID             string `json:"file_pp20_id" query:"file_pp20_id" gorm:"type:varchar(36)"` // ภ.พ.20
 	FileHouseParticularsID string `json:"file_house_particulars_id" query:"file_house_particulars_id" gorm:"type:varchar(36)"`
 	FilePayslipID          string `json:"file_payslip_id" query:"file_payslip_id" gorm:"type:varchar(36)"`
+	IdcardNo               string `json:"idcard_no" query:"idcard_no" gorm:"type:varchar(13)"`
 }
