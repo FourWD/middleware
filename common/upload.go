@@ -62,7 +62,9 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 	} else {
 		client := &http.Client{}
 		// uploadUrl := "https://pakwan-service.fourwd.me/api/v1/upload/"
-		uploadUrl := "https://fourwd.as.r.appspot.com/api/v1/upload/"
+		// uploadUrl := "https://fourwd.as.r.appspot.com/api/v1/upload/"
+		uploadUrl := "https://pakwan-service.fourwd.me/api/v1/upload/"
+
 		req, err := http.NewRequest("POST", uploadUrl, bytes.NewBuffer(jsonData))
 		if err != nil {
 			fmt.Println(err)
@@ -77,18 +79,14 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 			return *result, err
 		}
 		defer response.Body.Close()
+
+		body, _ := io.ReadAll(response.Body)
+		var resp ApiResponse
+		errJson := json.Unmarshal(body, &resp)
 		if err != nil {
-			fmt.Println("there was an error with the request", err.Error())
-			return *result, err
-		} else {
-			body, _ := io.ReadAll(response.Body)
-			var resp ApiResponse
-			err := json.Unmarshal(body, &resp)
-			if err != nil {
-				return *result, err
-			}
-			result = &resp.Data
+			return *result, errJson
 		}
+		result = &resp.Data
 	}
 
 	return *result, nil
