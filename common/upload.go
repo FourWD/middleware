@@ -83,7 +83,7 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 		body, _ := io.ReadAll(response.Body)
 		var resp ApiResponse
 		errJson := json.Unmarshal(body, &resp)
-		if err != nil {
+		if errJson != nil {
 			return *result, errJson
 		}
 		result = &resp.Data
