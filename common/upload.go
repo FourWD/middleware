@@ -17,6 +17,7 @@ import (
 func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error) {
 	result, errUpload := uploadFileToServer(payload, viper.GetString("app_id"), viper.GetString("token.upload"))
 	if errUpload != nil {
+		fmt.Println("error uploading file to server:", errUpload.Error())
 		return result, errUpload
 	}
 
@@ -34,6 +35,7 @@ func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error)
 	logFile.FullPath = result.FullPath
 	err := db.Save(&logFile)
 	if err.Error != nil {
+		fmt.Println("error saving file log:", err)
 		PrintError("error save file", "tb file")
 	}
 	return result, nil
