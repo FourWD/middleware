@@ -35,7 +35,7 @@ func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error)
 	err := db.Save(&logFile)
 	if err.Error != nil {
 		PrintError("error save file", "tb file")
-	}
+	} //
 	return result, nil
 }
 
