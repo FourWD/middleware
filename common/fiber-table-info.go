@@ -25,7 +25,7 @@ func FiberTableInfo(app *fiber.App) {
 		Md5         string       `json:"md5"`
 	}
 
-	app.Get("/tables", func(c *fiber.Ctx) error {
+	app.Get("/api/v1/tables", func(c *fiber.Ctx) error {
 		DBName := viper.GetString("database.database")
 		rows, err := DatabaseMysql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, 
 		CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? 
