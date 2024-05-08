@@ -1,69 +1,87 @@
 package common
 
 import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
+	"github.com/spf13/viper"
 )
 
-type tableInfo struct {
+type TableInfo struct {
 	TableName   string       `json:"table_name"`
 	IsView      bool         `json:"is_view"`
-	TotalRow    int          `json:"total_row"`
 	TotalColumn int          `json:"total_column"`
-	ColumnList  []columnInfo `json:"column_list,omitempty"` // Use omitempty to skip for views
+	ColumnList  []ColumnInfo `json:"column_list"`
 }
 
-type columnInfo struct {
+type ColumnInfo struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
 }
 
 func FiberTableInfo(app *fiber.App) {
 	app.Get("/tables", func(c *fiber.Ctx) error {
-		var tables []struct {
-			TableName string `gorm:"column:Tables_in_auction-dev"`
-			TableType string `gorm:"column:Table_type"`
+		DBName := viper.GetString("database.database")
+		rows, err := DatabaseMysql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, 
+		CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? 
+		ORDER BY TABLE_NAME, COLUMN_NAME`, DBName)
+		if err != nil {
+			return c.Status(http.StatusInternalServerError).SendString("Error executing query")
 		}
-		if result := Database.Raw("SHOW FULL TABLES").Scan(&tables); result.Error != nil {
-			return result.Error
-		}
+		defer rows.Close()
 
-		var tableInfos []tableInfo
-		for _, table := range tables {
-			if table.TableType == "BASE TABLE" { // Check if it's a table
-				tableInfos = append(tableInfos, getTableInfo(Database, table.TableName, false))
+		// Parse query result and structure JSON response
+		var tables []TableInfo
+		var currentTable string
+		var tableInfo TableInfo
+		for rows.Next() {
+			var tableName, columnName, dataType string
+			var length sql.NullInt64
+			err := rows.Scan(&tableName, &columnName, &dataType, &length)
+			if err != nil {
+				log.Println("Error scanning row:", err)
+				continue
 			}
+			if tableName != currentTable {
+				if currentTable != "" {
+					tableInfo.TotalColumn = len(tableInfo.ColumnList)
+					tables = append(tables, tableInfo)
+				}
+				tableInfo = TableInfo{
+					TableName:  tableName,
+					ColumnList: make([]ColumnInfo, 0),
+				}
+				currentTable = tableName
+			}
+
+			var fullDataType string
+			if length.Valid {
+				fullDataType = fmt.Sprintf("%s (%d)", dataType, length.Int64)
+			} else {
+				fullDataType = dataType
+			}
+
+			tableInfo.ColumnList = append(tableInfo.ColumnList, ColumnInfo{
+				Name: columnName,
+				Type: fullDataType,
+			})
+		}
+		if currentTable != "" {
+			tableInfo.TotalColumn = len(tableInfo.ColumnList)
+			tables = append(tables, tableInfo)
 		}
 
-		return c.JSON(tableInfos)
+		// Marshal tables slice to JSON
+		jsonData, err := json.Marshal(tables)
+		if err != nil {
+			return c.Status(http.StatusInternalServerError).SendString("Error encoding JSON")
+		}
+
+		// Return JSON response
+		return c.Status(http.StatusOK).Send(jsonData)
 	})
-}
-
-func getTableInfo(db *gorm.DB, name string, isView bool) tableInfo {
-	var totalColumns int
-	var columns []struct{ Field, Type string }
-	if !isView {
-		if result := db.Raw("SHOW COLUMNS FROM " + name).Scan(&columns); result.Error != nil {
-			panic(result.Error)
-		}
-		totalColumns = len(columns)
-	}
-
-	var columnInfos []columnInfo
-	for _, column := range columns {
-		columnType := column.Type
-		// Set a default type if column type is empty
-		if columnType == "" {
-			columnType = "UNKNOWN"
-		}
-		columnInfos = append(columnInfos, columnInfo{Name: column.Field, Type: columnType})
-	}
-
-	return tableInfo{
-		TableName:   name,
-		IsView:      isView,
-		TotalRow:    -1, // You need to implement a method to fetch the total rows
-		TotalColumn: totalColumns,
-		ColumnList:  columnInfos,
-	}
 }
