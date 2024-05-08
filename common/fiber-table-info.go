@@ -51,7 +51,7 @@ func FiberTableInfo(app *fiber.App) {
 				if currentTable != "" {
 					tableInfo.TotalColumn = len(tableInfo.ColumnList)
 					md5Byte, _ := json.Marshal(tableInfo)
-					tableInfo.Md5 = string(md5Byte)
+					tableInfo.Md5 = MD5(string(md5Byte))
 					tables = append(tables, tableInfo)
 				}
 				tableInfo = TableInfo{
@@ -76,7 +76,7 @@ func FiberTableInfo(app *fiber.App) {
 		if currentTable != "" {
 			tableInfo.TotalColumn = len(tableInfo.ColumnList)
 			md5Byte, _ := json.Marshal(tableInfo)
-			tableInfo.Md5 = string(md5Byte)
+			tableInfo.Md5 = MD5(string(md5Byte))
 			tables = append(tables, tableInfo)
 		}
 
