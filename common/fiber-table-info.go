@@ -11,20 +11,20 @@ import (
 	"github.com/spf13/viper"
 )
 
-type TableInfo struct {
-	TableName   string       `json:"table_name"`
-	IsView      bool         `json:"is_view"`
-	TotalColumn int          `json:"total_column"`
-	ColumnList  []ColumnInfo `json:"column_list"`
-	Md5         string       `json:"md5"`
-}
-
-type ColumnInfo struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
-
 func FiberTableInfo(app *fiber.App) {
+	type ColumnInfo struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
+	}
+
+	type TableInfo struct {
+		TableName   string       `json:"table_name"`
+		IsView      bool         `json:"is_view"`
+		TotalColumn int          `json:"total_column"`
+		ColumnList  []ColumnInfo `json:"column_list"`
+		Md5         string       `json:"md5"`
+	}
+
 	app.Get("/tables", func(c *fiber.Ctx) error {
 		DBName := viper.GetString("database.database")
 		rows, err := DatabaseMysql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, 
