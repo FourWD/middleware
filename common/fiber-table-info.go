@@ -16,6 +16,7 @@ type TableInfo struct {
 	IsView      bool         `json:"is_view"`
 	TotalColumn int          `json:"total_column"`
 	ColumnList  []ColumnInfo `json:"column_list"`
+	Md5         string       `json:"md5"`
 }
 
 type ColumnInfo struct {
@@ -49,6 +50,8 @@ func FiberTableInfo(app *fiber.App) {
 			if tableName != currentTable {
 				if currentTable != "" {
 					tableInfo.TotalColumn = len(tableInfo.ColumnList)
+					md5Byte, _ := json.Marshal(tableInfo)
+					tableInfo.Md5 = string(md5Byte)
 					tables = append(tables, tableInfo)
 				}
 				tableInfo = TableInfo{
@@ -72,6 +75,8 @@ func FiberTableInfo(app *fiber.App) {
 		}
 		if currentTable != "" {
 			tableInfo.TotalColumn = len(tableInfo.ColumnList)
+			md5Byte, _ := json.Marshal(tableInfo)
+			tableInfo.Md5 = string(md5Byte)
 			tables = append(tables, tableInfo)
 		}
 
