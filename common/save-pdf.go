@@ -5,7 +5,7 @@ import (
 )
 
 func SavePdf(pdf *gofpdf.Fpdf, fileName string, location string) (string, error) {
-	newFilename := fileName + "_" + DateString()
+	newFilename := fileName + "_" + DateString() + ".pdf"
 	savePath := location + newFilename
 	err := pdf.OutputFileAndClose(savePath)
 	if err != nil {
