@@ -13,7 +13,7 @@ func UploadPdfToGoogle(pdf *gofpdf.Fpdf, filename string, appID string, bucket s
 		return "", err
 	}
 
-	pathUpload, errUpload := UploadFileToGoogle(path+".pdf", "auction", "fourwd-auction")
+	pathUpload, errUpload := UploadFileToGoogle(path, "auction", "fourwd-auction")
 	if errUpload != nil {
 		return "", err
 	}
