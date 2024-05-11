@@ -3,7 +3,7 @@ package orm
 import "github.com/FourWD/middleware/model"
 
 type District struct {
-	ID string `json:"id" query:"id" gorm:"type:varchar(36);primary_key"`
+	ID string `json:"id" query:"id" gorm:"type:varchar(4);primary_key"`
 	model.GormModel
 
 	ProvinceID string `json:"province_id" query:"province_id" gorm:"type:varchar(2)"`
