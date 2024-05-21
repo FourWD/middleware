@@ -28,6 +28,24 @@ func ConnectFirebaseNotification(key string) error {
 	return nil
 }
 
+// config struct message
+var MessageConfig = struct {
+	AndroidConfig *messaging.AndroidConfig
+	APNSConfig    *messaging.APNSConfig
+}{
+	AndroidConfig: &messaging.AndroidConfig{
+		Priority: "high",
+	},
+	APNSConfig: &messaging.APNSConfig{
+		Headers: map[string]string{"apns-priority": "10"},
+		Payload: &messaging.APNSPayload{
+			Aps: &messaging.Aps{
+				Sound: "default",
+			},
+		},
+	},
+}
+
 func SendMessageToUser(userToken string, title string, body string, data map[string]string) error {
 	// Access title and body directly from the data map
 
@@ -38,17 +56,8 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 			Title: title,
 			Body:  body,
 		},
-		Android: &messaging.AndroidConfig{
-			Priority: "high",
-		},
-		APNS: &messaging.APNSConfig{
-			Headers: map[string]string{"apns-priority": "10"},
-			Payload: &messaging.APNSPayload{
-				Aps: &messaging.Aps{
-					Sound: "default",
-				},
-			},
-		},
+		Android: MessageConfig.AndroidConfig,
+		APNS:    MessageConfig.APNSConfig,
 	}
 
 	result, err := FirebaseMessageClient.Send(context.Background(), message)
