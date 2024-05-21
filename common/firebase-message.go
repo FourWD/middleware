@@ -38,6 +38,17 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 			Title: title,
 			Body:  body,
 		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+		},
+		APNS: &messaging.APNSConfig{
+			Headers: map[string]string{"apns-priority": "10"},
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					Sound: "default",
+				},
+			},
+		},
 	}
 
 	result, err := FirebaseMessageClient.Send(context.Background(), message)
