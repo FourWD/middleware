@@ -84,8 +84,7 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 
 //		return nil
 //	}
-func AddUserToSubscription(userToken string, topic string) error {
-	fmt.Printf("UserToken: %s, Topic: %s\n", userToken, topic)
+func AddUserToSubscription(topic string, userID string, userToken string) error {
 
 	var existingTopic orm.NotificationTopic
 	err := Database.Where("name = ?", topic).First(&existingTopic).Error
@@ -99,6 +98,15 @@ func AddUserToSubscription(userToken string, topic string) error {
 			if err := Database.Debug().Create(&notificationTopic).Error; err != nil {
 				log.Fatalf("failed to insert notification topic: %v\n", err)
 			}
+
+			notificationTopicUser := orm.NotificationTopicUser{
+				ID:                  uuid.NewString(),
+				NotificationTopicID: notificationTopic.ID,
+				UserID:              userID,
+			}
+			if err := Database.Debug().Create(&notificationTopicUser).Error; err != nil {
+				log.Fatalf("failed to insert notification topic user: %v\n", err)
+			}
 		} else {
 			log.Fatalf("failed to check existing topic: %v\n", err)
 		}
@@ -111,14 +119,43 @@ func AddUserToSubscription(userToken string, topic string) error {
 	return nil
 }
 
-func RemoveUserFromSubscription(userToken string, topic string) error { // เอาคน (topic) ออก กรุป auction
-	fmt.Printf("UserToken: %s, Topic: %s\n", userToken, topic)
+// func RemoveUserFromSubscription(topic string, userID string, userToken string) error { // เอาคน (topic) ออก กรุป auction
+// 	fmt.Printf("UserToken: %s, Topic: %s\n", userToken, topic)
+
+// 	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
+// 	if err != nil {
+// 		log.Fatalf("error unsubscribing user from topic: %v\n", err)
+// 		return err
+// 	}
+// 	return nil
+// }
+
+func RemoveUserFromSubscription(topic string, userID string, userToken string) error { // เอาคน (topic) ออก กรุป auction
+	fmt.Printf("UserToken: %s, userID: %s, Topic: %s\n", userToken, userID, topic)
 
 	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
 		log.Fatalf("error unsubscribing user from topic: %v\n", err)
 		return err
 	}
+	var notificationTopicID string
+	err = Database.Table("notification_topics").Select("id").Where("name = ?", topic).Scan(&notificationTopicID).Error
+	if err != nil {
+		log.Fatalf("error finding notification topic ID: %v\n", err)
+		return err
+	}
+
+	if notificationTopicID == "" {
+		log.Fatalf("notification topic ID not found for topic: %s\n", topic)
+		return fmt.Errorf("notification topic ID not found for topic: %s", topic)
+	}
+
+	err = Database.Where("notification_topic_id = ? AND user_id = ?", notificationTopicID, userID).Unscoped().Debug().Delete(&orm.NotificationTopicUser{}).Error
+	if err != nil {
+		log.Fatalf("error removing user from topic in database: %v\n", err)
+		return err
+	}
+
 	return nil
 }
 
