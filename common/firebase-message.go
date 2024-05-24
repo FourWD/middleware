@@ -88,24 +88,27 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 		ID:   uuid.NewString(),
 		Name: topic,
 	}
+
 	if err := Database.Debug().Create(&notificationTopic).Error; err != nil {
-		log.Fatalf("failed to insert notification topic: %v\n", err)
+		log.Println("failed to insert notification topic: ", err)
 	}
-	if err := Database.Where("name = ?", topic).First(&notificationTopic).Error; err != nil {
-		log.Fatalf("failed to insert notification topic: %v\n", err)
+
+	var notification orm.NotificationTopic
+	if err := Database.Where("name = ?", topic).First(&notification).Error; err != nil {
+		log.Println("failed to insert notification topic: ", err)
 	}
-	if notificationTopic.ID != "" {
+	if notification.ID != "" {
 		notificationTopicUser := orm.NotificationTopicUser{
 			ID:                  uuid.NewString(),
-			NotificationTopicID: notificationTopic.ID,
+			NotificationTopicID: notification.ID,
 			UserID:              userID,
 		}
 		if err := Database.Debug().Create(&notificationTopicUser).Error; err != nil {
-			log.Fatalf("failed to insert notification user topic user: %v\n", err)
+			log.Println("failed to insert notification user topic user: ", err)
 		}
 		_, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic)
 		if err != nil {
-			log.Fatalf("error subscribing user to topic: %v\n", err)
+			log.Println("error subscribing user to topic: ", err)
 			return err
 
 		}
