@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 
@@ -12,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/api/option"
-	"gorm.io/gorm"
 )
 
 var FirebaseMessageClient *messaging.Client
@@ -86,35 +84,33 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 //	}
 func AddUserToSubscription(topic string, userID string, userToken string) error {
 
-	var existingTopic orm.NotificationTopic
-	err := Database.Where("name = ?", topic).First(&existingTopic).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// ถ้า topic ไม่มีอยู่ ให้สร้าง topic ใหม่
-			notificationTopic := orm.NotificationTopic{
-				ID:   uuid.NewString(),
-				Name: topic,
-			}
-			if err := Database.Debug().Create(&notificationTopic).Error; err != nil {
-				log.Fatalf("failed to insert notification topic: %v\n", err)
-			}
-			notificationTopicUser := orm.NotificationTopicUser{
-				ID:                  uuid.NewString(),
-				NotificationTopicID: notificationTopic.ID,
-				UserID:              userID,
-			}
-			if err := Database.Debug().Create(&notificationTopicUser).Error; err != nil {
-				log.Fatalf("failed to insert notification user topic user: %v\n", err)
-			}
-		} else {
-			log.Fatalf("failed to check existing topic: %v\n", err)
+	notificationTopic := orm.NotificationTopic{
+		ID:   uuid.NewString(),
+		Name: topic,
+	}
+	if err := Database.Debug().Create(&notificationTopic).Error; err != nil {
+		log.Fatalf("failed to insert notification topic: %v\n", err)
+	}
+	if err := Database.Where("name = ?", topic).First(&notificationTopic).Error; err != nil {
+		log.Fatalf("failed to insert notification topic: %v\n", err)
+	}
+	if notificationTopic.ID != "" {
+		notificationTopicUser := orm.NotificationTopicUser{
+			ID:                  uuid.NewString(),
+			NotificationTopicID: notificationTopic.ID,
+			UserID:              userID,
+		}
+		if err := Database.Debug().Create(&notificationTopicUser).Error; err != nil {
+			log.Fatalf("failed to insert notification user topic user: %v\n", err)
+		}
+		_, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic)
+		if err != nil {
+			log.Fatalf("error subscribing user to topic: %v\n", err)
+			return err
+
 		}
 	}
-	_, err = FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic)
-	if err != nil {
-		log.Fatalf("error subscribing user to topic: %v\n", err)
-		return err
-	}
+
 	return nil
 }
 
