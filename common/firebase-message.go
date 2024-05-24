@@ -98,14 +98,13 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 			if err := Database.Debug().Create(&notificationTopic).Error; err != nil {
 				log.Fatalf("failed to insert notification topic: %v\n", err)
 			}
-
 			notificationTopicUser := orm.NotificationTopicUser{
 				ID:                  uuid.NewString(),
 				NotificationTopicID: notificationTopic.ID,
 				UserID:              userID,
 			}
 			if err := Database.Debug().Create(&notificationTopicUser).Error; err != nil {
-				log.Fatalf("failed to insert notification topic user: %v\n", err)
+				log.Fatalf("failed to insert notification user topic user: %v\n", err)
 			}
 		} else {
 			log.Fatalf("failed to check existing topic: %v\n", err)
