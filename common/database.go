@@ -30,6 +30,7 @@ func CreateDSN(isGCP bool, dsn DNS) string {
 		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
 		setting += "&loc=Local"
 	}
+	log.Printf("Database: %s", dsn.Database)
 	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
 }
 
