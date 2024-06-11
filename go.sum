@@ -22,6 +22,8 @@ github.com/FourWD/auction.middleware v1.6.75 h1:KNDNROslcR27IjSHAxNBN7vxcwUK/cCN
 github.com/FourWD/auction.middleware v1.6.75/go.mod h1:5bFBdHYHwuG+IS4uxXGlihEUQIXqOml5+e5V7T7MZxg=
 github.com/FourWD/auction.middleware v1.6.76 h1:oTrJl3WTpi1FFZ8DbgSKVGYOhkPziECmDEN2q661TLE=
 github.com/FourWD/auction.middleware v1.6.76/go.mod h1:5bFBdHYHwuG+IS4uxXGlihEUQIXqOml5+e5V7T7MZxg=
+github.com/FourWD/auction.middleware v1.6.96 h1:esl5bdtjNPmWHH2MqQvQGuJzQcVS2dc2U2zvkUbXRl8=
+github.com/FourWD/auction.middleware v1.6.96/go.mod h1:5bFBdHYHwuG+IS4uxXGlihEUQIXqOml5+e5V7T7MZxg=
 github.com/MicahParks/keyfunc v1.9.0 h1:lhKd5xrFHLNOWrDc4Tyb/Q1AJ4LCzQ48GVJyVIID3+o=
 github.com/MicahParks/keyfunc v1.9.0/go.mod h1:IdnCilugA0O/99dW+/MkvlyrsX8+L8+x95xuVNtM5jw=
 github.com/Shopify/sarama v1.38.1 h1:lqqPUPQZ7zPqYlWpTh+LQ9bhYNu2xJL6k1SJN4WVe2A=
