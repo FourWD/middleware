@@ -51,7 +51,7 @@ var MessageConfig = struct {
 
 func SendMessageToUser(userToken string, title string, body string, data map[string]string) error {
 	// Access title and body directly from the data map
-
+	//
 	message := &messaging.Message{
 		Data:  data,
 		Token: userToken,
