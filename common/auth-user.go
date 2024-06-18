@@ -3,7 +3,6 @@ package common
 import (
 	"errors"
 	"strings"
-	"sync"
 
 	"github.com/FourWD/middleware/orm"
 	"github.com/gofiber/fiber/v2"
@@ -76,21 +75,4 @@ func Logout(c *fiber.Ctx) error {
 		Token: token,
 	}).Error
 
-}
-
-var tokenBlacklist = make(map[string]bool)
-var blacklistLock sync.Mutex
-
-func LogoutDriver(token string) error {
-	blacklistLock.Lock()
-	defer blacklistLock.Unlock()
-	tokenBlacklist[token] = true
-	return nil
-}
-
-func IsTokenBlacklisted(token string) (bool, error) {
-	blacklistLock.Lock()
-	defer blacklistLock.Unlock()
-	isBlacklisted := tokenBlacklist[token]
-	return isBlacklisted, nil
 }

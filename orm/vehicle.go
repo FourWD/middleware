@@ -47,7 +47,6 @@ type Vehicle struct {
 	ContractNumber     string    `json:"contract_number" query:"contract_number" gorm:"type:varchar(20)"`
 	ContractDate       time.Time `json:"contract_date" query:"contract_date"`
 	//VehiclePickupDate     time.Time `json:"vehicle_pickup_date" query:"vehicle_pickup_date"`
-	//VehicleAuctionReceipt string    `json:"vehicle_auction_receipt" query:"vehicle_auction_receipt" gorm:"type:varchar(20)"` // เลขที่ใบรับรถขายทอดตลาด
 	Accessories           string `json:"accessories" query:"accessories" gorm:"type:varchar(500)"`
 	PeriodOfUse           int    `json:"period_of_use" query:"period_of_use" gorm:"type:int(2)"`
 	Display               bool   `json:"display" query:"display" gorm:"type:bool"`
