@@ -72,16 +72,6 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 	return nil
 }
 
-// func AddUserToSubscription(userToken string, topic string) error { // เอาคน (topic) เข้า กรุป auction
-// 	fmt.Printf("UserToken: %s, Topic: %s\n", userToken, topic)
-// 	_, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic)
-// 	if err != nil {
-// 		log.Fatalf("error subscribing user to topic: %v\n", err)
-// 		return err
-// 	}
-
-//		return nil
-//	}
 func AddUserToSubscription(topic string, userID string, userToken string) error {
 
 	notificationTopic := orm.NotificationTopic{
@@ -117,18 +107,7 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 	return nil
 }
 
-// func RemoveUserFromSubscription(topic string, userID string, userToken string) error { // เอาคน (topic) ออก กรุป auction
-// 	fmt.Printf("UserToken: %s, Topic: %s\n", userToken, topic)
-
-// 	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
-// 	if err != nil {
-// 		log.Fatalf("error unsubscribing user from topic: %v\n", err)
-// 		return err
-// 	}
-// 	return nil
-// }
-
-func RemoveUserFromSubscription(topic string, userID string, userToken string) error { // เอาคน (topic) ออก กรุป auction
+func RemoveUserFromSubscription(topic string, userID string, userToken string) error {
 	fmt.Printf("UserToken: %s, userID: %s, Topic: %s\n", userToken, userID, topic)
 
 	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
@@ -160,7 +139,6 @@ func RemoveUserFromSubscription(topic string, userID string, userToken string) e
 func SendMessageToSubscriber(topic string, title string, body string, data map[string]string) error {
 	Print("data", title)
 	message := &messaging.Message{
-		// Title Body // R001 = ประกาศผล
 		Data:  data,
 		Topic: topic, // all_users
 		Notification: &messaging.Notification{
