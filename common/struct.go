@@ -22,5 +22,10 @@ func StructToJson(data interface{}) (string, error) {
 	}
 	jsonString := string(jsonData)
 	jsonString = strings.Replace(jsonString, `\"`, `"`, -1)
+
+	if jsonString == "null" {
+		jsonString = ""
+	}
+
 	return jsonString, nil
 }
