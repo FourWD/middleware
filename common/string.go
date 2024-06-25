@@ -12,7 +12,7 @@ import (
 
 func DateString() string {
 	currentTime := time.Now()
-	return currentTime.Format("20060102150405")
+	return currentTime.Format("20060102")
 }
 
 func DateToString(t time.Time) string {
