@@ -2,13 +2,13 @@ package common
 
 import "github.com/jung-kurt/gofpdf"
 
-func UploadPdfToGoogle(pdf *gofpdf.Fpdf, filename string, appID string, bucket string) (string, error) {
+func UploadPdfToGoogle(pdf *gofpdf.Fpdf, filename string, appID string, bucket string, auctionID string) (string, error) {
 	localPath := "tmp/"
 	if App.GaeService != "" {
 		localPath = "/tmp/"
 	}
 
-	path, err := SavePdf(pdf, filename, localPath)
+	path, err := SavePdf(pdf, filename, localPath, auctionID)
 	if err != nil {
 		return "", err
 	}
