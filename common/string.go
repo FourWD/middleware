@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"time"
@@ -12,7 +13,18 @@ import (
 
 func DateString() string {
 	currentTime := time.Now()
-	return currentTime.Format("20060102")
+	dateString := currentTime.Format("20060102")
+	randomDigits := generateRandomDigits(2)
+	return dateString + randomDigits
+}
+
+func generateRandomDigits(count int) string {
+	rand.Seed(time.Now().UnixNano())
+	result := ""
+	for i := 0; i < count; i++ {
+		result += fmt.Sprintf("%d", rand.Intn(10)) // เลขสุ่มระหว่าง 0-9
+	}
+	return result
 }
 
 func DateToString(t time.Time) string {
