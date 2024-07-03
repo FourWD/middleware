@@ -157,6 +157,9 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, error) 
 		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
 	}
 
+	// Log the SQL query and values for debugging
+	log.Printf("Executing SQL: %s, with values: %v", sql, values)
+
 	rows, err := db.Query(sql, values...)
 	if err != nil {
 		return nil, err
