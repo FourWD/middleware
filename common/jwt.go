@@ -3,7 +3,6 @@ package common
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/FourWD/middleware/orm"
 	"github.com/dgrijalva/jwt-go"
@@ -11,44 +10,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-// var (
-// 	//viper.GetString("jwt_secret_key")
-// 	// secretKey     = []byte("your-secret-key")
-// 	// refreshSecret = []byte("your-refresh-secret")
-// 	secretKey     = []byte(viper.GetString("jwt_secret_key"))
-// 	refreshSecret = []byte(viper.GetString("jwt_refresh_secret_key"))
-// )
-
-// JWTClaims struct represents the claims we want to include in the token.
-type JWTClaims struct {
-	UserID string            `json:"user_id"`
-	Role   string            `json:"role"`
-	Remark map[string]string `json:"remark"`
-	jwt.StandardClaims
-}
-
-func GenerateJWTToken(userID string, role string, remark map[string]string, expiresIn time.Duration) (string, error) {
-	key := []byte(viper.GetString("jwt_secret_key"))
-
-	claims := JWTClaims{
-		UserID: userID,
-		Role:   role,
-		Remark: remark,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(expiresIn).Unix(),
-		},
+func AuthenticationMiddleware(c *fiber.Ctx) error {
+	if isPublicPath(c) {
+		return c.Next()
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString(key)
-	if err != nil {
-		return "", err
-	}
-
-	return signedToken, nil
+	return checkAuth(c)
 }
 
-func IsPublicPath(c *fiber.Ctx) bool {
+func isPublicPath(c *fiber.Ctx) bool {
 	publicPaths := viper.GetStringSlice("public_path")
 	log.Println("full_path:", c.Path())
 	path := getLastPathComponent(c.Path())
@@ -57,11 +27,7 @@ func IsPublicPath(c *fiber.Ctx) bool {
 	return StringExistsInList(path, publicPaths)
 }
 
-func AuthenticationMiddleware(c *fiber.Ctx) error {
-	if IsPublicPath(c) {
-		return c.Next()
-	}
-
+func checkAuth(c *fiber.Ctx) error {
 	// Extract token from the Authorization header
 	authHeader := c.Get("Authorization")
 	if authHeader == "" {
@@ -69,7 +35,7 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 	}
 
 	// Check Blacklist
-	if !IsJwtValid(authHeader) {
+	if !isJwtValid(authHeader) {
 		return c.Status(http.StatusUnauthorized).SendString("token blacklist")
 	}
 
@@ -95,6 +61,12 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 	// Token is valid, do something with the claims
 	c.Locals("user", claims)
 	return c.Next()
+}
+
+func isJwtValid(token string) bool {
+	var bl orm.JwtBlacklist
+	result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
+	return result.RowsAffected == 0
 }
 
 // func refreshTokenHandler(c *fiber.Ctx) error {
@@ -195,22 +167,6 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 // 		return c.JSON(fiber.Map{"user_id": userClaims.UserID})
 // 	})
 // }
-
-func GetSessionUserID(c *fiber.Ctx) string {
-	userClaims := c.Locals("user").(*JWTClaims)
-	return userClaims.UserID //
-}
-
-func GetSession(c *fiber.Ctx) *JWTClaims {
-	userClaims := c.Locals("user").(*JWTClaims)
-	return userClaims
-}
-
-func IsJwtValid(token string) bool {
-	var bl orm.JwtBlacklist
-	result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
-	return result.RowsAffected == 0
-}
 
 // func authenticate(username, password string) (orm.User, bool) {
 // 	var user orm.User
