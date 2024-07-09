@@ -9,9 +9,9 @@ import (
 
 func AuthenticationMiddlewareV2(c *fiber.Ctx) error {
 	if isPublicPathV2(c) {
+		log.Println("public path")
 		return c.Next()
 	}
-
 	return checkAuth(c)
 }
 

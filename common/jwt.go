@@ -12,9 +12,9 @@ import (
 
 func AuthenticationMiddleware(c *fiber.Ctx) error {
 	if isPublicPath(c) {
+		log.Println("public path")
 		return c.Next()
 	}
-
 	return checkAuth(c)
 }
 
@@ -28,6 +28,7 @@ func isPublicPath(c *fiber.Ctx) bool {
 }
 
 func checkAuth(c *fiber.Ctx) error {
+	log.Println("checkAuth (private path)")
 	// Extract token from the Authorization header
 	authHeader := c.Get("Authorization")
 	if authHeader == "" {
