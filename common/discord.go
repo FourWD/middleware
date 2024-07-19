@@ -52,6 +52,14 @@ func DiscordCheckOnlineStatus(status string) string {
 	return "offline"
 }
 
+func DiscordUsername(s *discordgo.Session, userID string) string {
+	user, err := s.User(userID)
+	if err != nil {
+		return ""
+	}
+	return user.Username
+}
+
 func DiscordChannelName(s *discordgo.Session, channelID string) string {
 	channel, err := s.Channel(channelID)
 	if err != nil {
