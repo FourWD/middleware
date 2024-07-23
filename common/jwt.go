@@ -36,7 +36,7 @@ func checkAuth(c *fiber.Ctx) error {
 	}
 
 	// Check Blacklist
-	if !isJwtValid(authHeader) {
+	if !IsJwtValid(authHeader) {
 		return c.Status(http.StatusUnauthorized).SendString("token blacklist")
 	}
 
@@ -64,7 +64,7 @@ func checkAuth(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func isJwtValid(token string) bool {
+func IsJwtValid(token string) bool {
 	var bl orm.JwtBlacklist
 	result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
 	return result.RowsAffected == 0
