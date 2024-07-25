@@ -29,7 +29,7 @@ func FiberReviewPayload(c *fiber.Ctx) error {
 }
 
 func FiberSuccess(c *fiber.Ctx) error {
-	Print("FiberSuccess", getFiberInfo(c))
+	// Print("FiberSuccess", getFiberInfo(c))
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
 }
 
