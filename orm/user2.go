@@ -23,7 +23,7 @@ type User2 struct {
 	Facebook                 []byte    `json:"facebook" query:"facebook" gorm:"type:blob"`
 	Line                     []byte    `json:"line" query:"line" gorm:"type:blob"`
 	Tiktok                   []byte    `json:"tiktok" query:"tiktok" gorm:"type:blob"`
-	RunningNo                int       `json:"running_no" query:"running_no" gorm:"type:int"`
+	RunningNo                int       `json:"running_no" query:"running_no" gorm:"primary_key;auto_increment;not_null"`
 	CountWrongLogin          int       `json:"count_wrong_login" query:"count_wrong_login" gorm:"type:int(1)"`
 	LastLoginDate            time.Time `json:"last_login_date" query:"last_login_date"`
 	LastReadNotificationDate time.Time `json:"last_read_notification_date" query:"last_read_notification_date"`

@@ -7,7 +7,7 @@ import (
 )
 
 type Po struct {
-	ID string `json:"id" query:"id" gorm:"type:varchar(36);"` //
+	ID string `json:"id" query:"id" gorm:"type:varchar(36);uniqueIndex:idx_id"`
 
 	model.GormModel
 
