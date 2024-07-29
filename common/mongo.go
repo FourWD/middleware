@@ -9,22 +9,33 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var MongoCtx context.Context
-var MongoClient *mongo.Client
+var DatabaseMongo *MongoDB
 
-func ConnectMongo(key string) {
+type MongoDB struct {
+	Client   *mongo.Client
+	Database *mongo.Database
+	Ctx      context.Context
+}
+
+func ConnectMongo(key string, databaseName string) {
 	clientOptions := options.Client().ApplyURI(key)
-	MongoCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	MongoClient, err := mongo.Connect(MongoCtx, clientOptions)
+	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer func() {
-		if err = MongoClient.Disconnect(MongoCtx); err != nil {
+		if err = client.Disconnect(ctx); err != nil {
 			log.Fatal(err)
 		}
 	}()
+
+	DatabaseMongo.Client = client
+	DatabaseMongo.Database = client.Database(databaseName)
+	DatabaseMongo.Ctx = ctx
+
+	log.Printf("Connected to MongoDB! [%s]", databaseName)
 }
