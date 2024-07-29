@@ -27,6 +27,10 @@ func ConnectMongo(key string, databaseName string) {
 		log.Fatal(err)
 	}
 
+	if err = client.Ping(ctx, nil); err != nil {
+		log.Fatal(err)
+	}
+
 	defer func() {
 		if err = client.Disconnect(ctx); err != nil {
 			log.Fatal(err)
@@ -37,5 +41,5 @@ func ConnectMongo(key string, databaseName string) {
 	DatabaseMongo.Database = client.Database(databaseName)
 	DatabaseMongo.Ctx = ctx
 
-	log.Printf("Connected to MongoDB! [%s]", databaseName)
+	log.Printf("CONNECT MONGO-DB SUCCESS [%s]", databaseName)
 }
