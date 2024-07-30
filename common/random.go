@@ -1,9 +1,9 @@
 package common
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"math/rand"
 )
 
 // var charset = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -29,5 +29,9 @@ func RandomString(length int) string {
 	}
 	// Encode the random bytes as a base64 string.
 	randomString := base64.RawURLEncoding.EncodeToString(randomBytes)
+	// Trim the string to the desired length if necessary.
+	if len(randomString) > length {
+		randomString = randomString[:length]
+	}
 	return randomString
 }
