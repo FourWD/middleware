@@ -2,8 +2,7 @@ package common
 
 import "math"
 
-func CalDistance(lat1, lon1, lat2, lon2 float64) float64 {
-
+func FindDistance(lat1, lon1, lat2, lon2 float64) float64 {
 	const R = 6371
 
 	dLat := (lat2 - lat1) * (math.Pi / 180.0)

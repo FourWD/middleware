@@ -69,9 +69,6 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...erro
 // }
 
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
-	// Print(fmt.Sprintf("Fiber Query [UserID: %s]", GetSessionUserID(c)), fmt.Sprintf("Query: %s", sql))
-	//Print("Fiber Query", fmt.Sprintf("Query: %s", sql))
-
 	jsonBytes, err := queryToJSON(db, sql, values...)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
@@ -82,6 +79,28 @@ func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...inte
 
 func FiberQuery(c *fiber.Ctx, sql string, values ...interface{}) error {
 	return FiberQueryWithCustomDB(c, DatabaseMysql, sql, values...)
+}
+
+func FiberQueryWithCustomDBLimit1(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
+	jsonBytes, err := queryToJSON(db, sql, values...)
+	var result []map[string]interface{}
+	if json.Unmarshal(jsonBytes, &result); err != nil {
+		fmt.Println("Error parsing JSON:", err)
+		return FiberError(c, "1001", "sql error")
+	}
+
+	if len(result) == 1 {
+		firstRow := result[0]
+		if firstRowJSON, err := json.Marshal(firstRow); err == nil {
+			return FiberSendData(c, string(firstRowJSON))
+		}
+	}
+
+	return FiberSendData(c, "")
+}
+
+func FiberQueryLimit1(c *fiber.Ctx, sql string, values ...interface{}) error {
+	return FiberQueryWithCustomDBLimit1(c, DatabaseMysql, sql, values...)
 }
 
 func FiberSendData(c *fiber.Ctx, json string) error {
