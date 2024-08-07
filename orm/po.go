@@ -62,4 +62,7 @@ type Po struct {
 	Remark             string    `json:"remark" query:"remark" gorm:"type:text"`
 
 	RunningNo int `json:"running_no" query:"running_no" gorm:"primary_key;auto_increment;not_null"`
+
+	IsGenPo   bool      `json:"is_gen_po" query:"is_gen_po" firestore:"is_gen_po" bson:"is_gen_po" gorm:"type:bool"`
+	GenPoDate time.Time `json:"gen_po_date" query:"gen_po_date" firestore:"gen_po_date" bson:"gen_po_date"`
 }
