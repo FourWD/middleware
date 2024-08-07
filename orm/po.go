@@ -26,6 +26,7 @@ type Po struct {
 	Salary     int    `json:"salary" query:"salary" gorm:"type:int"`
 	IsUseCar   bool   `json:"is_use_car" query:"is_use_car" gorm:"type:bool"`
 
+	AuctionID                string `json:"auction_id" query:"auction_id" gorm:"type:varchar(36)"`
 	VehicleID                string `json:"vehicle_id" query:"vehicle_id" gorm:"type:varchar(36)"`
 	VehicleModelID           string `json:"vehicle_model_id" query:"vehicle_model_id" gorm:"type:varchar(36)"`
 	VehicleSubModelID        string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
