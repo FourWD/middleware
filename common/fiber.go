@@ -177,7 +177,7 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, error) 
 	}
 
 	// Log the SQL query and values for debugging
-	log.Printf("Executing SQL: %s, with values: %v", sql, values)
+	// log.Printf("Executing SQL: %s, with values: %v", sql, values)
 
 	rows, err := db.Query(sql, values...)
 	if err != nil {

@@ -19,15 +19,15 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 
 func isPublicPath(c *fiber.Ctx) bool {
 	publicPaths := viper.GetStringSlice("public_path")
-	log.Println("full_path:", c.Path())
+	// log.Println("full_path:", c.Path())
 	path := getLastPathComponent(c.Path())
-	log.Println("path:", path)
-	log.Println("publicPaths:", publicPaths)
+	// log.Println("path:", path)
+	// log.Println("publicPaths:", publicPaths)
 	return StringExistsInList(path, publicPaths)
 }
 
 func checkAuth(c *fiber.Ctx) error {
-	log.Println("checkAuth (private path)")
+	// log.Println("checkAuth (private path)")
 	// Extract token from the Authorization header
 	authHeader := c.Get("Authorization")
 	if authHeader == "" {
