@@ -25,7 +25,7 @@ type UserAuthorization struct {
 func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) UserAuthorization {
 	path := getLastPathComponent(c.Path())
 	defaultExcludePath := []string{"login", "logout", "register", "wake-up", "warmup"}
-	Print("CheckUserAuthorization", path)
+	// Print("CheckUserAuthorization", path)
 
 	if StringExistsInList(path, defaultExcludePath) {
 		return UserAuthorization{IsSuccess: true, Code: "200", Message: "ok"}
@@ -40,18 +40,18 @@ func CheckUserAuthorization(c *fiber.Ctx, db *gorm.DB, excludePath ...[]string) 
 	bearerToken := c.Get("Authorization")
 	token := strings.Replace(bearerToken, "Bearer ", "", 1)
 	if token == "" {
-		PrintError("LogUserLogin invalid request", token)
+		// PrintError("LogUserLogin invalid request", token)
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "invalid request"}
 	}
 
 	var logUserLogin orm.LogUserLogin
 	if err := db.Where("token = ?", token).Order("created_at DESC").First(&logUserLogin).Error; err != nil {
-		PrintError("LogUserLogin not found", token)
+		// PrintError("LogUserLogin not found", token)
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "log_login not found"}
 	}
 
 	if logUserLogin.ID == "" {
-		PrintError("LogUserLogin unauthorized", token)
+		// PrintError("LogUserLogin unauthorized", token)
 		return UserAuthorization{IsSuccess: false, Code: "401", Message: "unauthorized"}
 	}
 

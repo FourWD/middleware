@@ -24,7 +24,7 @@ func FiberNoSniff(c *fiber.Ctx) error {
 
 func FiberReviewPayload(c *fiber.Ctx) error {
 	//return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "review your payload"})
-	PrintError("FiberReviewPayload", "")
+	// PrintError("FiberReviewPayload", "")
 	return FiberError(c, "1002", "review your payload")
 }
 
@@ -41,10 +41,10 @@ func FiberSuccess(c *fiber.Ctx) error {
 } */
 
 func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string) error {
-	logDesc := getFiberInfo(c)
-	logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
-	logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
-	PrintError("FiberError", logDesc)
+	// logDesc := getFiberInfo(c)
+	// logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
+	// logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
+	// PrintError("FiberError", logDesc)
 	return c.Status(status).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
 }
 
@@ -130,7 +130,7 @@ func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
 
 	result := Database.Exec(`UPDATE ? SET deleted_at = now(), deleted_by = ? WHERE id = ?`, tableName, payload.DeleteBy, payload.ID)
 	if result.Error != nil {
-		PrintError(`FiberDelete`, result.Error.Error())
+		// PrintError(`FiberDelete`, result.Error.Error())
 		return FiberError(c, "1001", "sql error")
 	} //fmt.Println("Affected Rows:", result.RowsAffected)
 
@@ -155,7 +155,7 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 
 	result := Database.Exec(`DELETE FROM ? WHERE id = ?`, tableName, payload.ID)
 	if result.Error != nil {
-		PrintError(`FiberDeletePermanent`, result.Error.Error())
+		// PrintError(`FiberDeletePermanent`, result.Error.Error())
 		return FiberError(c, "1001", "sql error")
 	}
 
@@ -165,7 +165,7 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 func FiberWarmUp(app *fiber.App) {
 	app.Get("/_ah/warmup", func(c *fiber.Ctx) error {
 		message := "Warm-up request succeeded"
-		fmt.Println(message)
+		// fmt.Println(message)
 		return c.Status(http.StatusOK).SendString(message)
 	})
 }
