@@ -248,6 +248,10 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, error) 
 	return false
 } */
 
+func PrintFiberInfo(c *fiber.Ctx) {
+	log.Println(getFiberInfo(c))
+}
+
 func getFiberInfo(c *fiber.Ctx) string {
 	logDesc := fmt.Sprintf("API Path: %s", c.Path())
 	logDesc += fmt.Sprintf("\n Method: %s", c.Method())
