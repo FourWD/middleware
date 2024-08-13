@@ -83,7 +83,7 @@ func IsJwtValid(token string) bool {
 	for _, blacklistedToken := range blacklist {
 		blacklistedToken300 := blacklistedToken[len(blacklistedToken)-300:]
 
-		log.Printf("%d : NewToken=%s Blacklist=%s", i, token, blacklistedToken)
+		log.Printf("%d : NewToken=%s Blacklist=%s", i, token300, blacklistedToken300)
 		if blacklistedToken300 == token300 {
 			return false // Token is blacklisted
 		}
