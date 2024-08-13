@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"sync"
 
@@ -67,7 +68,6 @@ func getLastPathComponent(path string) string {
 }
 
 func Logout(c *fiber.Ctx) error {
-
 	token := c.Get("Authorization")
 
 	if token == "" {
@@ -83,6 +83,7 @@ func Logout(c *fiber.Ctx) error {
 }
 
 func addJwtBlacklist(token string) error {
+	log.Println("addJwtBlacklist:", token)
 	mu.Lock()
 	defer mu.Unlock()
 

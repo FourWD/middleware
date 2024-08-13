@@ -73,8 +73,9 @@ func IsJwtValid(token string) bool {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	// Check if the token is in the blacklist
+	i := 0
 	for _, blacklistedToken := range blacklist {
+		log.Printf("%d : NewToken=%s Blacklist=%s", i, token, blacklistedToken)
 		if blacklistedToken == token {
 			return false // Token is blacklisted
 		}
