@@ -2,7 +2,6 @@ package common
 
 import (
 	"errors"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -13,7 +12,7 @@ func GetNotiToken(c *fiber.Ctx) (string, error) {
 	if notiToken == "" {
 		session := GetSession(c)
 		if session == nil {
-			log.Println("session is nil")
+			return "", nil
 		}
 
 		if value, ok := session.Remark["noti_token"]; ok {
