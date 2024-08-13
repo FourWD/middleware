@@ -70,6 +70,7 @@ func checkAuth(c *fiber.Ctx) error {
 // }
 
 func IsJwtValid(token string) bool {
+	log.Printf("IsJwtValid %s", token)
 	mu.RLock()
 	defer mu.RUnlock()
 
