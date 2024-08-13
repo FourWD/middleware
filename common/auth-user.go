@@ -3,11 +3,16 @@ package common
 import (
 	"errors"
 	"strings"
+	"sync"
 
 	"github.com/FourWD/middleware/orm"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
+)
+
+var (
+	mu        sync.RWMutex
+	blacklist []string
 )
 
 type UserAuthorization struct {
@@ -69,10 +74,26 @@ func Logout(c *fiber.Ctx) error {
 		return errors.New("no token")
 	}
 
-	return Database.Model(&orm.JwtBlacklist{}).Create(&orm.JwtBlacklist{
-		ID:    uuid.NewString(),
-		Md5:   MD5(token),
-		Token: token,
-	}).Error
+	// return Database.Model(&orm.JwtBlacklist{}).Create(&orm.JwtBlacklist{
+	// 	ID:    uuid.NewString(),
+	// 	Md5:   MD5(token),
+	// 	Token: token,
+	// }).Error
+	return addJwtBlacklist(token)
+}
 
+func addJwtBlacklist(token string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Check if the blacklist has reached its max size
+	maxBlacklistSize := 100
+	if len(blacklist) >= maxBlacklistSize {
+		// Remove the oldest token (first in the slice)
+		blacklist = blacklist[1:]
+	}
+
+	// Add the new token to the end of the slice
+	blacklist = append(blacklist, token)
+	return nil
 }

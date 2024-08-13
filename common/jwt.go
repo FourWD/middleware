@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/FourWD/middleware/orm"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
@@ -64,10 +63,23 @@ func checkAuth(c *fiber.Ctx) error {
 	return c.Next()
 }
 
+// func IsJwtValid(token string) bool {
+// 	var bl orm.JwtBlacklist
+// 	result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
+// 	return result.RowsAffected == 0
+// }
+
 func IsJwtValid(token string) bool {
-	var bl orm.JwtBlacklist
-	result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
-	return result.RowsAffected == 0
+	mu.RLock()
+	defer mu.RUnlock()
+
+	// Check if the token is in the blacklist
+	for _, blacklistedToken := range blacklist {
+		if blacklistedToken == token {
+			return false // Token is blacklisted
+		}
+	}
+	return true // Token is not blacklisted
 }
 
 // func refreshTokenHandler(c *fiber.Ctx) error {
