@@ -13,10 +13,11 @@ type PoPayment struct {
 
 	model.GormModel
 
-	PoID          string    `json:"po_id" query:"po_id" gorm:"type:varchar(36)"`
-	PoNo          string    `json:"po_no" query:"po_no" gorm:"type:varchar(20)"`
+	AuctionID     string    `json:"auction_id" query:"auction_id" gorm:"type:varchar(36)"`
+	UserID        string    `json:"user_id" query:"user_id" gorm:"type:varchar(36)"`
 	PaymentTypeID string    `json:"payment_type_id" query:"payment_type_id" gorm:"type:varchar(2)"`
 	PaymentDate   time.Time `json:"payment_date" query:"payment_date"`
+	Total         float64   `json:"total" query:"total" gorm:"type:decimal(14,2)"`
 	Amount        float64   `json:"amount" query:"amount" gorm:"type:decimal(14,2)"`
 	RemainAmount  float64   `json:"remain_amount" query:"remain_amount" gorm:"type:decimal(14,2)"`
 	ImageUrl      string    `json:"image_url" query:"image_url" gorm:"type:varchar(1000)"`
