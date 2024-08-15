@@ -54,9 +54,9 @@ type Po struct {
 	TotalAccessoriePrice float64 `json:"total_accessorie_price" query:"total_accessorie_price" gorm:"type:decimal(14,2)"`
 	TotalPrice           float64 `json:"total_price" query:"total_price" gorm:"type:decimal(14,2)"`
 
-	PaymentTypeID string  `json:"payment_type_id" query:"payment_type_id" gorm:"type:varchar(2)"`
-	Paid          float64 `json:"paid" query:"paid" gorm:"type:decimal(14,2)"`
-	UnPaid        float64 `json:"un_paid" query:"un_paid" gorm:"type:decimal(14,2)"`
+	// PaymentTypeID string  `json:"payment_type_id" query:"payment_type_id" gorm:"type:varchar(2)"`
+	// Paid          float64 `json:"paid" query:"paid" gorm:"type:decimal(14,2)"`
+	// UnPaid        float64 `json:"un_paid" query:"un_paid" gorm:"type:decimal(14,2)"`
 
 	ExpectDeliveryDate time.Time `json:"expect_delivery_date" query:"expect_delivery_date"`
 	ActualDeliveryDate time.Time `json:"actual_delivery_date" query:"actual_delivery_date"`
