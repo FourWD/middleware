@@ -6,4 +6,5 @@ type AppInfo struct {
 	GaeVersion string `json:"gae_version"`
 	BucketName string `json:"bucket_name"`
 	Env        string `json:"env"`
+	WakeUpUrl  string `json:"wake_up_url"`
 }
