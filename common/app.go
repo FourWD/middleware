@@ -33,7 +33,7 @@ func handleRunLatestVersionOnly() {
 	var response Response
 	jsonData := CallUrl(wakeUpUrl)
 	if err := json.Unmarshal([]byte(jsonData), &response); err != nil {
-		// fmt.Println("CallWakeUp", err.Error())
+		// fmt.Println("CallWakeUp", err.Error()) //
 		fmt.Println("************************** Wake up ERROR! **************************")
 		Terminate()
 		return
