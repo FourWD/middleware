@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/spf13/viper"
 )
 
 func FiberDisableXFrame(c *fiber.Ctx) error {
@@ -167,6 +168,16 @@ func FiberWarmUp(app *fiber.App) {
 		message := "Warm-up request succeeded"
 		// fmt.Println(message)
 		return c.Status(http.StatusOK).SendString(message)
+	})
+}
+
+func FiberWakeUp(app *fiber.App) {
+	app.Get("/wake-up", func(c *fiber.Ctx) error {
+		App.AppVersion = viper.GetString("app_version")
+		message := `{"status":1, "message":"success", "data":` + StructToString(App) + `}`
+		c.Set("Content-Type", "application/json")
+
+		return c.SendString(string(message))
 	})
 }
 
