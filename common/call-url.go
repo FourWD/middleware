@@ -1,13 +1,12 @@
 package common
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 )
 
 func CallUrl(url string) string {
-	fmt.Println("Call Url: ", url)
+	// fmt.Println("Call Url: ", url)
 	response, err := http.Get(url)
 	if err != nil {
 		return ""

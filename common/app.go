@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func RunLatestVersionOnly(url string) {
+func RunLatestVersionOnly() {
 	if os.Getenv("GAE_SERVICE") == "" {
 		return
 	}
@@ -21,7 +21,7 @@ func RunLatestVersionOnly(url string) {
 	}
 
 	var response Response
-	jsonData := CallUrl(url)
+	jsonData := CallUrl(App.WakeUpUrl)
 	if err := json.Unmarshal([]byte(jsonData), &response); err != nil {
 		fmt.Println("CallWakeUp", err.Error())
 		fmt.Println("************************** Wake up ERROR! **************************")
