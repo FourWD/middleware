@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/FourWD/middleware/model"
@@ -30,6 +31,7 @@ func handleRunLatestVersionOnly() {
 	}
 
 	wakeUpUrl := fmt.Sprintf("https://%s-dot-%s.appspot.com/wakeup", App.GaeService, App.GaeProject)
+	log.Println("wakeUpUrl: ", wakeUpUrl, App.AppVersion)
 	var response Response
 	jsonData := CallUrl(wakeUpUrl)
 	if err := json.Unmarshal([]byte(jsonData), &response); err != nil {
