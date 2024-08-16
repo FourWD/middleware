@@ -15,6 +15,8 @@ func RunLatestVersionOnly() {
 		return
 	}
 
+	wakeUpUrl := fmt.Sprintf("https://%s-dot-%s.appspot.com/wakeup", App.GaeService, App.GaeProject)
+
 	type Response struct {
 		Status  int           `json:"status"`
 		Message string        `json:"message"`
@@ -22,12 +24,11 @@ func RunLatestVersionOnly() {
 	}
 
 	var response Response
-
 	c := cron.New()
 	c.AddFunc("*/1 * * * *", func() {
-		jsonData := CallUrl(App.WakeUpUrl)
+		jsonData := CallUrl(wakeUpUrl)
 		if err := json.Unmarshal([]byte(jsonData), &response); err != nil {
-			fmt.Println("CallWakeUp", err.Error())
+			// fmt.Println("CallWakeUp", err.Error())
 			fmt.Println("************************** Wake up ERROR! **************************")
 			Terminate()
 			return

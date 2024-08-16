@@ -14,11 +14,12 @@ var App model.AppInfo
 
 func InitEnv() {
 	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
-
 	App.Env = os.Getenv("ENV")
 	if App.Env == "" {
 		App.Env = "local"
 	}
+
+	App.GaeProject = os.Getenv("GOOGLE_CLOUD_PROJECT")
 	App.GaeService = os.Getenv("GAE_SERVICE")
 	App.GaeVersion = os.Getenv("GAE_VERSION")
 	App.BucketName = os.Getenv("BUCKET")
