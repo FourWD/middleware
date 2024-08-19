@@ -70,23 +70,23 @@ func checkAuth(c *fiber.Ctx) error {
 
 func IsJwtValid(token string) bool {
 	// log.Printf("IsJwtValid %s", token)
-	if len(token) <= 300 {
-		return false
-	}
+	// if len(token) <= 300 {
+	// 	return false
+	// }
 
-	token300 := token[len(token)-300:]
-	mu.RLock()
-	defer mu.RUnlock()
+	// token300 := token[len(token)-300:]
+	// mu.RLock()
+	// defer mu.RUnlock()
 
-	// i := 0
-	for _, blacklistedToken := range blacklist {
-		blacklistedToken300 := blacklistedToken[len(blacklistedToken)-300:]
+	// // i := 0
+	// for _, blacklistedToken := range blacklist {
+	// 	blacklistedToken300 := blacklistedToken[len(blacklistedToken)-300:]
 
-		// log.Printf("%d : NewToken=%s Blacklist=%s", i, token300, blacklistedToken300)
-		if blacklistedToken300 == token300 {
-			return false // Token is blacklisted
-		}
-	}
+	// 	// log.Printf("%d : NewToken=%s Blacklist=%s", i, token300, blacklistedToken300)
+	// 	if blacklistedToken300 == token300 {
+	// 		return false // Token is blacklisted
+	// 	}
+	// }
 	return true // Token is not blacklisted
 }
 
