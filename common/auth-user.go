@@ -88,7 +88,7 @@ func addJwtBlacklist(token string) error {
 	defer mu.Unlock()
 
 	// Check if the blacklist has reached its max size
-	maxBlacklistSize := 100
+	maxBlacklistSize := 150
 	if len(blacklist) >= maxBlacklistSize {
 		// Remove the oldest token (first in the slice)
 		blacklist = blacklist[1:]
