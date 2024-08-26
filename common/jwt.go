@@ -1,6 +1,7 @@
 package common
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
@@ -69,7 +70,7 @@ func checkAuth(c *fiber.Ctx) error {
 // }
 
 func IsJwtValid(token string) bool {
-	// log.Printf("IsJwtValid %s", token)
+	log.Printf("IsJwtValid %s", token)
 	// if len(token) <= 100 {
 	// 	return false
 	// }
@@ -79,10 +80,10 @@ func IsJwtValid(token string) bool {
 	defer mu.RUnlock()
 
 	// i := 0
-	for _, blacklistedToken := range blacklist {
+	for i, blacklistedToken := range blacklist {
 		// blacklistedToken100 := blacklistedToken[len(blacklistedToken)-100:]
 
-		// log.Printf("%d : NewToken=%s Blacklist=%s", i, token300, blacklistedToken300)
+		log.Printf("%d : NewToken=%s Blacklist=%s", i, token, blacklistedToken)
 		if blacklistedToken == token {
 			return false // Token is blacklisted
 		}
