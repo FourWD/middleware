@@ -68,7 +68,7 @@ func checkAuth(c *fiber.Ctx) error {
 // 	return result.RowsAffected == 0
 // }
 
-func IsJwtValid(token string) bool {
+func IsJwtValid(token string) bool { //
 	return true
 	// log.Printf("IsJwtValid %s", token)
 	// // if len(token) <= 100 {
