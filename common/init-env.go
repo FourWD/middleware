@@ -7,12 +7,16 @@ import (
 	"strings"
 
 	"github.com/FourWD/middleware/model"
+	logrus "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 var App model.AppInfo
 
 func InitEnv() {
+	logrus.SetOutput(os.Stdout)
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+	logrus.SetLevel(logrus.InfoLevel)
 	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
 	App.Env = os.Getenv("ENV")
 	if App.Env == "" {
