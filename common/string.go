@@ -13,16 +13,16 @@ import (
 
 func DateString() string {
 	currentTime := time.Now()
-	dateString := currentTime.Format("20060102")
+	dateString := fmt.Sprintf("%d", currentTime.UnixNano())
 	randomDigits := generateRandomDigits(10)
 	return dateString + randomDigits
 }
 
 func generateRandomDigits(count int) string {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	result := ""
 	for i := 0; i < count; i++ {
-		result += fmt.Sprintf("%d", rand.Intn(10)) // เลขสุ่มระหว่าง 0-9
+		result += fmt.Sprintf("%d", r.Intn(10)) // เลขสุ่มระหว่าง 0-9
 	}
 	return result
 }
