@@ -14,7 +14,7 @@ import (
 func DateString() string {
 	currentTime := time.Now()
 	dateString := currentTime.Format("20060102")
-	randomDigits := generateRandomDigits(2)
+	randomDigits := generateRandomDigits(10)
 	return dateString + randomDigits
 }
 
