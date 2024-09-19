@@ -35,6 +35,7 @@ func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error)
 	err := db.Save(&logFile)
 	if err.Error != nil {
 		PrintError("error save file", "tb file")
+		return result, err.Error
 	} //
 	return result, nil
 }
@@ -61,8 +62,8 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 		return *result, err
 	} else {
 		client := &http.Client{}
-		uploadUrl := "https://pakwan-service.fourwd.me/api/v1/upload/"
-		// uploadUrl := "https://fourwd.as.r.appspot.com/api/v1/upload/"
+		// uploadUrl := "https://pakwan-service.fourwd.me/api/v1/upload/"
+		uploadUrl := "https://fourwd.as.r.appspot.com/api/v1/upload/"
 		// uploadUrl := "https://pakwan-service.fourwd.me/api/v1/upload/" //
 		Print("pakwan-service", uploadUrl)
 
