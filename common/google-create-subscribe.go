@@ -3,16 +3,14 @@ package common
 import (
 	"context"
 	"log"
-	"time"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/spf13/viper"
 )
 
-// func Subscribe(projectID, topicName string) {
-func GoogleSubscribe(topicName string, process func(topic string, message *pubsub.Message)) {
+func GoogleCreateSubscribe(topicName string) *pubsub.Subscription {
 	projectID := viper.GetString("google_project_id")
-	
+
 	log.Println("start", topicName)
 	ctx := context.Background()
 	subscriptionID := "SUB-" + topicName
@@ -53,27 +51,5 @@ func GoogleSubscribe(topicName string, process func(topic string, message *pubsu
 		log.Printf("Subscription already exists: %s", subscriptionID)
 	}
 
-	// Keep listening for messages, retrying only if an error occurs
-	for {
-		log.Printf("Listening for messages on topic: %s", topicName)
-		err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
-			log.Println("sub.Receive", topicName, string(msg.Data))
-			// routerUtils.SubManage(topicName, msg)
-			process(topicName, msg)
-			msg.Ack() // Acknowledge message after processing
-		})
-
-		// Handle error and retry
-		if err != nil {
-			log.Printf("Error receiving messages: %v", err)
-			log.Println("Retrying message reception after error...")
-			time.Sleep(2 * time.Second) // Add a delay to avoid tight retry loops
-		}
-
-		// Check if context is cancelled to avoid infinite retries
-		if ctx.Err() != nil {
-			log.Println("Context cancelled, stopping subscription")
-			return
-		}
-	}
+	return sub
 }
