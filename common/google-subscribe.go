@@ -10,9 +10,9 @@ import (
 )
 
 // func Subscribe(projectID, topicName string) {
-func GoogleSubscribe(topicName string, process func(topic string, message *pubsub.Message)) {
+func GoogleSubscribe(topicName string, process func(message *pubsub.Message)) {
 	projectID := viper.GetString("google_project_id")
-	
+
 	log.Println("start", topicName)
 	ctx := context.Background()
 	subscriptionID := "SUB-" + topicName
@@ -58,8 +58,7 @@ func GoogleSubscribe(topicName string, process func(topic string, message *pubsu
 		log.Printf("Listening for messages on topic: %s", topicName)
 		err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
 			log.Println("sub.Receive", topicName, string(msg.Data))
-			// routerUtils.SubManage(topicName, msg)
-			process(topicName, msg)
+			process(msg)
 			msg.Ack() // Acknowledge message after processing
 		})
 
