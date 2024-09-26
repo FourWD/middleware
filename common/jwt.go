@@ -3,6 +3,7 @@ package common
 import (
 	"net/http"
 
+	"github.com/FourWD/middleware/orm"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
@@ -69,26 +70,29 @@ func checkAuth(c *fiber.Ctx) error {
 // }
 
 func IsJwtValid(token string) bool { //
-	return true
-	// log.Printf("IsJwtValid %s", token)
-	// // if len(token) <= 100 {
-	// // 	return false
+	var bl orm.JwtBlacklist
+	result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
+	return result.RowsAffected == 0
+	// return true
+	// // log.Printf("IsJwtValid %s", token)
+	// // // if len(token) <= 100 {
+	// // // 	return false
+	// // // }
+
+	// // // token100 := token[len(token)-100:]
+	// // mu.RLock()
+	// // defer mu.RUnlock()
+
+	// // // i := 0
+	// // for i, blacklistedToken := range blacklist {
+	// // 	// blacklistedToken100 := blacklistedToken[len(blacklistedToken)-100:]
+
+	// // 	log.Printf("%d : NewToken=%s Blacklist=%s", i, token, blacklistedToken)
+	// // 	if blacklistedToken == token {
+	// // 		return false // Token is blacklisted
+	// // 	}
 	// // }
-
-	// // token100 := token[len(token)-100:]
-	// mu.RLock()
-	// defer mu.RUnlock()
-
-	// // i := 0
-	// for i, blacklistedToken := range blacklist {
-	// 	// blacklistedToken100 := blacklistedToken[len(blacklistedToken)-100:]
-
-	// 	log.Printf("%d : NewToken=%s Blacklist=%s", i, token, blacklistedToken)
-	// 	if blacklistedToken == token {
-	// 		return false // Token is blacklisted
-	// 	}
-	// }
-	// return true // Token is not blacklisted
+	// // return true // Token is not blacklisted
 }
 
 // func refreshTokenHandler(c *fiber.Ctx) error {
