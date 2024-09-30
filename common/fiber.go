@@ -46,7 +46,7 @@ func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string
 	// logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
 	// logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
 	// PrintError("FiberError", logDesc)
-	return c.Status(status).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
+	return c.Status(status).JSON(fiber.Map{"status": status, "code": errorCode, "message": errorMessage})
 }
 
 func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...error) error {
