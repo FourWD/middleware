@@ -84,6 +84,8 @@ func otpRequestToServer(mobile string) (model.OtpResult, error) {
 
 	otpUnmar := new(model.OtpResult)
 	errUnmar := json.Unmarshal(body, &otpUnmar)
+	println(StructToString(body))
+	println(StructToString(otpUnmar))
 	if errUnmar != nil {
 		fmt.Println("Error unmarshalling JSON:", errUnmar)
 	}
