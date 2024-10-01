@@ -6,6 +6,7 @@ import (
 	"image/jpeg"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/disintegration/imaging"
 )
@@ -42,18 +43,26 @@ func ImageResizeByRatio(imageURL string, aspectRatio float64) (image.Image, erro
 	return croppedImg, nil
 }
 
-// SaveImage saves the image to a file
-func SaveImage(img image.Image, filePath string) error {
+func SaveImageToTmp(img image.Image, fileName string) (string, error) {
+	// Get the system's temporary directory
+	tmpDir := os.TempDir()
+
+	// Construct the full path to save the image
+	filePath := filepath.Join(tmpDir, fileName)
+
+	// Create the file in the temporary directory
 	out, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
+		return "", fmt.Errorf("failed to create file in tmp directory: %v", err)
 	}
 	defer out.Close()
 
+	// Encode the image as a JPEG and save it
 	err = jpeg.Encode(out, img, nil)
 	if err != nil {
-		return fmt.Errorf("failed to encode and save image: %v", err)
+		return "", fmt.Errorf("failed to encode and save image: %v", err)
 	}
 
-	return nil
+	// Return the full file path
+	return filePath, nil
 }
