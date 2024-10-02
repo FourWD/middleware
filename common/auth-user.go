@@ -67,7 +67,7 @@ func getLastPathComponent(path string) string {
 	return lastComponent
 }
 
-func Login(c *fiber.Ctx) error {
+func Login(c *fiber.Ctx, remark string) error {
 	token := c.Get("Authorization")
 	if token == "" {
 		return errors.New("no token")
@@ -82,6 +82,7 @@ func Login(c *fiber.Ctx) error {
 	data := bson.M{
 		"token":     token,
 		"user_id":   userID,
+		"remark":    remark,
 		"issuedAt":  GetSession(c).IssuedAt,
 		"expiresAt": GetSession(c).ExpiresAt,
 	}
