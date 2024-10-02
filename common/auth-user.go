@@ -96,7 +96,7 @@ func Logout(c *fiber.Ctx) error {
 }
 
 func deletePreviousLoginToken(userID string) error {
-	collection := DatabaseMongoMiddleware.Database.Collection("login_token")
+	collection := DatabaseMongoMiddleware.Database.Collection("login_tokens")
 	filter := bson.M{"user_id": userID}
 	_, err := collection.DeleteMany(context.TODO(), filter)
 	return err
