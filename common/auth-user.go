@@ -67,22 +67,22 @@ func getLastPathComponent(path string) string {
 	return lastComponent
 }
 
-func Login(c *fiber.Ctx, remark string) error {
+func Login(c *fiber.Ctx, project string) error {
 	token := c.Get("Authorization")
 	if token == "" {
 		return errors.New("no token")
 	}
 
 	userID := GetSessionUserID(c)
-	if err := deletePreviousLoginToken(userID); err != nil {
+	if err := deletePreviousLoginToken(project, userID); err != nil {
 		return err
 	}
 
 	collection := DatabaseMongoMiddleware.Database.Collection("login_tokens")
 	data := bson.M{
-		"token":     token,
+		"project":   strings.ToUpper(project),
 		"user_id":   userID,
-		"remark":    remark,
+		"token":     token,
 		"issuedAt":  GetSession(c).IssuedAt,
 		"expiresAt": GetSession(c).ExpiresAt,
 	}
@@ -91,14 +91,17 @@ func Login(c *fiber.Ctx, remark string) error {
 	return err
 }
 
-func Logout(c *fiber.Ctx) error {
+func Logout(c *fiber.Ctx, project string) error {
 	userID := GetSessionUserID(c)
-	return deletePreviousLoginToken(userID)
+	return deletePreviousLoginToken(project, userID)
 }
 
-func deletePreviousLoginToken(userID string) error {
+func deletePreviousLoginToken(project string, userID string) error {
 	collection := DatabaseMongoMiddleware.Database.Collection("login_tokens")
-	filter := bson.M{"user_id": userID}
+	filter := bson.M{
+		"project": strings.ToUpper(project),
+		"user_id": userID,
+	}
 	_, err := collection.DeleteMany(context.TODO(), filter)
 	return err
 }
