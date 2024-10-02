@@ -3,7 +3,6 @@ package common
 import (
 	"net/http"
 
-	"github.com/FourWD/middleware/orm"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
@@ -69,10 +68,11 @@ func checkAuth(c *fiber.Ctx) error {
 // 	return result.RowsAffected == 0
 // }
 
-func IsJwtValid(token string) bool { //
-	var bl orm.JwtBlacklist
-	result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
-	return result.RowsAffected == 0
+func IsJwtValid(token string) bool {
+	return true
+	// var bl orm.JwtBlacklist
+	// result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
+	// return result.RowsAffected == 0
 	// return true
 	// // log.Printf("IsJwtValid %s", token)
 	// // // if len(token) <= 100 {
