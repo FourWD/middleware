@@ -1,20 +1,20 @@
 package common
 
 import (
+	"context"
 	"errors"
-	"log"
 	"strings"
-	"sync"
 
 	"github.com/FourWD/middleware/orm"
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson"
 	"gorm.io/gorm"
 )
 
-var (
-	mu        sync.RWMutex
-	blacklist []string
-)
+// var (
+// 	mu        sync.RWMutex
+// 	blacklist []string
+// )
 
 type UserAuthorization struct {
 	IsSuccess bool
@@ -67,34 +67,54 @@ func getLastPathComponent(path string) string {
 	return lastComponent
 }
 
-func Logout(c *fiber.Ctx) error {
+func Login(c *fiber.Ctx) error {
 	token := c.Get("Authorization")
-
 	if token == "" {
 		return errors.New("no token")
 	}
 
-	// return Database.Model(&orm.JwtBlacklist{}).Create(&orm.JwtBlacklist{
-	// 	ID:    uuid.NewString(),
-	// 	Md5:   MD5(token),
-	// 	Token: token,
-	// }).Error
-	return addJwtBlacklist(token)
-}
-
-func addJwtBlacklist(token string) error {
-	log.Println("addJwtBlacklist:", token)
-	mu.Lock()
-	defer mu.Unlock()
-
-	// Check if the blacklist has reached its max size
-	maxBlacklistSize := 150
-	if len(blacklist) >= maxBlacklistSize {
-		// Remove the oldest token (first in the slice)
-		blacklist = blacklist[1:]
+	userID := GetSessionUserID(c)
+	if err := deletePreviousLoginToken(userID); err != nil {
+		return err
 	}
 
-	// Add the new token to the end of the slice
-	blacklist = append(blacklist, token)
-	return nil
+	collection := DatabaseMongoMiddleware.Database.Collection("login_tokens")
+	data := bson.M{
+		"token":     token,
+		"user_id":   userID,
+		"issuedAt":  GetSession(c).IssuedAt,
+		"expiresAt": GetSession(c).ExpiresAt,
+	}
+
+	_, err := collection.InsertOne(context.TODO(), data)
+	return err
 }
+
+func Logout(c *fiber.Ctx) error {
+	userID := GetSessionUserID(c)
+	return deletePreviousLoginToken(userID)
+}
+
+func deletePreviousLoginToken(userID string) error {
+	collection := DatabaseMongoMiddleware.Database.Collection("login_token")
+	filter := bson.M{"user_id": userID}
+	_, err := collection.DeleteMany(context.TODO(), filter)
+	return err
+}
+
+// func addJwtBlacklist(token string) error {
+// 	log.Println("addJwtBlacklist:", token)
+// 	mu.Lock()
+// 	defer mu.Unlock()
+
+// 	// Check if the blacklist has reached its max size
+// 	maxBlacklistSize := 150
+// 	if len(blacklist) >= maxBlacklistSize {
+// 		// Remove the oldest token (first in the slice)
+// 		blacklist = blacklist[1:]
+// 	}
+
+// 	// Add the new token to the end of the slice
+// 	blacklist = append(blacklist, token)
+// 	return nil
+// }
