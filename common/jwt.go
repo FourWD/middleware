@@ -1,12 +1,22 @@
 package common
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/bson"
 )
+
+// func AuthenticationMiddleware(c *fiber.Ctx) error {
+// 	if isPublicPathV2(c) {
+// 		// log.Println("public path")
+// 		return c.Next()
+// 	}
+// 	return checkAuth(c)
+// }
 
 func AuthenticationMiddleware(c *fiber.Ctx) error {
 	if isPublicPath(c) {
@@ -16,13 +26,19 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 	return checkAuth(c)
 }
 
+// func isPublicPath(c *fiber.Ctx) bool {
+// 	publicPaths := viper.GetStringSlice("public_path")
+// 	// log.Println("full_path:", c.Path())
+// 	path := getLastPathComponent(c.Path())
+// 	// log.Println("path:", path)
+// 	// log.Println("publicPaths:", publicPaths)
+// 	return StringExistsInList(path, publicPaths)
+// }
+
 func isPublicPath(c *fiber.Ctx) bool {
 	publicPaths := viper.GetStringSlice("public_path")
 	// log.Println("full_path:", c.Path())
-	path := getLastPathComponent(c.Path())
-	// log.Println("path:", path)
-	// log.Println("publicPaths:", publicPaths)
-	return StringExistsInList(path, publicPaths)
+	return StringExistsInList(c.Path(), publicPaths)
 }
 
 func checkAuth(c *fiber.Ctx) error {
@@ -69,31 +85,29 @@ func checkAuth(c *fiber.Ctx) error {
 // }
 
 func IsJwtValid(token string) bool {
+	collection := DatabaseMongoMiddleware.Database.Collection("blacklist_tokens")
+	filter := bson.M{"token": token}
+
+	count, err := collection.CountDocuments(context.TODO(), filter)
+	if err != nil {
+		return false
+	}
+
+	if count > 0 {
+		return false
+	}
+
 	return true
-	// var bl orm.JwtBlacklist
-	// result := Database.Model(orm.JwtBlacklist{}).Where("md5 = ?", MD5(token)).First(&bl)
-	// return result.RowsAffected == 0
-	// return true
-	// // log.Printf("IsJwtValid %s", token)
-	// // // if len(token) <= 100 {
-	// // // 	return false
-	// // // }
-
-	// // // token100 := token[len(token)-100:]
-	// // mu.RLock()
-	// // defer mu.RUnlock()
-
-	// // // i := 0
-	// // for i, blacklistedToken := range blacklist {
-	// // 	// blacklistedToken100 := blacklistedToken[len(blacklistedToken)-100:]
-
-	// // 	log.Printf("%d : NewToken=%s Blacklist=%s", i, token, blacklistedToken)
-	// // 	if blacklistedToken == token {
-	// // 		return false // Token is blacklisted
-	// // 	}
-	// // }
-	// // return true // Token is not blacklisted
 }
+
+// func getLastPathComponent(path string) string {
+// 	components := strings.Split(path, "/")
+// 	lastComponent := components[len(components)-1]
+// 	if lastComponent == "favicon.ico" {
+// 		return ""
+// 	}
+// 	return lastComponent
+// }
 
 // func refreshTokenHandler(c *fiber.Ctx) error {
 // 	// Extract refresh token from the request
