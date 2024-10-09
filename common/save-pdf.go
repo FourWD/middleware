@@ -6,7 +6,7 @@ import (
 
 func SavePdf(pdf *gofpdf.Fpdf, fileName string, location string) (string, error) {
 
-	newFilename := fileName + "_" + DateString() + ".pdf"
+	newFilename := fileName + "_" + DateStringPDF() + ".pdf"
 	savePath := location + newFilename
 	err := pdf.OutputFileAndClose(savePath)
 	if err != nil {
@@ -14,6 +14,13 @@ func SavePdf(pdf *gofpdf.Fpdf, fileName string, location string) (string, error)
 	}
 
 	return savePath, nil
+}
+
+func DateStringPDF() string {
+	// currentTime := time.Now()
+	// dateString := fmt.Sprintf("%d", currentTime.UnixNano())
+	randomDigits := generateRandomString(5)
+	return randomDigits
 }
 
 // var (
