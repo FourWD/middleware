@@ -73,37 +73,34 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 }
 
 func AddUserToSubscription(topic string, userID string, userToken string) error {
-
-	notificationTopic := orm.NotificationTopic{
+	if _, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic); err != nil {
+		log.Println("error subscribing user to topic: ", err)
+	}
+	// ========================================================================================
+	newNotificationTopic := orm.NotificationTopic{
 		ID:   uuid.NewString(),
 		Name: topic,
 	}
-
-	if err := Database.Debug().Create(&notificationTopic).Error; err != nil {
+	if err := Database.Create(&newNotificationTopic).Error; err != nil {
 		log.Println("failed to insert notification topic: ", err)
 	}
-
-	var notification orm.NotificationTopic
-	if err := Database.Where("name = ?", topic).First(&notification).Error; err != nil {
-		log.Println("failed to insert notification topic: ", err)
+	// ========================================================================================
+	var notificationTopic orm.NotificationTopic
+	if err := Database.Where("name = ?", topic).First(&notificationTopic).Error; err != nil {
+		log.Println("failed to select notification topic: ", err)
 	}
-	if notification.ID != "" {
+	// ========================================================================================
+	if notificationTopic.ID != "" {
 		notificationTopicUser := orm.NotificationTopicUser{
 			ID:                  uuid.NewString(),
-			NotificationTopicID: notification.ID,
+			NotificationTopicID: notificationTopic.ID,
 			UserID:              userID,
 		}
-		if err := Database.Debug().Create(&notificationTopicUser).Error; err != nil {
+		if err := Database.Create(&notificationTopicUser).Error; err != nil {
 			log.Println("failed to insert notification user topic user: ", err)
 		}
-		_, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic)
-		if err != nil {
-			log.Println("error subscribing user to topic: ", err)
-			return err
-
-		}
 	}
-
+	// ========================================================================================
 	return nil
 }
 
