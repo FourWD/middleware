@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	logrus "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -259,17 +260,27 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, error) 
 	return false
 } */
 
-func PrintFiberInfo(c *fiber.Ctx) {
-	log.Println(getFiberInfo(c))
-}
+// func PrintFiberInfo(c *fiber.Ctx) {
+// 	log.Println(getFiberInfo(c))
+// }
 
-func getFiberInfo(c *fiber.Ctx) string {
-	logDesc := fmt.Sprintf("API Path: %s", c.Path())
-	logDesc += fmt.Sprintf("\n Method: %s", c.Method())
-	logDesc += fmt.Sprintf("\n Authorization: %s", c.Get("Authorization"))
-	body, _ := getBodyJson(c)
-	logDesc += fmt.Sprintf("\n Body: %s", body)
-	return logDesc
+// func getFiberInfo(c *fiber.Ctx) string {
+// 	logDesc := fmt.Sprintf("API Path: %s", c.Path())
+// 	logDesc += fmt.Sprintf("\n Method: %s", c.Method())
+// 	logDesc += fmt.Sprintf("\n Authorization: %s", c.Get("Authorization"))
+// 	body, _ := getBodyJson(c)
+// 	logDesc += fmt.Sprintf("\n Body: %s", body)
+// 	return logDesc
+// }
+
+func FiberLog(c *fiber.Ctx) {
+	fields := logrus.Fields{
+		"path":          c.Path(),
+		"method":        c.Method(),
+		"authorization": c.Get("Authorization"),
+	}
+	fields["body"], _ = getBodyJson(c)
+	logrus.WithFields(fields).Info("FiberLog")
 }
 
 func getBodyJson(c *fiber.Ctx) (string, error) {
