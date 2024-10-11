@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	logrus "github.com/sirupsen/logrus"
@@ -278,6 +279,7 @@ func FiberLog(c *fiber.Ctx) {
 		"path":          c.Path(),
 		"method":        c.Method(),
 		"authorization": c.Get("Authorization"),
+		"request_time":  time.Now().Format(DATE_FORMAT_SECOND),
 	}
 	fields["body"], _ = getBodyJson(c)
 	logrus.WithFields(fields).Info("FiberLog")
