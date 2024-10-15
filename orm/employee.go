@@ -25,5 +25,5 @@ type Employee struct {
 	IsActive        bool      `json:"is_active" query:"is_active" gorm:"type:bool"`
 	CountWrongLogin int       `json:"count_wrong_login" query:"count_wrong_login" gorm:"type:int(1)"`
 	LastLoginDate   time.Time `json:"last_login_date" query:"last_login_date"`
-	BranchID        string    `json:"branch_id" query:"branch_id" gorm:"type:varchar(2);"`
+	BranchID        string    `json:"branch_id" query:"branch_id" gorm:"type:varchar(36);"`
 }
