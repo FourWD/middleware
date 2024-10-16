@@ -12,11 +12,12 @@ import (
 )
 
 var App model.AppInfo
+var AppLog = logrus.New()
 
 func InitEnv() {
-	logrus.SetOutput(os.Stdout)
-	logrus.SetFormatter(&logrus.JSONFormatter{})
-	logrus.SetLevel(logrus.InfoLevel)
+	AppLog.SetOutput(os.Stdout)
+	AppLog.SetFormatter(&logrus.JSONFormatter{})
+	AppLog.SetLevel(logrus.InfoLevel)
 	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
 	App.Env = os.Getenv("ENV")
 	if App.Env == "" {
