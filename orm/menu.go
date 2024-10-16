@@ -10,7 +10,8 @@ type Menu struct {
 
 	MenuGroupID string `json:"menu_grounp_id" query:"menu_grounp_id" gorm:"type:varchar(36)"`
 
-	Subject     string `json:"name" query:"name" gorm:"type:varchar(500)"`
+	Subject     string `json:"subject" query:"subject" gorm:"type:varchar(500)"`
+	SubjectEn   string `json:"subject_en" query:"subject_en" gorm:"type:varchar(500)"`
 	Description string `json:"description" query:"description" gorm:"type:varchar(500)"`
 	ImagePath   string `json:"image_path" query:"image_path" gorm:"type:varchar(256)"`
 	Url         string `json:"url" query:"url" gorm:"type:varchar(200)"`

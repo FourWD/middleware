@@ -9,5 +9,6 @@ type Consent struct {
 	ConsentTypeID string `json:"consent_type_id" query:"consent_type_id" gorm:"type:varchar(36)"`
 
 	ConsentVersion string `json:"consent_version" query:"consent_version" gorm:"type:varchar(3)"`
-	Detail         string `json:"detail" query:"detail" gorm:"type:varchar(500)"`
+	Detail         string `json:"detail" query:"detail" gorm:"type:text"`
+	DetailEn       string `json:"detail_en" query:"detail_en" gorm:"type:text"`
 }
