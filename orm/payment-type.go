@@ -14,6 +14,8 @@ type PaymentType struct {
 	NameEn string `json:"name_en" query:"name_en" gorm:"type:varchar(50)"`
 
 	PaymentGroupID string `json:"payment_group_id" query:"payment_group_id" gorm:"type:varchar(10)"`
+	IsActive       bool   `json:"is_active" query:"is_active" gorm:"type:bool"`
+
 	model.GormRowOrder
 }
 
