@@ -25,5 +25,10 @@ type Branch struct {
 	Latitude        float64 `json:"latitude" query:"latitude" gorm:"type:float"`
 	Longitude       float64 `json:"longitude" query:"longitude" gorm:"type:float"`
 	MapUrl          string  `json:"map_url" query:"map_url" gorm:"type:varchar(500)"`
+
+	OptionalID1 string `json:"optional_id_1" query:"optional_id_1" gorm:"column:optional_id_1;type:varchar(20)"`
+	OptionalID2 string `json:"optional_id_2" query:"optional_id_2" gorm:"column:optional_id_2;type:varchar(20)"`
+	OptionalID3 string `json:"optional_id_3" query:"optional_id_3" gorm:"column:optional_id_3;type:varchar(20)"`
+
 	model.GormRowOrder
 }
