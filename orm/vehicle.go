@@ -15,7 +15,7 @@ type Vehicle struct {
 	VehicleSubModelID string `json:"vehicle_sub_model_id" query:"vehicle_sub_model_id" gorm:"type:varchar(36)"`
 	VehicleColorID    string `json:"vehicle_color_id" query:"vehicle_color_id" gorm:"type:varchar(36)"`
 	ChassisNo         string `json:"chassis_no" query:"chassis_no" gorm:"type:varchar(20)"`
-	EngineNo          string `json:"engine_no" query:"engine_no" gorm:"type:varchar(20)"`
+	EngineNo          string `json:"engine_no" query:"engine_no" gorm:"type:varchar(100)"`
 	Mile              int    `json:"mile" query:"mile" gorm:"type:int(11)"`
 	YearManufacturing string `json:"year_manufacturing" query:"year_manufacturing" gorm:"type:varchar(4)"`
 	YearRegister      string `json:"year_register" query:"year_register" gorm:"type:varchar(4)"`
