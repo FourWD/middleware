@@ -3,8 +3,10 @@ package common
 import (
 	"context"
 	"log"
+	"strings"
 
 	"cloud.google.com/go/pubsub"
+	"github.com/FourWD/middleware/model"
 	"github.com/spf13/viper"
 )
 
@@ -36,4 +38,21 @@ func GooglePublicMessage(topicName, message string) (string, error) {
 	}
 
 	return id, nil
+}
+
+func ConventStringToGoogleMessage(input string) model.GoogleMessage {
+	gMessage := new(model.GoogleMessage)
+	parts := strings.SplitN(input, "@", 2)
+
+	if len(parts) == 2 {
+		gMessage.Group = parts[0]
+		gMessage.Message = parts[1]
+	} else {
+		gMessage.Group = ""
+		gMessage.Message = input
+	}
+
+	// fmt.Println("Group:", gMessage.Group)
+	// fmt.Println("Text:", gMessage.Message)
+	return *gMessage
 }
