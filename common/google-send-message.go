@@ -5,12 +5,14 @@ import (
 	"log"
 
 	"cloud.google.com/go/pubsub"
+	"github.com/FourWD/middleware/model"
 	"github.com/spf13/viper"
 )
 
-func GooglePublicMessage(topicName, message string) (string, error) {
+func GooglePublicMessage(topicName string, gMessage model.GoogleMessage) (string, error) {
 	projectID := viper.GetString("google_project_id")
 
+	message := StructToString(gMessage)
 	log.Println("Message", topicName, message)
 	ctx := context.Background()
 
