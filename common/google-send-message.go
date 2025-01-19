@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func GooglePublicMessage(topicName string, gMessage model.GoogleMessage) (string, error) {
+func GooglePublicMessage(topicName string, gMessage *model.GoogleMessage) (string, error) {
 	projectID := viper.GetString("google_project_id")
 
 	message := StructToString(gMessage)
