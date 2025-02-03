@@ -105,13 +105,23 @@ func FiberQueryLimit1(c *fiber.Ctx, sql string, values ...interface{}) error {
 	return FiberQueryWithCustomDBLimit1(c, DatabaseMysql, sql, values...)
 }
 
-func FiberSendData(c *fiber.Ctx, json string, sql string) error {
+func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
 	// message := `{"status":1, "code":1, "message":"success", "data": ` + json + `}`
 	// c.Set("Content-Type", "application/json")
 	// return c.SendString(string(message))
-	message := `{"status":1, "message":"success", "data":` + json + `, "sql":"` + sql + `"}`
+	// message := `{"status":1, "message":"success", "data":` + json + `, "sql":"` + sql + `"}`
+	// c.Set("Content-Type", "application/json")
+	// return c.SendString(string(message))
+
+	response := map[string]interface{}{
+		"status":  1,
+		"message": "success",
+		"data":    json.RawMessage(jsonData), // Ensures `jsonData` is treated as raw JSON
+		"sql":     sql,
+	}
+
 	c.Set("Content-Type", "application/json")
-	return c.SendString(string(message))
+	return c.JSON(response)
 }
 
 func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
