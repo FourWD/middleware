@@ -115,6 +115,7 @@ func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
 
 	sql = strings.ReplaceAll(sql, "\n", " ") // Remove newlines
 	sql = strings.ReplaceAll(sql, "\t", " ") // Remove tabs
+	sql = strings.ReplaceAll(sql, `\"`, "")
 	sql = strings.TrimSpace(sql)
 
 	response := map[string]interface{}{
