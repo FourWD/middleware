@@ -113,16 +113,14 @@ func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
 	// c.Set("Content-Type", "application/json")
 	// return c.SendString(string(message))
 
-	sql = strings.ReplaceAll(sql, "\n", " ") // Remove newlines
-	sql = strings.ReplaceAll(sql, "\t", " ") // Remove tabs
-	sql = strings.ReplaceAll(sql, `\"`, "")
-	sql = strings.TrimSpace(sql)
-
 	response := map[string]interface{}{
 		"status":  1,
 		"message": "success",
 		"data":    json.RawMessage(jsonData), // Ensures `jsonData` is treated as raw JSON
-		"sql":     sql,
+	}
+
+	if App.Env != "prod" {
+		response["sql"] = sql
 	}
 
 	c.Set("Content-Type", "application/json")
@@ -211,7 +209,12 @@ func rawSql(sql string, values ...interface{}) string {
 		}
 	}
 
-	return fullSQL.String()
+	full := strings.ReplaceAll(fullSQL.String(), "\n", " ") // Remove newlines
+	full = strings.ReplaceAll(full, "\t", " ")              // Remove tabs
+	full = strings.ReplaceAll(full, `\"`, "")
+	full = strings.TrimSpace(full)
+
+	return full
 }
 
 func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string, error) {
