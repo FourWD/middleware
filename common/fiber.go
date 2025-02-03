@@ -71,12 +71,12 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...erro
 // }
 
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
-	jsonBytes, err := queryToJSON(db, sql, values...)
+	jsonBytes, sql, err := queryToJSON(db, sql, values...)
 	if err != nil {
 		PrintError(`SQL Error`, err.Error())
 		return FiberError(c, "1001", "sql error")
 	}
-	return FiberSendData(c, string(jsonBytes))
+	return FiberSendData(c, string(jsonBytes), sql)
 }
 
 func FiberQuery(c *fiber.Ctx, sql string, values ...interface{}) error {
@@ -84,7 +84,7 @@ func FiberQuery(c *fiber.Ctx, sql string, values ...interface{}) error {
 }
 
 func FiberQueryWithCustomDBLimit1(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
-	jsonBytes, err := queryToJSON(db, sql, values...)
+	jsonBytes, sql, err := queryToJSON(db, sql, values...)
 	var result []map[string]interface{}
 	if json.Unmarshal(jsonBytes, &result); err != nil {
 		fmt.Println("Error parsing JSON:", err)
@@ -94,22 +94,22 @@ func FiberQueryWithCustomDBLimit1(c *fiber.Ctx, db *sql.DB, sql string, values .
 	if len(result) == 1 {
 		firstRow := result[0]
 		if firstRowJSON, err := json.Marshal(firstRow); err == nil {
-			return FiberSendData(c, string(firstRowJSON))
+			return FiberSendData(c, string(firstRowJSON), sql)
 		}
 	}
 
-	return FiberSendData(c, "")
+	return FiberSendData(c, "", "")
 }
 
 func FiberQueryLimit1(c *fiber.Ctx, sql string, values ...interface{}) error {
 	return FiberQueryWithCustomDBLimit1(c, DatabaseMysql, sql, values...)
 }
 
-func FiberSendData(c *fiber.Ctx, json string) error {
+func FiberSendData(c *fiber.Ctx, json string, sql string) error {
 	// message := `{"status":1, "code":1, "message":"success", "data": ` + json + `}`
 	// c.Set("Content-Type", "application/json")
 	// return c.SendString(string(message))
-	message := `{"status":1, "message":"success", "data":` + json + `}`
+	message := `{"status":1, "message":"success", "data":` + json + `, "sql":"` + sql + `"}`
 	c.Set("Content-Type", "application/json")
 	return c.SendString(string(message))
 }
@@ -182,24 +182,42 @@ func FiberWakeUp(app *fiber.App) {
 	})
 }
 
-func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, error) {
+func rawSql(sql string, values ...interface{}) string {
+	parts := strings.Split(sql, "?")
+	if len(parts)-1 != len(values) {
+		return "SQL and values count mismatch"
+	}
+
+	var fullSQL strings.Builder
+	for i, part := range parts {
+		fullSQL.WriteString(part)
+		if i < len(values) {
+			fullSQL.WriteString(fmt.Sprintf("'%v'", values[i]))
+		}
+	}
+
+	return fullSQL.String()
+}
+
+func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string, error) {
 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
 	if StringExistsInList(strings.ToUpper(sql), list) {
-		return nil, errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
+		return nil, "", errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
 	}
 
 	// Log the SQL query and values for debugging
 	// log.Printf("Executing SQL: %s, with values: %v", sql, values)
 
 	rows, err := db.Query(sql, values...)
+	// log.Println(sql)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// types, err := rows.ColumnTypes()
@@ -218,7 +236,7 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, error) 
 
 		err := rows.Scan(valuePtrs...)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		m := make(map[string]interface{})
@@ -248,7 +266,13 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, error) 
 		result = append(result, m)
 	}
 
-	return json.Marshal(result)
+	raw := ""
+	if App.Env != "prod" {
+		raw = rawSql(sql, values...)
+	}
+	jByte, err := json.Marshal(result)
+
+	return jByte, raw, err
 }
 
 /* func containsAny(target string, list []string) bool {
