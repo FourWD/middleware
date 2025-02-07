@@ -10,9 +10,11 @@ type Branch struct {
 
 	Code string `json:"code" query:"code" gorm:"type:varchar(2)"`
 
-	Name            string  `json:"name" query:"name" gorm:"type:varchar(100)"`
-	NameEn          string  `json:"name_en" query:"name_en" gorm:"type:varchar(100)"`
-	Label           string  `json:"label" query:"label" gorm:"type:varchar(100)"`
+	Name    string `json:"name" query:"name" gorm:"type:varchar(100)"`
+	NameEn  string `json:"name_en" query:"name_en" gorm:"type:varchar(100)"`
+	Label   string `json:"label" query:"label" gorm:"type:varchar(100)"`
+	LabelEn string `json:"label_en" query:"label_en" gorm:"type:varchar(100)"`
+
 	TextColor       string  `json:"text_color" query:"text_color" gorm:"type:varchar(7)"`
 	BackgroundColor string  `json:"background_color" query:"background_color" gorm:"type:varchar(7)"`
 	Address         string  `json:"address" query:"address" gorm:"type:text"`
