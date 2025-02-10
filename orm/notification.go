@@ -17,7 +17,8 @@ type Notification struct {
 	Message            string `json:"message" query:"message" gorm:"type:varchar(500)"`
 	MessageEn          string `json:"message_en" query:"message_en" gorm:"type:varchar(500)"`
 
-	Title string `json:"title" query:"title" gorm:"type:varchar(500)"`
+	Title   string `json:"title" query:"title" gorm:"type:varchar(500)"`
+	TitleEn string `json:"title_en" query:"title_en" gorm:"type:varchar(500)"`
 
 	Url      string    `json:"url" query:"url" gorm:"type:varchar(500)"`
 	ShowDate time.Time `json:"show_date" query:"show_date" firestore:"show_date"`
