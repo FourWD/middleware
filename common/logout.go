@@ -1,12 +1,7 @@
 package common
 
 import (
-	"context"
-	"errors"
-	"time"
-
 	"github.com/gofiber/fiber/v2"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // var (
@@ -81,29 +76,8 @@ import (
 // }
 
 func Logout(c *fiber.Ctx) error {
-	token := c.Get("Authorization")
-	if token == "" {
-		return errors.New("no token")
-	}
-
-	// userID := GetSessionUserID(c)
-	// if err := deletePreviousLoginToken(project, userID); err != nil {
-	// 	return err
-	// }
-	createdAt := time.Now()
-	expiresAt := createdAt.Add(3 * 24 * time.Hour)
-
-	collection := DatabaseMongoMiddleware.Database.Collection("blacklist_tokens")
-	data := bson.M{
-		// "project":   strings.ToUpper(project),
-		// "user_id":   userID,
-		"token":     token,
-		"createdAt": createdAt,
-		"expiresAt": expiresAt,
-	}
-
-	_, err := collection.InsertOne(context.TODO(), data)
-	return err
+	jwtToken := c.Get("Authorization")
+	return BlacklistJwtToken(jwtToken)
 }
 
 // func deletePreviousLoginToken(project string, userID string) error {
