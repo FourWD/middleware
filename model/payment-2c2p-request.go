@@ -1,17 +1,16 @@
 package model
 
-type Payment2c2pRequest struct {
-	// MerchantID        string   `json:"merchantID"`        // "JT04",
+type Payment2C2P struct {
+	MerchantID        string   `json:"merchantID"`        // "JT04",
 	InvoiceNo         string   `json:"invoiceNo"`         //"15239536999999",
 	Description       string   `json:"description"`       // "item 1",
 	Amount            float32  `json:"amount"`            //1000.00,
-	CurrencyCode      string   `json:"currencyCode"`      //  "THB",
 	PaymentChannel    []string `json:"paymentChannel"`    //"paymentChannel": ["CC"]
 	FrontendReturnUrl string   `json:"frontendReturnUrl"` //: "https://aot-limousine-website-dot-limousine-421804.as.r.appspot.com/en", // ส่งเข้า
 	BackendReturnUrl  string   `json:"backendReturnUrl"`  //:
-}
+} // CurrencyCode      string   `json:"currencyCode"`      //  "THB",
 
-type Payment2c2pRequestResponse struct {
+type Payment2C2PResponse struct {
 	PaymentToken  string `json:"paymentToken"`
 	RespCode      string `json:"respCode"`
 	RespDesc      string `json:"respDesc"`
