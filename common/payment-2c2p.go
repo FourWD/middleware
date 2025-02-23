@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Payment2C2P(request *model.Payment2C2P) (model.Payment2C2PResponse, error) {
+func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 	log.Println("InvoiceNo", request.InvoiceNo)
 	log.Println("Amount", request.Amount)
 
