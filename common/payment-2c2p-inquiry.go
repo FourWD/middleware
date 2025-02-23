@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Payment2C2PInquiry(info model.Payment2C2PInquiry) (model.Payment2C2PInquiryResponse, error) {
+func Payment2C2PInquiry(info *model.Payment2C2PInquiry) (model.Payment2C2PInquiryResponse, error) {
 	var reqResponse model.Payment2C2PInquiryResponse
 
 	payload := jwt.MapClaims{
