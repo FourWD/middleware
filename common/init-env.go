@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -15,6 +16,10 @@ var App model.AppInfo
 var AppLog = logrus.New()
 
 func InitEnv() {
+	if App.GaeService != "" {
+		log.SetOutput(io.Discard)
+	}
+
 	AppLog.SetOutput(os.Stdout)
 	AppLog.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: "2006-01-02 15:04:05.000000",
