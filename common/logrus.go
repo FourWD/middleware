@@ -46,7 +46,7 @@ func FiberLogrus(c *fiber.Ctx) error {
 		"body":        jsonBody,
 		"jwt_decode":  jwtClaims,
 	} // "ip":         c.IP(), 		// "latency":     latency.String(),
-	AppLog.WithFields(fields).Info("Request process")
+	AppLog.WithFields(fields).Info("REQUEST_STARTED")
 
 	return c.Next()
 }
@@ -55,7 +55,7 @@ func LogrusInfo(label string, fields logrus.Fields) {
 	fields["created"] = time.Now().Format(DATE_FORMAT_NANO)
 	fields["status"] = 1
 	fields["message"] = "success"
-	AppLog.WithFields(fields).Error(label)
+	AppLog.WithFields(fields).Info(label)
 }
 
 func LogrusError(label string, fields logrus.Fields, err error) {
@@ -87,7 +87,8 @@ func responseLog(c *fiber.Ctx) {
 
 	fields := logrus.Fields{
 		"request_id": requestID,
-		"duration":   duration,
+		"duration":   duration.Milliseconds(),
 	}
-	LogrusInfo("Response process", fields)
+
+	AppLog.WithFields(fields).Info("REQUEST_COMPLETE")
 }
