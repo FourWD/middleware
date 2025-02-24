@@ -15,8 +15,8 @@ func FiberLogrus(c *fiber.Ctx) error {
 	requestID := uuid.New().String()
 	c.Locals("request_id", requestID)
 
-	created := time.Now()
-	c.Locals("created", created)
+	startTime := time.Now()
+	c.Locals("start_time", startTime)
 	// latency := time.Since(created)
 
 	authHeader := c.Get("Authorization")
@@ -45,7 +45,6 @@ func FiberLogrus(c *fiber.Ctx) error {
 		"status_code": c.Response().StatusCode(),
 		"body":        jsonBody,
 		"jwt_decode":  jwtClaims,
-		"created":     time.Now().Format(DATE_FORMAT_NANO),
 	} // "ip":         c.IP(), 		// "latency":     latency.String(),
 	AppLog.WithFields(fields).Info("Request processed")
 

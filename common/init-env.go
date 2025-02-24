@@ -17,7 +17,7 @@ var AppLog = logrus.New()
 func InitEnv() {
 	AppLog.SetOutput(os.Stdout)
 	AppLog.SetFormatter(&logrus.JSONFormatter{
-		// TimestampFormat: time.RFC3339,
+		TimestampFormat: "2006-01-02 15:04:05.000000",
 	})
 	AppLog.SetLevel(logrus.InfoLevel)
 	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
