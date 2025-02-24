@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -24,13 +23,11 @@ func FiberNoSniff(c *fiber.Ctx) error {
 }
 
 func FiberReviewPayload(c *fiber.Ctx) error {
-	//return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "review your payload"})
-	// PrintError("FiberReviewPayload", "")
 	return FiberError(c, "1002", "review your payload")
 }
 
 func FiberSuccess(c *fiber.Ctx) error {
-	// Print("FiberSuccess", getFiberInfo(c))
+	responseLog(c)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
 }
 
@@ -42,20 +39,11 @@ func FiberSuccess(c *fiber.Ctx) error {
 } */
 
 func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string) error {
-	// logDesc := getFiberInfo(c)
-	// logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
-	// logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
-	// PrintError("FiberError", logDesc)
+	responseLog(c)
 	return c.Status(status).JSON(fiber.Map{"status": status, "code": errorCode, "message": errorMessage})
 }
 
 func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...error) error {
-	log.Println("Error", err)
-	// logDesc := getFiberInfo(c)
-	// logDesc += fmt.Sprintf("\n Return Code: %s", errorCode)
-	// logDesc += fmt.Sprintf("\n Return Message: %s", errorMessage)
-	// PrintError("FiberError", logDesc)
-	// return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode, "message": errorMessage})
 	return FiberCustom(c, fiber.StatusInternalServerError, errorCode, errorMessage)
 }
 
@@ -105,13 +93,6 @@ func FiberQueryLimit1(c *fiber.Ctx, sql string, values ...interface{}) error {
 }
 
 func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
-	// message := `{"status":1, "code":1, "message":"success", "data": ` + json + `}`
-	// c.Set("Content-Type", "application/json")
-	// return c.SendString(string(message))
-	// message := `{"status":1, "message":"success", "data":` + json + `, "sql":"` + sql + `"}`
-	// c.Set("Content-Type", "application/json")
-	// return c.SendString(string(message))
-
 	response := map[string]interface{}{
 		"status":  1,
 		"message": "success",
@@ -123,6 +104,7 @@ func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
 	}
 
 	c.Set("Content-Type", "application/json")
+	responseLog(c)
 	return c.JSON(response)
 }
 

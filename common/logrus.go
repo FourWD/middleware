@@ -46,7 +46,7 @@ func FiberLogrus(c *fiber.Ctx) error {
 		"body":        jsonBody,
 		"jwt_decode":  jwtClaims,
 	} // "ip":         c.IP(), 		// "latency":     latency.String(),
-	AppLog.WithFields(fields).Info("Request processed")
+	AppLog.WithFields(fields).Info("Request process")
 
 	return c.Next()
 }
@@ -78,4 +78,16 @@ func decodeToJson(jwtToken string) (map[string]interface{}, error) {
 		return claimsJson, nil
 	}
 	return nil, nil
+}
+
+func responseLog(c *fiber.Ctx) {
+	requestID, _ := c.Locals("request_id").(string)
+	startTime, _ := c.Locals("start_time").(time.Time)
+	duration := time.Since(startTime)
+
+	fields := logrus.Fields{
+		"request_id": requestID,
+		"duration":   duration,
+	}
+	LogrusInfo("Response process", fields)
 }
