@@ -51,19 +51,29 @@ func FiberLogrus(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func LogrusInfo(label string, fields logrus.Fields) {
-	fields["created"] = time.Now().Format(DATE_FORMAT_NANO)
-	fields["status"] = 1
-	fields["message"] = "success"
-	AppLog.WithFields(fields).Info(label)
+func GetRequestID(c *fiber.Ctx) string {
+	requestID, _ := c.Locals("request_id").(string)
+	return requestID
 }
 
-func LogrusError(label string, fields logrus.Fields, err error) {
-	fields["created"] = time.Now().Format(DATE_FORMAT_NANO)
-	fields["status"] = 0
-	fields["message"] = err.Error()
-	AppLog.WithFields(fields).Error(label)
+func Logrus(message string, fields logrus.Fields, status bool, requestID ...string) {
+	fields["status"] = 1
+	if !status {
+		fields["status"] = 0
+	}
+
+	fields["request_id"] = ""
+	if len(requestID) > 0 {
+		fields["request_id"] = requestID[0]
+	}
+
+	AppLog.WithFields(fields).Info(message)
 }
+
+// func LogrusError(message string, fields logrus.Fields, err error) {
+// 	fields["status"] = 0
+// 	AppLog.WithFields(fields).Error(message)
+// }
 
 func decodeToJson(jwtToken string) (map[string]interface{}, error) {
 	parsedToken, _, err := new(jwt.Parser).ParseUnverified(jwtToken, jwt.MapClaims{})

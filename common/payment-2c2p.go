@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -15,8 +14,8 @@ import (
 )
 
 func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
-	log.Println("InvoiceNo", request.InvoiceNo)
-	log.Println("Amount", request.Amount)
+	// log.Println("InvoiceNo", request.InvoiceNo)
+	// log.Println("Amount", request.Amount)
 
 	var reqResponse model.Payment2C2PResponse
 	url := viper.GetString("2c2p_payment_request_url") // https://sandbox-pgw.2c2p.com/payment/4.3/paymenttoken"
