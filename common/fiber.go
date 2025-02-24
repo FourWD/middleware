@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	logrus "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -315,28 +314,28 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string,
 // 	return logDesc
 // }
 
-func FiberLog(c *fiber.Ctx) {
-	fields := logrus.Fields{
-		"path":          c.Path(),
-		"method":        c.Method(),
-		"authorization": c.Get("Authorization"),
-	}
-	fields["body"], _ = getBodyJson(c)
-	AppLog.WithFields(fields).Info("FiberLog")
-}
+// func FiberLog(c *fiber.Ctx) {
+// 	fields := logrus.Fields{
+// 		"path":          c.Path(),
+// 		"method":        c.Method(),
+// 		"authorization": c.Get("Authorization"),
+// 	}
+// 	fields["body"], _ = getBodyJson(c)
+// 	AppLog.WithFields(fields).Info("FiberLog")
+// }
 
-func getBodyJson(c *fiber.Ctx) (string, error) {
-	rawBody := c.Request().Body()
+// func getBodyJson(c *fiber.Ctx) (string, error) {
+// 	rawBody := c.Request().Body()
 
-	var params map[string]interface{}
-	if err := json.Unmarshal(rawBody, &params); err != nil {
-		return "", errors.New("invalid json")
-	}
+// 	var params map[string]interface{}
+// 	if err := json.Unmarshal(rawBody, &params); err != nil {
+// 		return "", errors.New("invalid json")
+// 	}
 
-	jsonString, err := json.Marshal(params)
-	if err != nil {
-		return "", errors.New("error marshaling json")
-	}
+// 	jsonString, err := json.Marshal(params)
+// 	if err != nil {
+// 		return "", errors.New("error marshaling json")
+// 	}
 
-	return string(jsonString), nil
-}
+// 	return string(jsonString), nil
+// }

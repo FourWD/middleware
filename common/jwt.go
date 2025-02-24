@@ -19,8 +19,7 @@ import (
 // }
 
 func AuthenticationMiddleware(c *fiber.Ctx) error {
-	FiberLog(c)
-
+	// FiberLog(c)
 	if isPublicPath(c) {
 		// log.Println("public path")
 		return c.Next()
