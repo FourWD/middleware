@@ -66,6 +66,7 @@ func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 		return reqResponse, errors.New(reqResponse.RespDesc)
 	}
 
+	reqResponse.InvoiceNo = request.InvoiceNo
 	return reqResponse, nil
 }
 

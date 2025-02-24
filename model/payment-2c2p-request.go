@@ -15,6 +15,7 @@ type Payment2C2PResponse struct {
 	RespCode      string `json:"respCode"`
 	RespDesc      string `json:"respDesc"`
 	WebPaymentUrl string `json:"webPaymentUrl"`
+	InvoiceNo     string `json:"invoice_no"`
 }
 
 // type PaymentResponse struct {
