@@ -41,7 +41,7 @@ func handleRunLatestVersionOnly() {
 		// fmt.Println("CallWakeUp", err.Error()) //
 		// fmt.Println("************************** Wake up ERROR! **************************")
 		fields["error"] = err.Error()
-		Log("WakeUp", fields, false, "")
+		LogError("WakeUp", fields, "")
 
 		Terminate()
 		return
@@ -57,7 +57,7 @@ func handleRunLatestVersionOnly() {
 			fields["app.env"] = App.Env
 			fields["app.app_version"] = App.AppVersion
 			fields["app.gae_version"] = App.GaeVersion
-			Log("WakeUp", fields, true, "")
+			Log("WakeUp", fields, "")
 		}
 	}
 }

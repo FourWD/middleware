@@ -55,7 +55,7 @@ func GetRequestID(c *fiber.Ctx) string {
 	return requestID
 }
 
-func Log(label string, fields map[string]interface{}, status bool, requestID ...string) {
+func Log(label string, fields map[string]interface{}, requestID ...string) {
 	fields["request_id"] = ""
 	if len(requestID) > 0 {
 		fields["request_id"] = requestID[0]
@@ -66,11 +66,21 @@ func Log(label string, fields map[string]interface{}, status bool, requestID ...
 		logFields = append(logFields, zap.Any(k, v))
 	}
 
-	if status {
-		AppLog.Info(label, logFields...)
-	} else {
-		AppLog.Error(label, logFields...)
+	AppLog.Info(label, logFields...)
+}
+
+func LogError(label string, fields map[string]interface{}, requestID ...string) {
+	fields["request_id"] = ""
+	if len(requestID) > 0 {
+		fields["request_id"] = requestID[0]
 	}
+
+	logFields := make([]zap.Field, 0, len(fields))
+	for k, v := range fields {
+		logFields = append(logFields, zap.Any(k, v))
+	}
+
+	AppLog.Error(label, logFields...)
 }
 
 func decodeToJson(jwtToken string) (map[string]interface{}, error) {
