@@ -55,6 +55,7 @@ func InitEnv() {
 func initLog() {
 	config := zap.NewProductionConfig()
 	config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000000")
+	config.DisableCaller = true
 	AppLog, _ = config.Build()
 	defer AppLog.Sync()
 }
