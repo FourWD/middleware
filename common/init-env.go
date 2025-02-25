@@ -8,23 +8,20 @@ import (
 	"strings"
 
 	"github.com/FourWD/middleware/model"
-	logrus "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var App model.AppInfo
-var AppLog = logrus.New()
+var AppLog *zap.Logger
 
 func InitEnv() {
 	if App.GaeService != "" {
 		log.SetOutput(io.Discard)
 	}
 
-	AppLog.SetOutput(os.Stdout)
-	AppLog.SetFormatter(&logrus.JSONFormatter{
-		TimestampFormat: "2006-01-02 15:04:05.000000",
-	})
-	AppLog.SetLevel(logrus.InfoLevel)
+	initLog()
 	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
 	App.Env = os.Getenv("ENV")
 	if App.Env == "" {
@@ -53,4 +50,11 @@ func InitEnv() {
 	// 	fmt.Println("Error loading .env file")
 	// 	panic(err)
 	// }
+}
+
+func initLog() {
+	config := zap.NewProductionConfig()
+	config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000000")
+	AppLog, _ := config.Build()
+	defer AppLog.Sync()
 }

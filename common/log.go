@@ -8,10 +8,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
-	logrus "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
-func FiberLogrus(c *fiber.Ctx) error {
+func FiberLog(c *fiber.Ctx) error {
 	requestID := uuid.New().String()
 	c.Locals("request_id", requestID)
 
@@ -38,16 +38,15 @@ func FiberLogrus(c *fiber.Ctx) error {
 		jsonBody = map[string]interface{}{"raw_body": string(body)}
 	}
 
-	fields := logrus.Fields{
-		"request_id":  requestID,
-		"method":      c.Method(),
-		"path":        c.Path(),
-		"status_code": c.Response().StatusCode(),
-		"body":        jsonBody,
-		"jwt_decode":  jwtClaims,
+	fields := []zap.Field{
+		zap.String("request_id", requestID),
+		zap.String("method", c.Method()),
+		zap.String("path", c.Path()),
+		zap.Int("status_code", c.Response().StatusCode()),
+		zap.Any("body", jsonBody),
+		zap.Any("jwt_decode", jwtClaims),
 	} // "ip":         c.IP(), 		// "latency":     latency.String(),
-	AppLog.WithFields(fields).Info("REQUEST_STARTED")
-
+	AppLog.Info("REQUEST_STARTED", fields...)
 	return c.Next()
 }
 
@@ -56,24 +55,23 @@ func GetRequestID(c *fiber.Ctx) string {
 	return requestID
 }
 
-func Logrus(message string, fields logrus.Fields, status bool, requestID ...string) {
-	fields["status"] = 1
-	if !status {
-		fields["status"] = 0
-	}
-
+func Log(label string, fields map[string]interface{}, status bool, requestID ...string) {
 	fields["request_id"] = ""
 	if len(requestID) > 0 {
 		fields["request_id"] = requestID[0]
 	}
 
-	AppLog.WithFields(fields).Info(message)
-}
+	logFields := make([]zap.Field, 0, len(fields))
+	for k, v := range fields {
+		logFields = append(logFields, zap.Any(k, v))
+	}
 
-// func LogrusError(message string, fields logrus.Fields, err error) {
-// 	fields["status"] = 0
-// 	AppLog.WithFields(fields).Error(message)
-// }
+	if status {
+		AppLog.Info(label, logFields...)
+	} else {
+		AppLog.Error(label, logFields...)
+	}
+}
 
 func decodeToJson(jwtToken string) (map[string]interface{}, error) {
 	parsedToken, _, err := new(jwt.Parser).ParseUnverified(jwtToken, jwt.MapClaims{})
@@ -95,10 +93,9 @@ func responseLog(c *fiber.Ctx) {
 	startTime, _ := c.Locals("start_time").(time.Time)
 	duration := time.Since(startTime)
 
-	fields := logrus.Fields{
-		"request_id": requestID,
-		"duration":   duration.Milliseconds(),
+	fields := []zap.Field{
+		zap.String("request_id", requestID),
+		zap.Int64("duration", duration.Milliseconds()),
 	}
-
-	AppLog.WithFields(fields).Info("REQUEST_COMPLETE")
+	AppLog.Info("REQUEST_COMPLETE", fields...)
 }

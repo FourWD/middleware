@@ -7,7 +7,6 @@ import (
 
 	"github.com/FourWD/middleware/model"
 	"github.com/robfig/cron/v3"
-	logrus "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -32,7 +31,7 @@ func handleRunLatestVersionOnly() {
 	}
 
 	wakeUpUrl := fmt.Sprintf("https://%s-dot-%s.appspot.com/wake-up", App.GaeService, App.GaeProject)
-	fields := logrus.Fields{
+	fields := map[string]interface{}{
 		"wake_up_url": wakeUpUrl,
 	}
 	// log.Println("wakeUpUrl: ", wakeUpUrl)
@@ -42,7 +41,7 @@ func handleRunLatestVersionOnly() {
 		// fmt.Println("CallWakeUp", err.Error()) //
 		// fmt.Println("************************** Wake up ERROR! **************************")
 		fields["error"] = err.Error()
-		Logrus("WakeUp", fields, false, "")
+		Log("WakeUp", fields, false, "")
 
 		Terminate()
 		return
@@ -58,7 +57,7 @@ func handleRunLatestVersionOnly() {
 			fields["app.env"] = App.Env
 			fields["app.app_version"] = App.AppVersion
 			fields["app.gae_version"] = App.GaeVersion
-			Logrus("WakeUp", fields, true, "")
+			Log("WakeUp", fields, true, "")
 		}
 	}
 }
