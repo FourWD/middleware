@@ -3,11 +3,11 @@ package common
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/FourWD/middleware/model"
 	"github.com/robfig/cron/v3"
+	logrus "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -32,12 +32,18 @@ func handleRunLatestVersionOnly() {
 	}
 
 	wakeUpUrl := fmt.Sprintf("https://%s-dot-%s.appspot.com/wake-up", App.GaeService, App.GaeProject)
-	log.Println("wakeUpUrl: ", wakeUpUrl)
+	fields := logrus.Fields{
+		"wake_up_url": wakeUpUrl,
+	}
+	// log.Println("wakeUpUrl: ", wakeUpUrl)
 	var response Response
 	jsonData := CallUrl(wakeUpUrl)
 	if err := json.Unmarshal([]byte(jsonData), &response); err != nil {
 		// fmt.Println("CallWakeUp", err.Error()) //
-		fmt.Println("************************** Wake up ERROR! **************************")
+		// fmt.Println("************************** Wake up ERROR! **************************")
+		fields["error"] = err.Error()
+		Logrus("WakeUp", fields, false, "")
+
 		Terminate()
 		return
 	}
@@ -47,7 +53,12 @@ func handleRunLatestVersionOnly() {
 			App.AppVersion = response.Data.AppVersion
 			Terminate()
 		} else {
-			fmt.Printf("************************** %s [%s] Version: [%s - %s] Wake up OK! **************************\n", App.GaeService, App.Env, App.AppVersion, App.GaeVersion)
+			// fmt.Printf("************************** %s [%s] Version: [%s - %s] Wake up OK! **************************\n", App.GaeService, App.Env, App.AppVersion, App.GaeVersion)
+			fields["app.gae_service"] = App.GaeService
+			fields["app.env"] = App.Env
+			fields["app.app_version"] = App.AppVersion
+			fields["app.gae_version"] = App.GaeVersion
+			Logrus("WakeUp", fields, true, "")
 		}
 	}
 }
