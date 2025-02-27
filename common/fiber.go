@@ -175,7 +175,8 @@ func FiberWakeUp(app *fiber.App) {
 		// jsonData := `{"status":1, "message":"success", "data":` + StructToString(App) + `}`
 		// c.Set("Content-Type", "application/json")
 		// return c.SendString(string(jsonData))
-		return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": StructToString(App)})
+		//return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": StructToString(App)})
+		return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": App})
 	})
 }
 
