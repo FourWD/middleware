@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -28,7 +27,9 @@ func FiberReviewPayload(c *fiber.Ctx) error {
 
 func FiberSuccess(c *fiber.Ctx) error {
 	responseLog(c)
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
+	// return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
+	jsonData := `{"status":1, "message":"success"}`
+	return FiberSendData(c, jsonData, "")
 }
 
 /* func FiberError(c *fiber.Ctx, errorCode ...string) error {
@@ -41,6 +42,8 @@ func FiberSuccess(c *fiber.Ctx) error {
 func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string) error {
 	responseLog(c)
 	return c.Status(status).JSON(fiber.Map{"status": status, "code": errorCode, "message": errorMessage})
+	// jsonData := fmt.Sprintf(`{"status":%d, "code":"%s", "message":"%s"}`, status, errorCode, errorMessage)
+	// return FiberSendData(c, jsonData, "")
 }
 
 func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...error) error {
@@ -60,7 +63,7 @@ func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...erro
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
 	jsonBytes, sql, err := queryToJSON(db, sql, values...)
 	if err != nil {
-		PrintError(`SQL Error`, err.Error())
+		// PrintError(`SQL Error`, err.Error())
 		return FiberError(c, "1001", "sql error")
 	}
 	return FiberSendData(c, string(jsonBytes), sql)
@@ -160,19 +163,20 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 
 func FiberWarmUp(app *fiber.App) {
 	app.Get("/_ah/warmup", func(c *fiber.Ctx) error {
-		message := "Warm-up request succeeded"
-		// fmt.Println(message)
-		return c.Status(http.StatusOK).SendString(message)
+		// message := "Warm-up request succeeded"
+		// return c.Status(http.StatusOK).SendString(message)
+		jsonData := `{"message":"Warm-up request succeeded"}`
+		return FiberSendData(c, jsonData, "")
 	})
 }
 
 func FiberWakeUp(app *fiber.App) {
 	app.Get("/wake-up", func(c *fiber.Ctx) error {
 		App.AppVersion = viper.GetString("app_version")
-		message := `{"status":1, "message":"success", "data":` + StructToString(App) + `}`
-		c.Set("Content-Type", "application/json")
-
-		return c.SendString(string(message))
+		jsonData := `{"status":1, "message":"success", "data":` + StructToString(App) + `}`
+		// c.Set("Content-Type", "application/json")
+		// return c.SendString(string(message))
+		return FiberSendData(c, jsonData, "")
 	})
 }
 
