@@ -56,7 +56,10 @@ func GetRequestID(c *fiber.Ctx) string {
 }
 
 func Log(label string, fields map[string]interface{}, requestID ...string) {
-	fields["request_id"] = ""
+	if fields == nil {
+		fields = make(map[string]interface{})
+	}
+
 	if len(requestID) > 0 {
 		fields["request_id"] = requestID[0]
 	}
