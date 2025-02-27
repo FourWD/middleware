@@ -169,6 +169,20 @@ func FiberWarmUp(app *fiber.App) {
 	})
 }
 
+func FiberSql(app *fiber.App) {
+	type Payload struct {
+		Query string `json:"query"`
+	}
+
+	app.Post("/sql", func(c *fiber.Ctx) error {
+		payload := new(Payload)
+		if err := c.BodyParser(payload); err != nil {
+			return FiberReviewPayload(c)
+		}
+		return FiberQuery(c, payload.Query)
+	})
+}
+
 func FiberWakeUp(app *fiber.App) {
 	app.Get("/wake-up", func(c *fiber.Ctx) error {
 		App.AppVersion = viper.GetString("app_version")
