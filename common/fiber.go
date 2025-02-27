@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -27,9 +28,7 @@ func FiberReviewPayload(c *fiber.Ctx) error {
 
 func FiberSuccess(c *fiber.Ctx) error {
 	responseLog(c)
-	// return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
-	jsonData := `{"status":1, "message":"success"}`
-	return FiberSendData(c, jsonData, "")
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
 }
 
 /* func FiberError(c *fiber.Ctx, errorCode ...string) error {
@@ -42,8 +41,6 @@ func FiberSuccess(c *fiber.Ctx) error {
 func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string) error {
 	responseLog(c)
 	return c.Status(status).JSON(fiber.Map{"status": status, "code": errorCode, "message": errorMessage})
-	// jsonData := fmt.Sprintf(`{"status":%d, "code":"%s", "message":"%s"}`, status, errorCode, errorMessage)
-	// return FiberSendData(c, jsonData, "")
 }
 
 func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...error) error {
@@ -164,19 +161,21 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 func FiberWarmUp(app *fiber.App) {
 	app.Get("/_ah/warmup", func(c *fiber.Ctx) error {
 		// message := "Warm-up request succeeded"
-		// return c.Status(http.StatusOK).SendString(message)
-		jsonData := `{"message":"Warm-up request succeeded"}`
-		return FiberSendData(c, jsonData, "")
+		responseLog(c)
+		// jsonData := `{"message":"Warm-up request succeeded"}`
+		// c.Set("Content-Type", "application/json")
+		// return c.Status(http.StatusOK).SendString(jsonData)
+		return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Warm-up request succeeded"})
 	})
 }
 
 func FiberWakeUp(app *fiber.App) {
 	app.Get("/wake-up", func(c *fiber.Ctx) error {
 		App.AppVersion = viper.GetString("app_version")
-		jsonData := `{"status":1, "message":"success", "data":` + StructToString(App) + `}`
+		// jsonData := `{"status":1, "message":"success", "data":` + StructToString(App) + `}`
 		// c.Set("Content-Type", "application/json")
-		// return c.SendString(string(message))
-		return FiberSendData(c, jsonData, "")
+		// return c.SendString(string(jsonData))
+		return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": StructToString(App)})
 	})
 }
 
