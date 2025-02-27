@@ -21,7 +21,7 @@ func FiberLog(c *fiber.Ctx) error {
 
 	authHeader := c.Get("Authorization")
 	var jwtToken string
-	var jwtClaims map[string]interface{}
+	var jwtClaims map[string]interface{} = make(map[string]interface{})
 
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		jwtToken = strings.TrimPrefix(authHeader, "Bearer ")
