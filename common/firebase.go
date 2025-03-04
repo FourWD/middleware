@@ -93,6 +93,8 @@ package common
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -141,6 +143,26 @@ func FirebaseValueToInt(a interface{}) int {
 
 func FirebaseUpdate(client *firestore.Client, path string, updateData map[string]interface{}) error {
 	_, err := client.Doc(path).Set(context.Background(), updateData, firestore.MergeAll)
+	return err
+}
+
+func FirebaseSaveBySqlLimit1(client *firestore.Client, path string, sql string, values ...interface{}) error {
+	jsonBytes, _, err := queryToJSON(DatabaseMysql, sql, values...)
+	var result []map[string]interface{}
+	if json.Unmarshal(jsonBytes, &result); err != nil {
+		return err
+	}
+
+	if len(result) != 1 {
+		return errors.New("total row != 1")
+	}
+
+	firstRow := result[0]
+	return FirebaseUpdate(client, path, firstRow)
+}
+
+func FirebaseDelete(client *firestore.Client, docPath string) error {
+	_, err := client.Doc(docPath).Delete(FirebaseCtx)
 	return err
 }
 
