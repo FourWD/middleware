@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
 type Result struct {
@@ -29,7 +27,7 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 		return Result{}, errors.New("no token")
 	}
 	var response Result
-	baseUrl := viper.GetString("engine_limousine_url")
+	// baseUrl := viper.GetString("engine_limousine_url")
 
 	token = strings.ReplaceAll(token, "Bearer ", "")
 	client := http.Client{
@@ -38,7 +36,7 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 
 	requestPayload := new(bytes.Buffer)
 	json.NewEncoder(requestPayload).Encode(payload)
-	req, err := http.NewRequest("POST", baseUrl+url, requestPayload)
+	req, err := http.NewRequest("POST", url, requestPayload)
 	if err != nil {
 		return response, errors.New("req error")
 	}
