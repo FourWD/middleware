@@ -143,6 +143,11 @@ func FirebaseValueToInt(a interface{}) int {
 
 func FirebaseUpdate(client *firestore.Client, path string, updateData map[string]interface{}) error {
 	_, err := client.Doc(path).Set(context.Background(), updateData, firestore.MergeAll)
+	if err != nil {
+		updateData["path"] = path
+		updateData["error"] = err
+		LogError("FirebaseUpdate", updateData, "")
+	}
 	return err
 }
 
