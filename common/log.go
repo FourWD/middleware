@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"maps"
 	"strings"
 	"time"
 
@@ -55,7 +56,9 @@ func GetRequestID(c *fiber.Ctx) string {
 	return requestID
 }
 
-func Log(label string, fields map[string]interface{}, requestID ...string) {
+func Log(label string, logData map[string]interface{}, requestID ...string) {
+	fields := maps.Clone(logData)
+
 	if fields == nil {
 		fields = make(map[string]interface{})
 	}
@@ -72,7 +75,9 @@ func Log(label string, fields map[string]interface{}, requestID ...string) {
 	AppLog.Info(label, logFields...)
 }
 
-func LogError(label string, fields map[string]interface{}, requestID ...string) {
+func LogError(label string, logData map[string]interface{}, requestID ...string) {
+	fields := maps.Clone(logData)
+
 	if fields == nil {
 		fields = make(map[string]interface{})
 	}
