@@ -33,10 +33,10 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 
 	Log("RequestPost", logData, requestID)
 
-	if token == "" {
-		LogError("no token", nil, requestID)
-		return Result{}, errors.New("no token")
-	}
+	// if token == "" {
+	// 	LogError("no token", nil, requestID)
+	// 	return Result{}, errors.New("no token")
+	// }
 
 	var response Result
 	token = strings.ReplaceAll(token, "Bearer ", "")

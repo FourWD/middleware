@@ -193,12 +193,13 @@ func FiberWarmUp(app *fiber.App) {
 		// return c.Status(http.StatusOK).SendString(jsonData)
 		// return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Warm-up request succeeded"})
 
-		response := map[string]interface{}{
-			"status":  1,
-			"message": "Warm-up request succeeded",
-		}
+		// response := map[string]interface{}{
+		// 	"status":  1,
+		// 	"message": "Warm-up request succeeded",
+		// }
 
-		return FiberCustom(c, fiber.StatusOK, response)
+		// return FiberCustom(c, fiber.StatusOK, response)
+		return FiberOK(c, 1, "0000", "Warm-up request succeeded")
 	})
 }
 
