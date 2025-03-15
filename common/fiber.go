@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,15 +21,6 @@ func FiberNoSniff(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func FiberReviewPayload(c *fiber.Ctx) error {
-	return FiberError(c, "1002", "review your payload")
-}
-
-func FiberSuccess(c *fiber.Ctx) error {
-	responseLog(c)
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
-}
-
 /* func FiberError(c *fiber.Ctx, errorCode ...string) error {
 	if errorCode[0] != "" {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode[0], "message": "error"})
@@ -38,13 +28,39 @@ func FiberSuccess(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "error"})
 } */
 
-func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string) error {
+// func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string) error {
+// 	responseLog(c)
+// 	return c.Status(status).JSON(fiber.Map{"status": status, "code": errorCode, "message": errorMessage})
+// }
+
+func FiberCustom(c *fiber.Ctx, HTTPStatus int, data map[string]interface{}) error {
 	responseLog(c)
-	return c.Status(status).JSON(fiber.Map{"status": status, "code": errorCode, "message": errorMessage})
+	c.Set("Content-Type", "application/json")
+	return c.Status(HTTPStatus).JSON(data)
 }
 
-func FiberError(c *fiber.Ctx, errorCode string, errorMessage string, err ...error) error {
-	return FiberCustom(c, fiber.StatusInternalServerError, errorCode, errorMessage)
+func FiberSuccess(c *fiber.Ctx) error {
+	// responseLog(c)
+	// return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
+
+	response := map[string]interface{}{
+		"status":  1,
+		"message": "success",
+	}
+	return FiberCustom(c, fiber.StatusOK, response)
+}
+
+func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
+	response := map[string]interface{}{
+		"status":  0,
+		"code":    errorCode,
+		"message": errorMessage,
+	}
+	return FiberCustom(c, fiber.StatusInternalServerError, response)
+}
+
+func FiberReviewPayload(c *fiber.Ctx) error {
+	return FiberError(c, "1002", "review your payload")
 }
 
 // func FiberErrorSql(c *fiber.Ctx, errorMessage string) error {
@@ -103,9 +119,9 @@ func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
 		response["sql"] = sql
 	}
 
-	c.Set("Content-Type", "application/json")
-	responseLog(c)
-	return c.JSON(response)
+	// responseLog(c)
+	// return c.JSON(response)
+	return FiberCustom(c, fiber.StatusOK, response)
 }
 
 func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
@@ -161,11 +177,18 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 func FiberWarmUp(app *fiber.App) {
 	app.Get("/_ah/warmup", func(c *fiber.Ctx) error {
 		// message := "Warm-up request succeeded"
-		responseLog(c)
+		// responseLog(c)
 		// jsonData := `{"message":"Warm-up request succeeded"}`
 		// c.Set("Content-Type", "application/json")
 		// return c.Status(http.StatusOK).SendString(jsonData)
-		return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Warm-up request succeeded"})
+		// return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Warm-up request succeeded"})
+
+		response := map[string]interface{}{
+			"status":  1,
+			"message": "Warm-up request succeeded",
+		}
+
+		return FiberCustom(c, fiber.StatusOK, response)
 	})
 }
 
@@ -190,7 +213,16 @@ func FiberWakeUp(app *fiber.App) {
 		// c.Set("Content-Type", "application/json")
 		// return c.SendString(string(jsonData))
 		//return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": StructToString(App)})
-		return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": App})
+
+		// return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": App})
+
+		response := map[string]interface{}{
+			"status":  1,
+			"message": "success",
+			"data":    App,
+		}
+
+		return FiberCustom(c, fiber.StatusOK, response)
 	})
 }
 

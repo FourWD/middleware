@@ -56,41 +56,40 @@ func GetRequestID(c *fiber.Ctx) string {
 	return requestID
 }
 
-func Log(label string, logData map[string]interface{}, requestID ...string) {
+func prepareLogData(logData map[string]interface{}, requestID string) []zap.Field {
 	fields := maps.Clone(logData)
 
 	if fields == nil {
 		fields = make(map[string]interface{})
 	}
 
-	if len(requestID) > 0 {
-		fields["request_id"] = requestID[0]
-	}
+	fields["request_id"] = requestID
 
 	logFields := make([]zap.Field, 0, len(fields))
 	for k, v := range fields {
+		// if k == "json" {
+		if str, ok := v.(string); ok {
+			var formattedJSON map[string]interface{}
+			if err := json.Unmarshal([]byte(str), &formattedJSON); err == nil {
+				// If successfully parsed, store it as a structured object
+				logFields = append(logFields, zap.Reflect(k, formattedJSON))
+				continue
+			}
+		}
+		// }
 		logFields = append(logFields, zap.Any(k, v))
 	}
 
+	return logFields
+}
+
+func Log(label string, logData map[string]interface{}, requestID string) {
+	logFields := prepareLogData(logData, requestID)
 	AppLog.Info(label, logFields...)
 }
 
-func LogError(label string, logData map[string]interface{}, requestID ...string) {
-	fields := maps.Clone(logData)
-
-	if fields == nil {
-		fields = make(map[string]interface{})
-	}
-
-	if len(requestID) > 0 {
-		fields["request_id"] = requestID[0]
-	}
-
-	logFields := make([]zap.Field, 0, len(fields))
-	for k, v := range fields {
-		logFields = append(logFields, zap.Any(k, v))
-	}
-
+func LogError(label string, logData map[string]interface{}, requestID string) {
+	logFields := prepareLogData(logData, requestID)
 	AppLog.Error(label, logFields...)
 }
 
