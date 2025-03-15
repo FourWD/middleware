@@ -39,22 +39,32 @@ func FiberCustom(c *fiber.Ctx, HTTPStatus int, data map[string]interface{}) erro
 	return c.Status(HTTPStatus).JSON(data)
 }
 
-func FiberSuccess(c *fiber.Ctx) error {
-	// responseLog(c)
-	// return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
-
+func FiberOK(c *fiber.Ctx, status int, code string, message string) error {
 	response := map[string]interface{}{
-		"status":  1,
-		"message": "success",
+		"status":  status,
+		"code":    code,
+		"message": message,
 	}
 	return FiberCustom(c, fiber.StatusOK, response)
 }
 
-func FiberError(c *fiber.Ctx, errorCode string, errorMessage string) error {
+func FiberSuccess(c *fiber.Ctx) error {
+	// responseLog(c)
+	// return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
+
+	// response := map[string]interface{}{
+	// 	"status":  1,
+	// 	"message": "success",
+	// }
+	// return FiberCustom(c, fiber.StatusOK, response)
+	return FiberOK(c, 1, "0000", "success")
+}
+
+func FiberError(c *fiber.Ctx, code string, message string, err ...error) error {
 	response := map[string]interface{}{
 		"status":  0,
-		"code":    errorCode,
-		"message": errorMessage,
+		"code":    code,
+		"message": message,
 	}
 	return FiberCustom(c, fiber.StatusInternalServerError, response)
 }
