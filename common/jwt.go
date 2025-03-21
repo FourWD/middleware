@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
@@ -273,3 +274,27 @@ func IsJwtValid(token string) bool {
 
 // 	app.Listen(":3000")
 // }
+
+func DecodeJWT(ResponseJwt string, tokenString string) (map[string]interface{}, error) {
+	customClaims := make(map[string]interface{})
+
+	token, err := jwt.Parse(ResponseJwt, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(tokenString), nil
+	})
+
+	if err != nil {
+		return customClaims, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		for key, value := range claims {
+			customClaims[key] = value
+		}
+		return customClaims, nil
+	}
+
+	return customClaims, err
+}
