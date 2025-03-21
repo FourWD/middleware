@@ -18,9 +18,11 @@ func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 	// log.Println("Amount", request.Amount)
 
 	var reqResponse model.Payment2C2PResponse
+
+	// merchantID := viper.GetString("2c2p_merchant_id")
 	url := viper.GetString("2c2p_payment_request_url") // https://sandbox-pgw.2c2p.com/payment/4.3/paymenttoken"
 	payload := jwt.MapClaims{
-		"merchantID":        request.MerchantID,
+		"merchantID":        viper.GetString("2c2p_merchant_id"),
 		"invoiceNo":         request.InvoiceNo,
 		"description":       request.Description,
 		"amount":            request.Amount,

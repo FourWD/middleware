@@ -1,7 +1,7 @@
 package model
 
 type Payment2C2P struct {
-	MerchantID        string   `json:"merchantID"`        // "JT04",
+	// MerchantID        string   `json:"merchantID"`        // "JT04",
 	InvoiceNo         string   `json:"invoiceNo"`         //"15239536999999",
 	Description       string   `json:"description"`       // "item 1",
 	Amount            float32  `json:"amount"`            //1000.00,
