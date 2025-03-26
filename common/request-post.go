@@ -39,7 +39,7 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 	// }
 
 	var response Result
-	token = strings.ReplaceAll(token, "Bearer ", "")
+
 	client := http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -52,7 +52,11 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 		return response, err
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+token)
+
+	token = strings.ReplaceAll(token, "Bearer ", "")
+	if token != "" {
+		req.Header.Add("Authorization", "Bearer "+token)
+	}
 	responseUrl, err := client.Do(req)
 	if err != nil {
 		LogError(err.Error(), nil, requestID)
