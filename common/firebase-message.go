@@ -24,7 +24,7 @@ func ConnectFirebaseNotification(key string) error {
 
 	FirebaseMessageClient, err = app.Messaging(context.Background())
 	if err != nil {
-		log.Fatalf("error getting Messaging client: %v\n", err)
+		log.Printf("error getting Messaging client: %v\n", err)
 		return err
 	}
 
@@ -65,7 +65,6 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 
 	result, err := FirebaseMessageClient.Send(context.Background(), message)
 	if err != nil {
-		// Instead of log.Fatalf, return the error
 		return fmt.Errorf("error sending message: %s, %v", result, err)
 	}
 
@@ -109,24 +108,24 @@ func RemoveUserFromSubscription(topic string, userID string, userToken string) e
 
 	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
-		log.Fatalf("error unsubscribing user from topic: %v\n", err)
+		log.Printf("error unsubscribing user from topic: %v\n", err)
 		return err
 	}
 	var notificationTopicID string
 	err = Database.Table("notification_topics").Select("id").Where("name = ?", topic).Scan(&notificationTopicID).Error
 	if err != nil {
-		log.Fatalf("error finding notification topic ID: %v\n", err)
+		log.Printf("error finding notification topic ID: %v\n", err)
 		return err
 	}
 
 	if notificationTopicID == "" {
-		log.Fatalf("notification topic ID not found for topic: %s\n", topic)
+		log.Printf("notification topic ID not found for topic: %s\n", topic)
 		return fmt.Errorf("notification topic ID not found for topic: %s", topic)
 	}
 
 	err = Database.Where("notification_topic_id = ? AND user_id = ?", notificationTopicID, userID).Unscoped().Debug().Delete(&orm.NotificationTopicUser{}).Error
 	if err != nil {
-		log.Fatalf("error removing user from topic in database: %v\n", err)
+		log.Printf("error removing user from topic in database: %v\n", err)
 		return err
 	}
 
@@ -146,7 +145,7 @@ func SendMessageToSubscriber(topic string, title string, body string, data map[s
 
 	_, err := FirebaseMessageClient.Send(context.Background(), message)
 	if err != nil {
-		log.Fatalf("error sending message: %v\n", err)
+		log.Printf("error sending message: %v\n", err)
 		return err
 	}
 

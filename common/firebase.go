@@ -127,7 +127,7 @@ func ConnectFirebase(key string) {
 	// Create a Firebase auth client instance
 	AuthClient, err = app.Auth(context.Background())
 	if err != nil {
-		log.Fatalf("Failed to create Firebase auth client: %v", err)
+		log.Printf("Failed to create Firebase auth client: %v", err)
 	}
 	// defer client.Close()
 }
@@ -179,7 +179,7 @@ func FirebaseCount(documents *firestore.DocumentIterator) int {
 			break
 		}
 		if err != nil {
-			log.Fatalf("Error iterating over documents: %v", err)
+			log.Printf("Error iterating over documents: %v", err)
 		}
 		count++
 	}
@@ -195,17 +195,17 @@ func FirebaseCountByField(documents *firestore.DocumentIterator, groupByField st
 			break
 		}
 		if err != nil {
-			log.Fatalf("Error iterating over documents: %v", err)
+			log.Printf("Error iterating over documents: %v", err)
 		}
 
 		fieldValue, ok := doc.Data()[groupByField]
 		if !ok {
-			log.Fatalf("Document does not have the specified field: %s", groupByField)
+			log.Printf("Document does not have the specified field: %s", groupByField)
 		}
 
 		fieldStr, ok := fieldValue.(string)
 		if !ok {
-			log.Fatalf("Unable to convert field value to string")
+			log.Printf("Unable to convert field value to string")
 		}
 
 		if !StringExistsInList(fieldStr, uniqueValues) {
