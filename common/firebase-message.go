@@ -104,7 +104,12 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 }
 
 func RemoveUserFromSubscription(topic string, userID string, userToken string) error {
-	fmt.Printf("UserToken: %s, userID: %s, Topic: %s\n", userToken, userID, topic)
+	logData := map[string]interface{}{
+		"topic":     topic,
+		"userID":    userID,
+		"userToken": userToken,
+	}
+	Log("RemoveUserFromSubscription", logData, "")
 
 	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
@@ -133,7 +138,13 @@ func RemoveUserFromSubscription(topic string, userID string, userToken string) e
 }
 
 func SendMessageToSubscriber(topic string, title string, body string, data map[string]string) error {
-	Print("data", title)
+	logData := map[string]interface{}{
+		"topic": topic,
+		"title": title,
+		"body":  body,
+	}
+	Log("SendMessageToSubscriber", logData, "")
+
 	message := &messaging.Message{
 		Data:  data,
 		Topic: topic, // all_users
