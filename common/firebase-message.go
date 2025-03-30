@@ -72,8 +72,16 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 }
 
 func AddUserToSubscription(topic string, userID string, userToken string) error {
+	requestID := uuid.NewString()
+	logData := map[string]interface{}{
+		"topic":     topic,
+		"userID":    userID,
+		"userToken": userToken,
+	}
+	Log("AddUserToSubscription", logData, requestID)
+
 	if _, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic); err != nil {
-		log.Println("error subscribing user to topic: ", err)
+		LogError("error subscribing user to topic", logData, requestID)
 	}
 	// ========================================================================================
 	newNotificationTopic := orm.NotificationTopic{
@@ -81,12 +89,12 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 		Name: topic,
 	}
 	if err := Database.Create(&newNotificationTopic).Error; err != nil {
-		log.Println("failed to insert notification topic: ", err)
+		LogError("failed to insert notification topic", logData, requestID)
 	}
 	// ========================================================================================
 	var notificationTopic orm.NotificationTopic
 	if err := Database.Where("name = ?", topic).First(&notificationTopic).Error; err != nil {
-		log.Println("failed to select notification topic: ", err)
+		LogError("failed to select notification topic", logData, requestID)
 	}
 	// ========================================================================================
 	if notificationTopic.ID != "" {
@@ -96,10 +104,11 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 			UserID:              userID,
 		}
 		if err := Database.Create(&notificationTopicUser).Error; err != nil {
-			log.Println("failed to insert notification user topic user: ", err)
+			LogError("failed to insert notification user topic user", logData, requestID)
 		}
 	}
 	// ========================================================================================
+	Log("AddUserToSubscription OK", logData, requestID)
 	return nil
 }
 
