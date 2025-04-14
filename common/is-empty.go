@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func IsEmpty(params map[string]string) error {
+func IsEmpty(params map[string]string) error { // Check if any field is empty
 	var emptyFields []string
 
 	// Loop through the map and check if any value is empty
