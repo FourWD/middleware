@@ -11,7 +11,12 @@ import (
 func GoogleCreateSubscribe(topicName string) *pubsub.Subscription {
 	projectID := viper.GetString("google_project_id")
 
-	log.Println("start", topicName)
+	logFields := map[string]interface{}{
+		"project_id": projectID,
+		"topic":      topicName,
+	}
+	Log("GoogleCreateSubscribe", logFields, "")
+
 	ctx := context.Background()
 	subscriptionID := "SUB-" + topicName
 

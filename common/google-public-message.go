@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"cloud.google.com/go/pubsub"
@@ -13,7 +12,13 @@ import (
 func GooglePublicMessage(topicName, message string) (string, error) {
 	projectID := viper.GetString("google_project_id")
 
-	log.Println("Message", topicName, message)
+	logFields := map[string]interface{}{
+		"project_id": projectID,
+		"topic_name": topicName,
+		"message":    message,
+	}
+	Log("GooglePublicMessage", logFields, "")
+
 	ctx := context.Background()
 
 	client, err := pubsub.NewClient(ctx, projectID)

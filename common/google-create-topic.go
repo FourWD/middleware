@@ -10,6 +10,12 @@ import (
 func GoogleCreateTopic(topic string) error {
 	projectID := viper.GetString("google_project_id")
 
+	logFields := map[string]interface{}{
+		"project_id": projectID,
+		"topic":      topic,
+	}
+	Log("GoogleCreateTopic", logFields, "")
+
 	ctx := context.Background()
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
