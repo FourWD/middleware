@@ -20,4 +20,5 @@ type PoPayment struct {
 	Amount        float64   `json:"amount" query:"amount" gorm:"type:decimal(14,2)"`
 	ImageUrl      string    `json:"image_url" query:"image_url" gorm:"type:varchar(1000)"`
 	Remark        string    `json:"remark" query:"remark" gorm:"type:varchar(50)"`
+	IsPaid        bool      `json:"is_paid" query:"is_paid" gorm:"type:bool;default:false"`
 }
