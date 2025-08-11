@@ -36,6 +36,12 @@ func FiberNoSniff(c *fiber.Ctx) error {
 func FiberCustom(c *fiber.Ctx, HTTPStatus int, data map[string]interface{}) error {
 	responseLog(c)
 	c.Set("Content-Type", "application/json")
+
+	logFields := map[string]interface{}{
+		"http_status": HTTPStatus,
+		"data":        data,
+	}
+	Log("FiberCustom", logFields, "")
 	return c.Status(HTTPStatus).JSON(data)
 }
 
@@ -66,6 +72,7 @@ func FiberError(c *fiber.Ctx, code string, message string, err ...error) error {
 		"code":    code,
 		"message": message,
 	}
+
 	return FiberCustom(c, fiber.StatusInternalServerError, response)
 }
 
