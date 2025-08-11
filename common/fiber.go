@@ -41,7 +41,9 @@ func FiberCustom(c *fiber.Ctx, HTTPStatus int, data map[string]interface{}) erro
 		"http_status": HTTPStatus,
 		"data":        data,
 	}
-	Log("FiberCustom", logFields, "")
+
+	requestID, _ := c.Locals("request_id").(string)
+	Log("FiberCustom", logFields, requestID)
 	return c.Status(HTTPStatus).JSON(data)
 }
 
