@@ -43,4 +43,6 @@ type UserProfile struct {
 	FileHouseParticularsID string `json:"file_house_particulars_id" query:"file_house_particulars_id" gorm:"type:varchar(36)"`
 	FilePayslipID          string `json:"file_payslip_id" query:"file_payslip_id" gorm:"type:varchar(36)"`
 	IdcardNo               string `json:"idcard_no" query:"idcard_no" gorm:"type:varchar(13)"`
+	//P'ped req 2025-8-10
+	CompanyGroupID string `json:"company_group_id" query:"company_group_id" gorm:"type:varchar(36)"`
 }
