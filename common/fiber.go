@@ -195,19 +195,6 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 
 func FiberWarmUp(app *fiber.App) {
 	app.Get("/_ah/warmup", func(c *fiber.Ctx) error {
-		// message := "Warm-up request succeeded"
-		// responseLog(c)
-		// jsonData := `{"message":"Warm-up request succeeded"}`
-		// c.Set("Content-Type", "application/json")
-		// return c.Status(http.StatusOK).SendString(jsonData)
-		// return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Warm-up request succeeded"})
-
-		// response := map[string]interface{}{
-		// 	"status":  1,
-		// 	"message": "Warm-up request succeeded",
-		// }
-
-		// return FiberCustom(c, fiber.StatusOK, response)
 		return FiberOK(c, 1, "0000", "Warm-up request succeeded")
 	})
 }
@@ -229,12 +216,6 @@ func FiberSql(app *fiber.App) {
 func FiberWakeUp(app *fiber.App) {
 	app.Get("/wake-up", func(c *fiber.Ctx) error {
 		App.AppVersion = viper.GetString("app_version")
-		// jsonData := `{"status":1, "message":"success", "data":` + StructToString(App) + `}`
-		// c.Set("Content-Type", "application/json")
-		// return c.SendString(string(jsonData))
-		//return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": StructToString(App)})
-
-		// return c.Status(http.StatusOK).JSON(fiber.Map{"status": 1, "message": "success", "data": App})
 
 		response := map[string]interface{}{
 			"status":  1,
