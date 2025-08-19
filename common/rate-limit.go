@@ -13,7 +13,7 @@ func isRateLimitPath(c *fiber.Ctx) bool {
 	return StringExistsInList(c.Path(), publicPaths)
 }
 
-func RateLimit(c *fiber.Ctx) fiber.Handler {
+func RateLimit() fiber.Handler {
 	return limiter.New(limiter.Config{
 		Max:        viper.GetInt("rate_limit_per_second"),
 		Expiration: 1 * time.Second,
