@@ -27,7 +27,7 @@ func FiberTableInfo(app *fiber.App) {
 
 	app.Get("/api/table", func(c *fiber.Ctx) error {
 		DBName := viper.GetString("database.database")
-		rows, err := DatabaseMysql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, 
+		rows, err := DatabaseSql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, 
 		CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? 
 		ORDER BY TABLE_NAME, COLUMN_NAME`, DBName)
 		if err != nil {

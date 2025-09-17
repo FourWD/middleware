@@ -102,7 +102,7 @@ func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...inte
 }
 
 func FiberQuery(c *fiber.Ctx, sql string, values ...interface{}) error {
-	return FiberQueryWithCustomDB(c, DatabaseMysql, sql, values...)
+	return FiberQueryWithCustomDB(c, DatabaseSql, sql, values...)
 }
 
 func FiberQueryWithCustomDBLimit1(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
@@ -124,7 +124,7 @@ func FiberQueryWithCustomDBLimit1(c *fiber.Ctx, db *sql.DB, sql string, values .
 }
 
 func FiberQueryLimit1(c *fiber.Ctx, sql string, values ...interface{}) error {
-	return FiberQueryWithCustomDBLimit1(c, DatabaseMysql, sql, values...)
+	return FiberQueryWithCustomDBLimit1(c, DatabaseSql, sql, values...)
 }
 
 func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {

@@ -30,7 +30,7 @@ func FiberPaginatedQuery(c *fiber.Ctx, baseSQL string, values ...interface{}) er
 	paginatedSQL := fmt.Sprintf("SELECT *, count(*) OVER() AS full_count FROM (%s) AS sub LIMIT %d OFFSET %d", baseSQL, limit, offset)
 
 	// Step 4: Execute query
-	rows, err := DatabaseMysql.Query(paginatedSQL, values...)
+	rows, err := DatabaseSql.Query(paginatedSQL, values...)
 	if err != nil {
 		return FiberError(c, "1001", "sql error")
 	}

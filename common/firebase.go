@@ -152,7 +152,7 @@ func FirebaseUpdate(client *firestore.Client, path string, updateData map[string
 }
 
 func FirebaseSaveBySqlLimit1(client *firestore.Client, path string, sql string, values ...interface{}) error {
-	jsonBytes, _, err := queryToJSON(DatabaseMysql, sql, values...)
+	jsonBytes, _, err := queryToJSON(DatabaseSql, sql, values...)
 	var result []map[string]interface{}
 	if json.Unmarshal(jsonBytes, &result); err != nil {
 		return err

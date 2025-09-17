@@ -11,7 +11,7 @@ import (
 )
 
 var Database *gorm.DB
-var DatabaseMysql *sql.DB
+var DatabaseSql *sql.DB
 
 type DNS struct {
 	Username string
@@ -47,7 +47,7 @@ func ConnectDatabase(dns string) error {
 		panic(err)
 	}
 
-	DatabaseMysql, err = sql.Open("mysql", dns+"&loc=Asia%2FBangkok")
+	DatabaseSql, err = sql.Open("mysql", dns+"&loc=Asia%2FBangkok")
 	if err != nil {
 		PrintError(`DB Mysql`, `Connection Error !`)
 		panic(err)
@@ -55,7 +55,7 @@ func ConnectDatabase(dns string) error {
 
 	timeZone := "Asia/Bangkok"
 	Database.Raw("SET time_zone=?", timeZone)
-	DatabaseMysql.Exec("SET time_zone=?", timeZone)
+	DatabaseSql.Exec("SET time_zone=?", timeZone)
 
 	log.Println("CONNECT DB GOOGLE SUCCESS")
 
