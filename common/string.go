@@ -8,7 +8,11 @@ import (
 	"math/rand"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func DateString() string {
@@ -113,4 +117,10 @@ func generateRandomString(length int) string {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+func TitleCase(text string) string {
+	titleCaser := cases.Title(language.English)
+	normalized := strings.Join(strings.Fields(text), " ")
+	return titleCaser.String(strings.ToLower(normalized))
 }

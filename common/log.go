@@ -109,7 +109,7 @@ func decodeToJson(jwtToken string) (map[string]interface{}, error) {
 }
 
 func responseLog(c *fiber.Ctx) {
-	requestID, _ := c.Locals("request_id").(string)
+	requestID := GetRequestID(c)
 	startTime, _ := c.Locals("start_time").(time.Time)
 	duration := time.Since(startTime)
 
