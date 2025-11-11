@@ -12,5 +12,10 @@ func CreateLogAction(userID string, remark string, remarkKey string) error {
 	logAction.Remark = remark
 	logAction.RemarkKey = remarkKey
 
+	logData := map[string]interface{}{
+		"data": logAction,
+	}
+	Log("CreateLogAction", logData, logAction.ID)
+
 	return Database.Create(&logAction).Error
 }
