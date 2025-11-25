@@ -1,12 +1,22 @@
 package common
 
 import (
-	"github.com/ansrivas/fiberprometheus/v2"
+	fiberprometheus "github.com/ansrivas/fiberprometheus/v2"
 	"github.com/gofiber/fiber/v2"
 )
 
-func FiberMetrics(app *fiber.App, name string) {
-	prometheus := fiberprometheus.New(name)
-	prometheus.RegisterAt(app, "/metrics")
-	app.Use(prometheus.Middleware)
+var prometheusMiddleware fiber.Handler
+
+func RegisterPrometheus(app *fiber.App, name string) {
+	p := fiberprometheus.New(name)
+	p.RegisterAt(app, "/metrics")
+
+	prometheusMiddleware = p.Middleware
+}
+
+func FiberPrometheus(c *fiber.Ctx) error {
+	if prometheusMiddleware == nil {
+		return c.Next()
+	}
+	return prometheusMiddleware(c)
 }
