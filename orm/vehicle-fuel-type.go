@@ -1,6 +1,8 @@
 package orm
 
 import (
+	"time"
+
 	"github.com/FourWD/middleware/model"
 )
 
@@ -10,6 +12,8 @@ type VehicleFuelType struct {
 
 	Name   string `json:"name" query:"name" gorm:"type:varchar(50)"`
 	NameEn string `json:"name_en" query:"name_en" gorm:"type:varchar(20)"`
+
+	SyncDate time.Time `json:"sync_date" query:"sync_date"`
 
 	model.GormRowOrder
 }
