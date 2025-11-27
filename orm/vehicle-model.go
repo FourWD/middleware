@@ -19,6 +19,8 @@ type VehicleModel struct {
 	OptionalID2 string `json:"optional_id_2" query:"optional_id_2" gorm:"column:optional_id_2;type:varchar(20)"`
 	OptionalID3 string `json:"optional_id_3" query:"optional_id_3" gorm:"column:optional_id_3;type:varchar(20)"`
 
+	Remark string `json:"remark" query:"remark" gorm:"type:text"`
+
 	SyncDate time.Time `json:"sync_date" query:"sync_date"`
 
 	model.GormRowOrder

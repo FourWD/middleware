@@ -19,6 +19,7 @@ type VehicleSubModel struct {
 	Seat               int     `json:"seat" query:"seat" gorm:"type:int(2)"`
 	EngineCC           string  `json:"engine_cc" query:"engine_cc" gorm:"type:varchar(4)"`
 	Price              float64 `json:"price" query:"price" gorm:"type:decimal(14,2)"`
+	Door               string  `json:"door" query:"door" gorm:"type:varchar(1)"`
 
 	model.GormRowOrder
 }
