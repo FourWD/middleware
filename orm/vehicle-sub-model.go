@@ -16,8 +16,8 @@ type VehicleSubModel struct {
 	Image1             string  `json:"image_1" query:"image_1" gorm:"column:image_1;type:varchar(255)"`
 	Image2             string  `json:"image_2" query:"image_2" gorm:"column:image_2;type:varchar(255)"`
 	Image3             string  `json:"image_3" query:"image_3" gorm:"column:image_3;type:varchar(255)"`
-	Seat               int     `json:"seat" query:"seat" gorm:"type:int(2)"`
-	EngineCC           string  `json:"engine_cc" query:"engine_cc" gorm:"type:varchar(4)"`
+	Seat               string  `json:"seat" query:"seat" gorm:"type:varchar(2)"`
+	Engine             string  `json:"engine" query:"engine" gorm:"type:varchar(4)"`
 	Price              float64 `json:"price" query:"price" gorm:"type:decimal(14,2)"`
 	Door               string  `json:"door" query:"door" gorm:"type:varchar(1)"`
 
