@@ -12,8 +12,8 @@ type VehicleModel struct {
 
 	VehicleTypeID  string `json:"vehicle_type_id" query:"vehicle_type_id" gorm:"type:varchar(10)"`
 	VehicleBrandID string `json:"vehicle_brand_id" query:"vehicle_brand_id" gorm:"type:varchar(36)"`
-	Name           string `json:"name" query:"name" gorm:"type:varchar(50)"`
-	NameEn         string `json:"name_en" query:"name_en" gorm:"type:varchar(50)"`
+	Name           string `json:"name" query:"name" gorm:"type:varchar(500)"`
+	NameEn         string `json:"name_en" query:"name_en" gorm:"type:varchar(500)"`
 
 	OptionalID1 string `json:"optional_id_1" query:"optional_id_1" gorm:"column:optional_id_1;type:varchar(20)"`
 	OptionalID2 string `json:"optional_id_2" query:"optional_id_2" gorm:"column:optional_id_2;type:varchar(20)"`
