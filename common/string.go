@@ -2,6 +2,7 @@ package common
 
 import (
 	"crypto/md5"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -100,6 +101,15 @@ func Hash(text string, salt string) string {
 	hashText.Write([]byte(text + salt))
 	//Print(" md5 pass : ", hex.EncodeToString(hashPassword.Sum(nil)))
 	return hex.EncodeToString(hashText.Sum(nil))
+}
+
+func GenerateID(input string) string {
+	reg := regexp.MustCompile("[^a-zA-Z0-9]+")
+	clean := reg.ReplaceAllString(input, "")
+	clean = strings.ReplaceAll(clean, " ", "")
+
+	sum := sha1.Sum([]byte(clean))
+	return hex.EncodeToString(sum[:8])
 }
 
 func IsUUID(input string) bool {
