@@ -103,10 +103,11 @@ func Hash(text string, salt string) string {
 	return hex.EncodeToString(hashText.Sum(nil))
 }
 
-func GenerateID(input string) string { // 16 characters
+func GenerateID(input string) string {
 	reg := regexp.MustCompile("[^a-zA-Z0-9]+")
 	clean := reg.ReplaceAllString(input, "")
 	clean = strings.ReplaceAll(clean, " ", "")
+	clean = strings.ToLower(clean)
 
 	sum := sha1.Sum([]byte(clean))
 	return hex.EncodeToString(sum[:8])
