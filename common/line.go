@@ -19,7 +19,7 @@ type textMessage struct {
 	Text string `json:"text"`
 }
 
-func PushText(channelToken, to, text string) error {
+func SendLineNotify(channelToken, to, text string) error {
 	body := pushBody{
 		To: to,
 		Messages: []textMessage{
