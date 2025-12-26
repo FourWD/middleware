@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -48,7 +49,7 @@ func StringExistsInList(target string, strList []string) bool {
 	return false
 }
 
-func StringToFloat(value string, fieldName string) float64 {
+func StringToFloat(value string) float64 {
 	parsedValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		return 0
@@ -59,13 +60,13 @@ func StringToFloat(value string, fieldName string) float64 {
 func StringToDateTime(strDateTime string) (time.Time, error) {
 	location, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
-		fmt.Println("parsed error:", err)
+		log.Println("parsed error:", err)
 		return NilDate(), err
 	}
 
 	parsedTime, err := time.ParseInLocation(DATE_FORMAT_MINUTE, strDateTime, location)
 	if err != nil {
-		fmt.Println("parsed error:", err)
+		log.Println("parsed error:", err)
 		return NilDate(), err
 	}
 
@@ -75,13 +76,13 @@ func StringToDateTime(strDateTime string) (time.Time, error) {
 func StringToDate(strDateTime string) (time.Time, error) {
 	location, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
-		fmt.Println("parsed error:", err)
+		log.Println("parsed error:", err)
 		return NilDate(), err
 	}
 
 	parsedTime, err := time.ParseInLocation(DATE_FORMAT_DAY, strDateTime, location)
 	if err != nil {
-		fmt.Println("parsed error:", err)
+		log.Println("parsed error:", err)
 		return NilDate(), err
 	}
 
