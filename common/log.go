@@ -88,6 +88,11 @@ func Log(label string, logData map[string]interface{}, requestID string) {
 	AppLog.Info(label, logFields...)
 }
 
+func LogWarning(label string, logData map[string]interface{}, requestID string) {
+	logFields := prepareLogData(logData, requestID)
+	AppLog.Warn(label, logFields...)
+}
+
 func LogError(label string, logData map[string]interface{}, requestID string) {
 	logFields := prepareLogData(logData, requestID)
 	AppLog.Error(label, logFields...)
