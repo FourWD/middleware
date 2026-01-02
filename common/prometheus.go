@@ -100,7 +100,7 @@ func fiberPrometheus(c *fiber.Ctx) error {
 	return prometheusMiddleware(c)
 }
 
-func RegisterPrometheus(app *fiber.App, name string, logic interface{}) {
+func registerPrometheus(name string, app *fiber.App, logic interface{}) {
 	p := fiberprometheus.New(name)
 	p.RegisterAt(app, "/metrics")
 	prometheusMiddleware = p.Middleware

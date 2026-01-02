@@ -6,14 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
-func MonitorDatabaseConnectionPool() {
+func monitorDatabaseConnectionPool() {
 	go func() {
-		monitorDatabaseConnectionPool()
+		monitorDatabaseConnectionPoolLoop()
 	}()
 }
 
 // Start monitoring connection pool every 30 seconds
-func monitorDatabaseConnectionPool() {
+func monitorDatabaseConnectionPoolLoop() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 

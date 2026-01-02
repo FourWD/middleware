@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func RunLatestVersionOnly() {
+func runLatestVersionOnly() {
 	if os.Getenv("GAE_SERVICE") == "" {
 		return
 	}

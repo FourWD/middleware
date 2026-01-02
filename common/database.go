@@ -36,7 +36,7 @@ func CreateDSN(isGCP bool, dsn DNS) string {
 	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
 }
 
-func ConnectDatabase(dns string) error {
+func ConnectDatabase(dns string, maxOpenConns int, maxIdleConns int) error {
 	var err error
 
 	Database, err = gorm.Open(mysql.Open(dns+"&loc=Asia%2FBangkok"), &gorm.Config{
@@ -60,6 +60,7 @@ func ConnectDatabase(dns string) error {
 	DatabaseSql.Exec("SET time_zone=?", timeZone)
 
 	Log("DB_GORM_CONNECTION_SUCCESS", map[string]interface{}{}, "")
+	initDatabaseConnectionPool(maxOpenConns, maxIdleConns)
 
 	return nil
 }
@@ -86,7 +87,7 @@ func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
 	return database, nil
 }
 
-func ConnectDatabaseViper() error {
+func ConnectDatabaseViper(maxOpenConns int, maxIdleConns int) error {
 	dns := DNS{
 		Username: viper.GetString("database.username"),
 		Password: viper.GetString("database.password"),
@@ -100,7 +101,7 @@ func ConnectDatabaseViper() error {
 		isGCP = false
 	}
 
-	return ConnectDatabase(CreateDSN(isGCP, dns))
+	return ConnectDatabase(CreateDSN(isGCP, dns), maxOpenConns, maxIdleConns)
 }
 
 func DBCreate(requestID string, model interface{}) error {
@@ -178,7 +179,6 @@ func DBDelete(requestID string, model any, id string, DeletedBy string) error {
 func parseToFloat(str string) float64 {
 	parsedValue, err := strconv.ParseFloat(str, 64)
 	if err != nil {
-		// fmt.Println("Error parsing float:", err)
 		return 0
 	}
 	return parsedValue

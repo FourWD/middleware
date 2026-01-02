@@ -2,7 +2,7 @@ package common
 
 import "time"
 
-func InitDatabaseConnectionPool(maxOpenConns int, maxIdleConns int) error {
+func initDatabaseConnectionPool(maxOpenConns int, maxIdleConns int) error {
 	sqlDB, err := Database.DB()
 	if err != nil {
 		return err
