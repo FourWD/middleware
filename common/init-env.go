@@ -15,6 +15,8 @@ import (
 
 var App model.AppInfo
 var AppLog *zap.Logger
+var prometheusName string
+var prometheusLogic interface{}
 
 func InitEnv(name string, logic interface{}) {
 	if App.GaeService != "" {
@@ -43,7 +45,8 @@ func InitEnv(name string, logic interface{}) {
 	}
 
 	Log("ENV_INIT", map[string]interface{}{"env": App.Env}, "")
-	registerPrometheus(name, logic)
+	prometheusName = name
+	prometheusLogic = logic
 }
 
 func initLog() {

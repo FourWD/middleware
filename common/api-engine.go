@@ -11,6 +11,7 @@ var serverErrChan chan error
 
 func APIEngine(app *fiber.App, port string) {
 	fiberApp = app
+	registerPrometheus()
 	serverErrChan = make(chan error, 1)
 
 	go func() {
