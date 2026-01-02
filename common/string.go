@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -28,7 +27,7 @@ func generateRandomDigits(count int) string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	result := ""
 	for i := 0; i < count; i++ {
-		result += fmt.Sprintf("%d", r.Intn(10)) // เลขสุ่มระหว่าง 0-9
+		result += fmt.Sprintf("%d", r.Intn(10))
 	}
 	return result
 }
@@ -57,50 +56,39 @@ func StringToFloat(value string) float64 {
 	return parsedValue
 }
 
-func StringToDateTime(strDateTime string) (time.Time, error) {
+func parseWithTimezone(strDateTime string, format string) (time.Time, error) {
 	location, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
-		log.Println("parsed error:", err)
+		LogError("STRING_PARSE_ERROR", map[string]interface{}{"error": err.Error(), "input": strDateTime}, "")
 		return NilDate(), err
 	}
 
-	parsedTime, err := time.ParseInLocation(DATE_FORMAT_MINUTE, strDateTime, location)
+	parsedTime, err := time.ParseInLocation(format, strDateTime, location)
 	if err != nil {
-		log.Println("parsed error:", err)
+		LogError("STRING_PARSE_ERROR", map[string]interface{}{"error": err.Error(), "input": strDateTime}, "")
 		return NilDate(), err
 	}
 
 	return parsedTime, nil
 }
 
+func StringToDateTime(strDateTime string) (time.Time, error) {
+	return parseWithTimezone(strDateTime, DATE_FORMAT_MINUTE)
+}
+
 func StringToDate(strDateTime string) (time.Time, error) {
-	location, err := time.LoadLocation("Asia/Bangkok")
-	if err != nil {
-		log.Println("parsed error:", err)
-		return NilDate(), err
-	}
-
-	parsedTime, err := time.ParseInLocation(DATE_FORMAT_DAY, strDateTime, location)
-	if err != nil {
-		log.Println("parsed error:", err)
-		return NilDate(), err
-	}
-
-	return parsedTime, nil
+	return parseWithTimezone(strDateTime, DATE_FORMAT_DAY)
 }
 
 func MD5(text string) string {
 	hashText := md5.New()
 	hashText.Write([]byte(text))
-	//Print(" md5 pass : ", hex.EncodeToString(hashPassword.Sum(nil)))
 	return hex.EncodeToString(hashText.Sum(nil))
 }
 
 func Hash(text string, salt string) string {
-
 	hashText := sha256.New()
 	hashText.Write([]byte(text + salt))
-	//Print(" md5 pass : ", hex.EncodeToString(hashPassword.Sum(nil)))
 	return hex.EncodeToString(hashText.Sum(nil))
 }
 
@@ -115,7 +103,6 @@ func GenerateID(input string) string {
 }
 
 func IsUUID(input string) bool {
-	// Regular expression to match UUID format
 	uuidRegex := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 	return uuidRegex.MatchString(input)
 }

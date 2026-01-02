@@ -12,8 +12,6 @@ import (
 )
 
 func DownloadFile(filePath string, destfilePath string, appID string, bucket string) error {
-	// bucket := "bucket-name"
-	// object := "object-name"
 	destFileName := destfilePath
 
 	substrings := strings.Split(filePath, "/")
@@ -22,7 +20,6 @@ func DownloadFile(filePath string, destfilePath string, appID string, bucket str
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-		// return fmt.Errorf("storage.NewClient: %w", err)
 		return err
 	}
 	defer client.Close()
@@ -32,14 +29,11 @@ func DownloadFile(filePath string, destfilePath string, appID string, bucket str
 
 	f, err := os.Create(destFileName)
 	if err != nil {
-		// return fmt.Errorf("os.Create: %w", err)
 		return err
 	}
 
-	// object := "vehicle/" + newFilename
 	rc, err := client.Bucket(bucket).Object("vehicle/" + newFilename).NewReader(ctx)
 	if err != nil {
-		// return fmt.Errorf("Object(%q).NewReader: %w", object, err)
 		return err
 	}
 	defer rc.Close()
@@ -49,12 +43,8 @@ func DownloadFile(filePath string, destfilePath string, appID string, bucket str
 	}
 
 	if err = f.Close(); err != nil {
-		// return fmt.Errorf("f.Close: %w", err)
 		return err
 	}
-
-	// fmt.Fprintf(w, "Blob %v downloaded to local file %v\n", object, destFileName)
-	// common.Print("downloaded to local file "+object, destFileName)
 
 	return nil
 }

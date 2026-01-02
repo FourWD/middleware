@@ -22,7 +22,6 @@ func InitEnv() {
 	}
 
 	initLog()
-	// os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "google.json")
 	App.Env = os.Getenv("ENV")
 	if App.Env == "" {
 		App.Env = "local"
@@ -39,17 +38,11 @@ func InitEnv() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println("Error loading config")
+		LogError("CONFIG_LOAD_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		panic(err)
 	}
 
-	log.Println("ENV = ", App.Env)
-
-	// err := godotenv.Load(".env")
-	// if err != nil {
-	// 	fmt.Println("Error loading .env file")
-	// 	panic(err)
-	// }
+	Log("ENV_INIT", map[string]interface{}{"env": App.Env}, "")
 }
 
 func initLog() {

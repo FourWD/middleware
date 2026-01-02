@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,62 +17,45 @@ type MongoDB struct {
 	Ctx      context.Context
 }
 
-func ConnectMongo(key string, databaseName string) {
+func connectMongoInternal(key string, databaseName string) *MongoDB {
 	clientOptions := options.Client().ApplyURI(key)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if clientOptions == nil {
-		log.Fatal("Failed to create client options")
+		LogError("MONGO_CLIENT_OPTIONS_ERROR", map[string]interface{}{"database": databaseName}, "")
+		panic("Failed to create client options")
 	}
 
 	if ctx == nil {
-		log.Fatal("Failed to create ctx options")
+		LogError("MONGO_CTX_ERROR", map[string]interface{}{"database": databaseName}, "")
+		panic("Failed to create ctx options")
 	}
 
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		log.Fatal("Mongo connect: ", err)
+		LogError("MONGO_CONNECT_ERROR", map[string]interface{}{"error": err.Error(), "database": databaseName}, "")
+		panic(err)
 	}
 
 	if err = client.Ping(ctx, nil); err != nil {
-		log.Fatal("Mongo ping: ", err)
+		LogError("MONGO_PING_ERROR", map[string]interface{}{"error": err.Error(), "database": databaseName}, "")
+		panic(err)
 	}
 
-	DatabaseMongo = new(MongoDB)
-	DatabaseMongo.Client = client
-	DatabaseMongo.Database = client.Database(databaseName)
-	DatabaseMongo.Ctx = ctx
+	return &MongoDB{
+		Client:   client,
+		Database: client.Database(databaseName),
+		Ctx:      ctx,
+	}
+}
 
-	log.Printf("CONNECT MONGO-DB SUCCESS [%s]", databaseName)
+func ConnectMongo(key string, databaseName string) {
+	DatabaseMongo = connectMongoInternal(key, databaseName)
+	Log("MONGO_CONNECTION_SUCCESS", map[string]interface{}{"database": databaseName}, "")
 }
 
 func ConnectMongoMiddleware(key string, databaseName string) {
-	clientOptions := options.Client().ApplyURI(key)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if clientOptions == nil {
-		log.Fatal("Failed to create client options")
-	}
-
-	if ctx == nil {
-		log.Fatal("Failed to create ctx options")
-	}
-
-	client, err := mongo.Connect(ctx, clientOptions)
-	if err != nil {
-		log.Fatal("Mongo connect: ", err)
-	}
-
-	if err = client.Ping(ctx, nil); err != nil {
-		log.Fatal("Mongo ping: ", err)
-	}
-
-	DatabaseMongoMiddleware = new(MongoDB)
-	DatabaseMongoMiddleware.Client = client
-	DatabaseMongoMiddleware.Database = client.Database(databaseName)
-	DatabaseMongoMiddleware.Ctx = ctx
-
-	log.Printf("CONNECT MONGO-DB SUCCESS [%s]", databaseName)
+	DatabaseMongoMiddleware = connectMongoInternal(key, databaseName)
+	Log("MONGO_MIDDLEWARE_CONNECTION_SUCCESS", map[string]interface{}{"database": databaseName}, "")
 }

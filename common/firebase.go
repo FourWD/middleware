@@ -1,94 +1,3 @@
-// package common
-
-// import (
-// 	"context"
-// 	"fmt"
-// 	"log"
-// 	"strconv"
-
-// 	"cloud.google.com/go/firestore"
-// 	firebase "firebase.google.com/go/v4"
-// 	"google.golang.org/api/iterator"
-// 	"google.golang.org/api/option"
-// )
-
-// var FirebaseCtx context.Context
-// var FirebaseClient *firestore.Client
-
-// func ConnectFirebase(key string) {
-// 	FirebaseCtx = context.Background()
-// 	sa := option.WithCredentialsFile(key)
-// 	app, err := firebase.NewApp(FirebaseCtx, nil, sa)
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-
-// 	FirebaseClient, err = app.Firestore(FirebaseCtx)
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-// 	// defer client.Close()
-// }
-
-// func FirebaseValueToInt(a interface{}) int {
-// 	str := fmt.Sprintf("%d", a)
-// 	intValue, err := strconv.Atoi(str)
-// 	if err != nil {
-// 		return 0
-// 	}
-// 	return intValue
-// }
-
-// func FirebaseUpdate(client *firestore.Client, path string, updateData map[string]interface{}) error {
-// 	_, err := client.Doc(path).Set(context.Background(), updateData, firestore.MergeAll)
-// 	return err
-// }
-
-// func FirebaseCount(documents *firestore.DocumentIterator) int {
-// 	count := 0
-// 	for {
-// 		_, err := documents.Next()
-// 		if err == iterator.Done {
-// 			break
-// 		}
-// 		if err != nil {
-// 			log.Fatalf("Error iterating over documents: %v", err)
-// 		}
-// 		count++
-// 	}
-// 	return count
-// }
-
-// func FirebaseCountByField(documents *firestore.DocumentIterator, groupByField string) int {
-// 	uniqueValues := []string{}
-
-// 	for {
-// 		doc, err := documents.Next()
-// 		if err == iterator.Done {
-// 			break
-// 		}
-// 		if err != nil {
-// 			log.Fatalf("Error iterating over documents: %v", err)
-// 		}
-
-// 		fieldValue, ok := doc.Data()[groupByField]
-// 		if !ok {
-// 			log.Fatalf("Document does not have the specified field: %s", groupByField)
-// 		}
-
-// 		fieldStr, ok := fieldValue.(string)
-// 		if !ok {
-// 			log.Fatalf("Unable to convert field value to string")
-// 		}
-
-// 		if !StringExistsInList(fieldStr, uniqueValues) {
-// 			uniqueValues = append(uniqueValues, fieldStr)
-// 		}
-// 	}
-
-// 	return len(uniqueValues)
-// }
-
 package common
 
 import (
@@ -96,15 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 
-	// firebase "firebase.google.com/go/v4"
 	"cloud.google.com/go/firestore"
-	firebase "firebase.google.com/go/v4"
 	firebaseAuth "firebase.google.com/go/v4/auth"
 	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 )
 
 var FirebaseCtx context.Context
@@ -113,23 +18,22 @@ var AuthClient *firebaseAuth.Client
 
 func ConnectFirebase(key string) {
 	FirebaseCtx = context.Background()
-	sa := option.WithCredentialsFile(key)
-	app, err := firebase.NewApp(FirebaseCtx, nil, sa)
+
+	app, err := initFirebaseApp(key)
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 
 	FirebaseClient, err = app.Firestore(FirebaseCtx)
 	if err != nil {
-		log.Fatalln(err)
+		LogError("FIREBASE_FIRESTORE_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		panic(err)
 	}
 
-	// Create a Firebase auth client instance
 	AuthClient, err = app.Auth(context.Background())
 	if err != nil {
-		log.Printf("Failed to create Firebase auth client: %v", err)
+		LogError("FIREBASE_AUTH_CLIENT_ERROR", map[string]interface{}{"error": err.Error()}, "")
 	}
-	// defer client.Close()
 }
 
 func FirebaseValueToInt(a interface{}) int {
@@ -179,7 +83,7 @@ func FirebaseCount(documents *firestore.DocumentIterator) int {
 			break
 		}
 		if err != nil {
-			log.Printf("Error iterating over documents: %v", err)
+			LogError("FIREBASE_ITERATOR_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		}
 		count++
 	}
@@ -195,17 +99,17 @@ func FirebaseCountByField(documents *firestore.DocumentIterator, groupByField st
 			break
 		}
 		if err != nil {
-			log.Printf("Error iterating over documents: %v", err)
+			LogError("FIREBASE_ITERATOR_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		}
 
 		fieldValue, ok := doc.Data()[groupByField]
 		if !ok {
-			log.Printf("Document does not have the specified field: %s", groupByField)
+			LogWarning("FIREBASE_FIELD_NOT_FOUND", map[string]interface{}{"field": groupByField}, "")
 		}
 
 		fieldStr, ok := fieldValue.(string)
 		if !ok {
-			log.Printf("Unable to convert field value to string")
+			LogWarning("FIREBASE_FIELD_CONVERT_ERROR", map[string]interface{}{"field": groupByField}, "")
 		}
 
 		if !StringExistsInList(fieldStr, uniqueValues) {

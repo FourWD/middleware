@@ -3,7 +3,6 @@ package common
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -12,37 +11,23 @@ import (
 	"github.com/FourWD/middleware/model"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
-	"gorm.io/gorm"
 )
 
-func OtpRequest(mobile string, db gorm.DB) (model.OtpResult, error) {
+var otpHTTPClient = &http.Client{
+	Timeout: 30 * time.Second,
+}
 
+func OtpRequest(mobile string) (model.OtpResult, error) {
 	result, errUpload := otpRequestToServer(mobile)
 	if errUpload != nil {
 		return result, errUpload
 	}
 
-	// // SAVE TO LOG
-
-	// logOtp := new(orm.LogOTP)
-	// logOtp.OTP = result.Token
-	// logOtp.RefCodeOTP = result.RefNo
-	// logOtp.RequestDate = time.Now()
-
-	// err := db.Save(&logOtp)
-	// if err.Error != nil {
-	// 	PrintError("error save file", "tb file")
-	// }
 	return result, nil
 }
 
 func otpRequestToServer(mobile string) (model.OtpResult, error) {
 	result := new(model.OtpResult)
-
-	// type Payload struct {
-	// 	AppID  string `json:"app_id"`
-	// 	Mobile string `json:"mobile"`
-	// }
 
 	type Params struct {
 		Key    string `json:"key"`
@@ -52,7 +37,7 @@ func otpRequestToServer(mobile string) (model.OtpResult, error) {
 
 	app, err := getOtpApp()
 	if err != nil {
-		println("error to get app key and secret")
+		LogError("OTP_APP_ERROR", map[string]interface{}{"error": err.Error()}, "")
 	}
 
 	params := new(Params)
@@ -60,82 +45,52 @@ func otpRequestToServer(mobile string) (model.OtpResult, error) {
 	params.Secret = app.AppSecret
 	params.Mobile = mobile
 
-	// payloadss := strings.NewReader("key=1792158286047316&secret=10da83ff9be3f7007eaa9ef3250c2547&msisdn=0908979774")
 	payloadString := "key=" + params.Key + "&secret=" + params.Secret + "&msisdn=" + params.Mobile
 	req, _ := http.NewRequest("POST", viper.GetString("sms.url_request"), strings.NewReader(payloadString))
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := otpHTTPClient.Do(req)
 	if err != nil {
 		return *result, errors.New(err.Error())
 	}
-	// if res.StatusCode == 400 {
-	// 	return *result, errors.New("error code 400")
-	// }
-
 	defer res.Body.Close()
 
-	body, _ := io.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return *result, errors.New("failed to read response body: " + err.Error())
+	}
 
 	jsonBody := strings.ReplaceAll(string(body), "/", "")
-	fmt.Println(string(body))
 
 	otpUnmar := new(model.OtpResult)
 	errUnmar := json.Unmarshal(body, &otpUnmar)
-	println(StructToString(body))
-	println(StructToString(otpUnmar))
 	if errUnmar != nil {
-		fmt.Println("Error unmarshalling JSON:", errUnmar)
+		LogError("OTP_UNMARSHAL_ERROR", map[string]interface{}{"error": errUnmar.Error()}, "")
 	}
 
 	result.Refno = otpUnmar.Refno
 	result.Status = otpUnmar.Status
 	result.Token = otpUnmar.Token
 
-	// jsonBody := `{"status":"success",
-	// "token":"1234567891011121314abcdefghijklm",
-	// "refno":"REF12" }`
-
 	log := new(model.LogOtpRequest)
 	log.ID = uuid.NewString()
 	log.CreatedAt = time.Now()
 	log.Mobile = params.Mobile
 	log.AppID = viper.GetString("app_id")
-	log.AppKey = app.AppKey
-	log.AppSecret = app.AppSecret
-	log.Payload = payloadString
 	log.Response = jsonBody
 	Database.Save(log)
-
-	// if res.StatusCode == 400 {
-	// 	return common.FiberError(c, "400", "")
-	// }
-
-	//use mock	//message := `{"status":1, "message":"success", "data":` + jsonBody + `}`
-	// c.Set("Content-Type", "application/json")
-	// return c.SendString(string(message))
 
 	return *result, nil
 }
 
-func OtpVerify(payload model.OtpVerifyPayload, db gorm.DB) (model.OtpVeriyResult, error) {
-
+func OtpVerify(payload model.OtpVerifyPayload) (model.OtpVeriyResult, error) {
 	result, errVerify := otpVerifyServer(payload)
 	if errVerify != nil {
 		return result, errVerify
 	}
 
-	// SAVE TO LOG
-
-	// logOtp := new(orm.LogOTP)
-	// logOtp.VerifyDate = time.Now()
-
-	// err := db.Save(&logOtp)
-	// if err.Error != nil {
-	// 	PrintError("error save file", "tb file")
-	// }
 	return result, nil
 }
 
@@ -144,7 +99,7 @@ func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, erro
 
 	app, err := getOtpApp()
 	if err != nil {
-		PrintError("cant get", "OTP init")
+		LogError("OTP_APP_ERROR", map[string]interface{}{"error": err.Error()}, "")
 	}
 
 	payloadString := "key=" + app.AppKey + "&secret=" + app.AppSecret + "&token=" + payload.Token + "&pin=" + payload.Pin
@@ -154,25 +109,23 @@ func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, erro
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := otpHTTPClient.Do(req)
 	if err != nil {
 		return *result, errors.New(err.Error())
 	}
-	// if res.StatusCode == 400 {
-	// 	return *result, errors.New("error code 400")
-	// }
-
 	defer res.Body.Close()
 
-	body, _ := io.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return *result, errors.New("failed to read response body: " + err.Error())
+	}
 
 	jsonBody := strings.ReplaceAll(string(body), "/", "")
-	fmt.Println(string(body))
 
 	otpUnmar := new(model.OtpVeriyResult)
 	errUnmar := json.Unmarshal(body, &otpUnmar)
 	if errUnmar != nil {
-		fmt.Println("Error unmarshalling JSON:", errUnmar)
+		LogError("OTP_VERIFY_UNMARSHAL_ERROR", map[string]interface{}{"error": errUnmar.Error()}, "")
 	}
 
 	result.Status = otpUnmar.Status
@@ -181,7 +134,7 @@ func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, erro
 	result.Code = otpUnmar.Code
 	result.Errors = otpUnmar.Errors
 
-	saveLog(app, payloadString, jsonBody)
+	saveLog(app, jsonBody)
 	return *result, nil
 }
 
@@ -193,30 +146,11 @@ func getOtpApp() (model.AppOtp, error) {
 	return *app, nil
 }
 
-// func request(url string, body string) (string, error) {
-// 	req, _ := http.NewRequest("POST", url, strings.NewReader(body))
-
-// 	req.Header.Add("accept", "application/json")
-// 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
-// 	res, err := http.DefausltClient.Do(req)
-// 	if res.StatusCode == 400 {
-// 		return "", err
-// 	}
-// 	defer res.Body.Close()
-
-// 	result, _ := io.ReadAll(res.Body)
-// 	jsonResult := strings.ReplaceAll(string(result), "/", "")
-// 	return jsonResult, nil
-// }
-
-func saveLog(app model.AppOtp, payload string, response string) {
+func saveLog(app model.AppOtp, response string) {
 	log := new(model.LogOtpVerify)
 	log.ID = uuid.NewString()
 	log.CreatedAt = time.Now()
 	log.AppID = app.ID
-	log.AppKey = app.AppKey
-	log.AppSecret = app.AppSecret
-	log.Payload = payload
 	log.Response = response
 	Database.Save(log)
 }

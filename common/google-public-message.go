@@ -12,12 +12,12 @@ import (
 func GooglePublicMessage(topicName, message string) (string, error) {
 	projectID := viper.GetString("google_project_id")
 
-	logFields := map[string]interface{}{
+	logData := map[string]interface{}{
 		"project_id": projectID,
 		"topic_name": topicName,
 		"message":    message,
 	}
-	Log("GooglePublicMessage", logFields, "")
+	Log("GooglePublicMessage", logData, "")
 
 	ctx := context.Background()
 
@@ -57,7 +57,5 @@ func ConventStringToGoogleMessage(input string) model.GoogleMessage {
 		gMessage.Message = input
 	}
 
-	// fmt.Println("Group:", gMessage.Group)
-	// fmt.Println("Text:", gMessage.Message)
 	return *gMessage
 }

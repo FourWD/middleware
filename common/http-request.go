@@ -5,12 +5,18 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 )
 
-func HttpRequest(url string, method string, token string, jsonString string) (string, error) {
-	// jsonData, err := json.Marshal(p)
-	client := &http.Client{}
+// Default HTTP client timeout
+const DefaultHTTPTimeout = 30 * time.Second
 
+// httpClient is a shared HTTP client with timeout configured
+var httpClient = &http.Client{
+	Timeout: DefaultHTTPTimeout,
+}
+
+func HttpRequest(url string, method string, token string, jsonString string) (string, error) {
 	jsonByte, err := json.Marshal(jsonString)
 	if err != nil {
 		return "", err
@@ -24,19 +30,16 @@ func HttpRequest(url string, method string, token string, jsonString string) (st
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Bearer "+token)
 
-	response, err := client.Do(req)
+	response, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer response.Body.Close()
 
-	body, _ := io.ReadAll(response.Body)
-	// var resp ApiResponse
-	// errJson := json.Unmarshal(body, &resp)
-	// if errJson != nil {
-	// 	return "", errJson
-	// }
-	// result = &resp.Data
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
 
 	return string(body), nil
 }

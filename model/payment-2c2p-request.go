@@ -17,18 +17,3 @@ type Payment2C2PResponse struct {
 	WebPaymentUrl string `json:"webPaymentUrl"`
 	InvoiceNo     string `json:"invoice_no"`
 }
-
-// type PaymentResponse struct {
-// 	MerchantID          string `json:"merchantID"`
-// 	InvoiceNo           string `json:"invoiceNo"`
-// 	AccountNo           string `json:"accountNo"`
-// 	Amount              string `json:"amount"`
-// 	CurrencyCode        string `json:"currencyCode"`
-// 	TranRef             string `json:"tranRef"`
-// 	ReferenceNo         string `json:"referenceNo"`
-// 	ApprovalCode        string `json:"approvalCode"`
-// 	Eci                 string `json:"eci"`
-// 	TransactionDateTime string `json:"transactionDateTime"`
-// 	RespCode            string `json:"respCode"`
-// 	RespDesc            string `json:"respDesc"`
-// }

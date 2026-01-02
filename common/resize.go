@@ -40,8 +40,5 @@ func ResizeImage(imageURL string, width int, quality int) (string, error) {
 		return "", err
 	}
 
-	// Return the path to the temporary file
-	//log.Println("Original: ", imageURL)
-	//log.Println("Resize: ", tempFile.Name())
 	return tempFile.Name(), nil
 }

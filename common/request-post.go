@@ -22,21 +22,12 @@ type Result struct {
 func RequestPost(url string, token string, payload map[string]interface{}) (Result, error) {
 	requestID := uuid.NewString()
 
-	// payloadJSON, _ := json.MarshalIndent(payload, "", "  ")
-
 	logData := map[string]interface{}{
-		"token":   token,
 		"url":     url,
 		"payload": fmt.Sprintf("%+v", payload),
-		// "payload_json": payloadJSON,
 	}
 
 	Log("RequestPost", logData, requestID)
-
-	// if token == "" {
-	// 	LogError("no token", nil, requestID)
-	// 	return Result{}, errors.New("no token")
-	// }
 
 	var response Result
 

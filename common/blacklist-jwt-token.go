@@ -14,7 +14,7 @@ func BlacklistJwtToken(jwtToken string) error {
 	}
 
 	createdAt := time.Now()
-	expiresAt := createdAt.Add(3 * 24 * time.Hour) // remove from mongo after 3 days
+	expiresAt := createdAt.Add(3 * 24 * time.Hour)
 
 	collection := DatabaseMongoMiddleware.Database.Collection("blacklist_tokens")
 	data := bson.M{

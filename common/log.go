@@ -18,7 +18,6 @@ func FiberLog(c *fiber.Ctx) error {
 
 	startTime := time.Now()
 	c.Locals("start_time", startTime)
-	// latency := time.Since(created)
 
 	authHeader := c.Get("Authorization")
 	var jwtToken string
@@ -46,7 +45,7 @@ func FiberLog(c *fiber.Ctx) error {
 		zap.Int("status_code", c.Response().StatusCode()),
 		zap.Any("body", jsonBody),
 		zap.Any("jwt_decode", jwtClaims),
-	} // "ip":         c.IP(), 		// "latency":     latency.String(),
+	}
 	AppLog.Info("REQUEST_STARTED", fields...)
 	return c.Next()
 }
@@ -67,7 +66,6 @@ func prepareLogData(logData map[string]interface{}, requestID string) []zap.Fiel
 
 	logFields := make([]zap.Field, 0, len(fields))
 	for k, v := range fields {
-		// if k == "json" {
 		if str, ok := v.(string); ok {
 			var formattedJSON map[string]interface{}
 			if err := json.Unmarshal([]byte(str), &formattedJSON); err == nil {
@@ -76,7 +74,6 @@ func prepareLogData(logData map[string]interface{}, requestID string) []zap.Fiel
 				continue
 			}
 		}
-		// }
 		logFields = append(logFields, zap.Any(k, v))
 	}
 

@@ -35,13 +35,3 @@ func Encrypt(plaintext string) (string, error) {
 	cipherText := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
 	return hex.EncodeToString(cipherText), nil
 }
-
-// func EncryptAES(text string) clause.Expr {
-// 	key := "fourwd"
-// 	return clause.Expr{SQL: "HEX(AES_ENCRYPT(?, ?))", Vars: []interface{}{text, key}}
-// }
-
-// func DecryptAESSql(text string) string {
-// 	key := "fourwd"
-// 	return fmt.Sprintf(" CAST(AES_DECRYPT(UNHEX(%s), %s) AS CHAR) ", text, key)
-// }

@@ -1,8 +1,9 @@
 package common
 
-func SyncStart(name string, isManual bool) string { //return sync id
+import "github.com/google/uuid"
 
-	return "1234"
+func SyncStart(name string, isManual bool) string {
+	return uuid.NewString()
 }
 
 func SyncEnd(id string, isComplete bool) {

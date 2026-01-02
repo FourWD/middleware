@@ -3,7 +3,6 @@ package common
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -11,19 +10,14 @@ import (
 	"github.com/FourWD/middleware/model"
 	"github.com/FourWD/middleware/orm"
 	"github.com/spf13/viper"
-	"gorm.io/gorm"
 )
 
-func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error) {
+func Upload(payload model.UploadPayload) (model.UploadResult, error) {
 	result, errUpload := uploadFileToServer(payload, viper.GetString("app_id"), viper.GetString("token.upload"))
 	if errUpload != nil {
 		return result, errUpload
 	}
 
-	println(payload.Filename + " : " + payload.FileBase64 + " : " + payload.Path)
-	println(result.ID + " : " + result.FileName + " : " + result.FullPath)
-
-	// SAVE TO LOG
 	logFile := new(orm.File)
 	logFile.ID = result.ID
 	logFile.BucketName = payload.BucketName
@@ -32,11 +26,10 @@ func Upload(payload model.UploadPayload, db gorm.DB) (model.UploadResult, error)
 	logFile.Extension = result.Extension
 	logFile.Path = result.Path
 	logFile.FullPath = result.FullPath
-	err := db.Save(&logFile)
-	if err.Error != nil {
-		PrintError("error save file", "tb file")
-		return result, err.Error
-	} //
+	if err := Database.Save(&logFile).Error; err != nil {
+		LogError("UPLOAD_SAVE_ERROR", map[string]interface{}{"error": err.Error(), "table": "file"}, "")
+		return result, err
+	}
 	return result, nil
 }
 
@@ -56,41 +49,43 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 	p.FileBase64 = strings.Replace(p.FileBase64, "data:image/jpg;base64,", "", -1)
 
 	jsonData, err := json.Marshal(p)
-
 	if err != nil {
-		fmt.Println("there was an error with the JSON", err.Error())
+		LogError("UPLOAD_MARSHAL_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		return *result, err
-	} else {
-		client := &http.Client{}
-		// uploadUrl := "https://pakwan-service.fourwd.me/api/v1/upload/"
-		uploadUrl := "https://fourwd.as.r.appspot.com/api/v1/upload/"
-		// uploadUrl := "https://pakwan-service.fourwd.me/api/v1/upload/" //
-		Print("pakwan-service", uploadUrl)
-
-		req, err := http.NewRequest("POST", uploadUrl, bytes.NewBuffer(jsonData))
-		if err != nil {
-			fmt.Println(err)
-			return *result, err
-		}
-		// req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
-		req.Header.Add("Content-Type", "application/json")
-		req.Header.Add("Authorization", "Bearer "+token)
-
-		response, err := client.Do(req)
-		if err != nil {
-			fmt.Println(err)
-			return *result, err
-		}
-		defer response.Body.Close()
-
-		body, _ := io.ReadAll(response.Body)
-		var resp ApiResponse
-		errJson := json.Unmarshal(body, &resp)
-		if errJson != nil {
-			return *result, errJson
-		}
-		result = &resp.Data
 	}
+
+	uploadUrl := viper.GetString("upload_service_url")
+	if uploadUrl == "" {
+		uploadUrl = "https://fourwd.as.r.appspot.com/api/v1/upload/"
+	}
+
+	req, err := http.NewRequest("POST", uploadUrl, bytes.NewBuffer(jsonData))
+	if err != nil {
+		LogError("UPLOAD_REQUEST_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		return *result, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	response, err := httpClient.Do(req)
+	if err != nil {
+		LogError("UPLOAD_EXECUTE_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		return *result, err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		LogError("UPLOAD_READ_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		return *result, err
+	}
+
+	var resp ApiResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		LogError("UPLOAD_UNMARSHAL_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		return *result, err
+	}
+	result = &resp.Data
 
 	return *result, nil
 }

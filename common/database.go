@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
@@ -33,7 +32,7 @@ func CreateDSN(isGCP bool, dsn DNS) string {
 		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
 		setting += "&loc=Local"
 	}
-	log.Printf("Database: %s", dsn.Database)
+	Log("DB_CREATE_DSN", map[string]interface{}{"database": dsn.Database}, "")
 	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
 }
 
@@ -46,13 +45,13 @@ func ConnectDatabase(dns string) error {
 	})
 
 	if err != nil {
-		PrintError(`Gorm`, `Connection Error !`)
+		LogError("DB_GORM_CONNECTION_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		panic(err)
 	}
 
 	DatabaseSql, err = sql.Open("mysql", dns+"&loc=Asia%2FBangkok")
 	if err != nil {
-		PrintError(`DB Mysql`, `Connection Error !`)
+		LogError("DB_MYSQL_CONNECTION_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		panic(err)
 	}
 
@@ -60,7 +59,7 @@ func ConnectDatabase(dns string) error {
 	Database.Raw("SET time_zone=?", timeZone)
 	DatabaseSql.Exec("SET time_zone=?", timeZone)
 
-	log.Println("CONNECT DB GOOGLE SUCCESS")
+	Log("DB_GORM_CONNECTION_SUCCESS", map[string]interface{}{}, "")
 
 	return nil
 }
@@ -75,14 +74,14 @@ func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
 
 	database, err := sql.Open("mysql", dsn+"&loc=Asia%2FBangkok")
 	if err != nil {
-		log.Println(err)
+		LogError("DB_MYSQL_GOOGLE_CONNECTION_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		return nil, err
 	}
 
 	timeZone := "Asia/Bangkok"
 	database.Exec("SET time_zone=?", timeZone)
 
-	log.Println("CONNECT DB MYSQL SUCCESS")
+	Log("DB_MYSQL_CONNECTION_SUCCESS", map[string]interface{}{}, "")
 
 	return database, nil
 }
@@ -95,11 +94,6 @@ func ConnectDatabaseViper() error {
 		IP:       viper.GetString("database.ip"),
 		Instance: viper.GetString("database.instance"),
 	}
-
-	// isGCP := false
-	// if viper.GetString("production") == "true" {
-	// 	isGCP = true
-	// }
 
 	isGCP := true
 	if App.Env == "local" {

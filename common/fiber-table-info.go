@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -44,7 +43,7 @@ func FiberTableInfo(app *fiber.App) {
 			var length sql.NullInt64
 			err := rows.Scan(&tableName, &columnName, &dataType, &length)
 			if err != nil {
-				log.Println("Error scanning row:", err)
+				LogError("TABLE_INFO_SCAN_ERROR", map[string]interface{}{"error": err.Error()}, "")
 				continue
 			}
 			if tableName != currentTable {

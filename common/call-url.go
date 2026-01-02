@@ -6,7 +6,6 @@ import (
 )
 
 func CallUrl(url string) string {
-	// fmt.Println("Call Url: ", url)
 	response, err := http.Get(url)
 	if err != nil {
 		return ""

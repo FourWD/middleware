@@ -1,20 +1,13 @@
 package common
 
 import (
-	"log"
-
 	"github.com/gofiber/fiber/v2"
 )
-
-// func GetSessionUserID(c *fiber.Ctx) string {
-// 	userClaims := c.Locals("user").(*JWTClaims)
-// 	return userClaims.UserID //
-// }
 
 func GetSessionUserID(c *fiber.Ctx) string {
 	userClaims, ok := c.Locals("user").(*JWTClaims)
 	if !ok {
-		log.Printf("Invalid signature [%s]", c.Get("Authorization"))
+		LogWarning("SESSION_INVALID_SIGNATURE", map[string]interface{}{"authorization": c.Get("Authorization")}, GetRequestID(c))
 		userID, _ := EncodedJwtToken(c, "user_id")
 		return userID
 	}
@@ -25,7 +18,7 @@ func GetSessionUserID(c *fiber.Ctx) string {
 func GetSession(c *fiber.Ctx) *JWTClaims {
 	userClaims, ok := c.Locals("user").(*JWTClaims)
 	if !ok {
-		log.Printf("Invalid signature [%s]", c.Get("Authorization"))
+		LogWarning("SESSION_INVALID_SIGNATURE", map[string]interface{}{"authorization": c.Get("Authorization")}, GetRequestID(c))
 	}
 
 	return userClaims

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/bwmarrin/discordgo"
@@ -10,36 +11,38 @@ func DiscordSendMessage(s *discordgo.Session, serverID, channelID, message, reci
 	// Get the channel to send the message
 	channel, err := s.Channel(channelID)
 	if err != nil {
-		fmt.Println("Error retrieving channel: ", err)
+		LogError("DISCORD_CHANNEL_ERROR", map[string]interface{}{"error": err.Error(), "channel_id": channelID}, "")
 		return err
 	}
 
 	// Create a message content based on the recipient type
-	var to string
 	var content string
 	switch recipientType {
 	case "everyone":
 		content = message
 	case "role":
 		role, _ := getRoleByID(s, serverID, recipientID)
-		to = fmt.Sprintf("@%s ", role.Name)
 		content = fmt.Sprintf("<@&%s> %s", recipientID, message)
+		if role != nil {
+			Log("Discord message to role", map[string]interface{}{"role": role.Name, "channel": channel.Name}, "")
+		}
 	case "user":
 		user, _ := getUserByID(s, recipientID)
-		to = fmt.Sprintf("@%s ", user.Username)
 		content = fmt.Sprintf("<@%s> %s", recipientID, message)
+		if user != nil {
+			Log("Discord message to user", map[string]interface{}{"user": user.Username, "channel": channel.Name}, "")
+		}
 	default:
-		return fmt.Errorf("invalid recipient type: %s", recipientType)
+		return errors.New("invalid recipient type: " + recipientType)
 	}
 
 	// Send the message to the channel
 	_, err = s.ChannelMessageSend(channel.ID, content)
 	if err != nil {
-		fmt.Println("Error sending message: ", err)
+		LogError("DISCORD_SEND_ERROR", map[string]interface{}{"error": err.Error(), "channel": channel.Name}, "")
 		return err
 	}
 
-	fmt.Printf("Discord => [%s] %s%s\n", channel.Name, to, message)
 	return nil
 }
 

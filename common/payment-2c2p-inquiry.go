@@ -1,15 +1,10 @@
 package common
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
-	"net/http"
-	"strings"
 
 	"github.com/FourWD/middleware/model"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/spf13/viper"
 )
 
@@ -22,38 +17,20 @@ func Payment2C2PInquiry(info model.Payment2C2PInquiry) (model.Payment2C2PInquiry
 		"locale":     "th",
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
-	tokenString, err := token.SignedString([]byte(viper.GetString("2c2p_secret_key")))
+	tokenString, err := signJWTPayload(payload)
 	if err != nil {
 		return reqResponse, err
 	}
 
-	url := viper.GetString("2c2p_payment_inquiry_url") //"https://sandbox-pgw.2c2p.com/payment/4.3/paymentInquiry"
-	payloads := strings.NewReader("{\"payload\":\"" + tokenString + "\"}")
-	req, _ := http.NewRequest("POST", url, payloads)
-
-	req.Header.Add("accept", "application/json")
-	req.Header.Add("content-type", "application/*+json")
-
-	res, errs := http.DefaultClient.Do(req)
-	if errs != nil {
-		return reqResponse, errs
-	}
-	defer res.Body.Close()
-	body, _ := io.ReadAll(res.Body)
-
-	type Payload struct {
-		Payload string `json:"payload"`
-	}
-
-	responseJson := new(Payload)
-	if err := json.Unmarshal(body, &responseJson); err != nil {
+	url := viper.GetString("2c2p_payment_inquiry_url")
+	responsePayload, err := send2C2PRequest(url, tokenString)
+	if err != nil {
 		return reqResponse, err
 	}
 
-	reqResponse, errResponse := decodeCheckResponse(responseJson.Payload)
-	if errResponse != nil {
-		return reqResponse, errResponse
+	reqResponse, err = decodeInquiryResponse(responsePayload)
+	if err != nil {
+		return reqResponse, err
 	}
 
 	if reqResponse.RespCode != "0000" {
@@ -63,43 +40,32 @@ func Payment2C2PInquiry(info model.Payment2C2PInquiry) (model.Payment2C2PInquiry
 	return reqResponse, nil
 }
 
-func decodeCheckResponse(inquiryResponseJwt string) (model.Payment2C2PInquiryResponse, error) {
-	var customClaims model.Payment2C2PInquiryResponse
+func decodeInquiryResponse(jwtString string) (model.Payment2C2PInquiryResponse, error) {
+	var response model.Payment2C2PInquiryResponse
 
-	token, err := jwt.Parse(inquiryResponseJwt, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(viper.GetString("2c2p_secret_key")), nil
-	})
-
+	claims, err := parse2C2PJWTResponse(jwtString)
 	if err != nil {
-		return customClaims, err
+		return response, err
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		customClaims.MerchantID = getStringClaim(claims, "merchantID")
-		customClaims.InvoiceNo = getStringClaim(claims, "invoiceNo")
-		customClaims.Amount = getFloat64Claim(claims, "amount")
-		customClaims.CurrencyCode = getStringClaim(claims, "currencyCode")
-		customClaims.TransactionDateTime = getStringClaim(claims, "transactionDateTime")
-		customClaims.ChannelCode = getStringClaim(claims, "channelCode")
-		customClaims.ApprovalCode = getStringClaim(claims, "approvalCode")
-		customClaims.ReferenceNo = getStringClaim(claims, "referenceNo")
-		customClaims.AccountNo = getStringClaim(claims, "accountNo")
-		// customClaims.CardToken = claims["cardToken"].(string)
-		customClaims.IssuerCountry = getStringClaim(claims, "issuerCountry")
-		customClaims.UserDefined1 = getStringClaim(claims, "userDefined1")
-		customClaims.UserDefined2 = getStringClaim(claims, "userDefined2")
-		customClaims.UserDefined3 = getStringClaim(claims, "userDefined3")
-		customClaims.UserDefined4 = getStringClaim(claims, "userDefined4")
-		customClaims.UserDefined5 = getStringClaim(claims, "userDefined5")
-		customClaims.CardType = getStringClaim(claims, "cardType")
-		customClaims.RespCode = getStringClaim(claims, "respCode")
-		customClaims.RespDesc = getStringClaim(claims, "respDesc")
-		// fmt.Println("Resp Payment Inquiry : " + customClaims.RespCode + " " + customClaims.RespDesc)
-		return customClaims, nil
-	}
+	response.MerchantID = getStringClaim(claims, "merchantID")
+	response.InvoiceNo = getStringClaim(claims, "invoiceNo")
+	response.Amount = getFloat64Claim(claims, "amount")
+	response.CurrencyCode = getStringClaim(claims, "currencyCode")
+	response.TransactionDateTime = getStringClaim(claims, "transactionDateTime")
+	response.ChannelCode = getStringClaim(claims, "channelCode")
+	response.ApprovalCode = getStringClaim(claims, "approvalCode")
+	response.ReferenceNo = getStringClaim(claims, "referenceNo")
+	response.AccountNo = getStringClaim(claims, "accountNo")
+	response.IssuerCountry = getStringClaim(claims, "issuerCountry")
+	response.UserDefined1 = getStringClaim(claims, "userDefined1")
+	response.UserDefined2 = getStringClaim(claims, "userDefined2")
+	response.UserDefined3 = getStringClaim(claims, "userDefined3")
+	response.UserDefined4 = getStringClaim(claims, "userDefined4")
+	response.UserDefined5 = getStringClaim(claims, "userDefined5")
+	response.CardType = getStringClaim(claims, "cardType")
+	response.RespCode = getStringClaim(claims, "respCode")
+	response.RespDesc = getStringClaim(claims, "respDesc")
 
-	return customClaims, err
+	return response, nil
 }

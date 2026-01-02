@@ -12,7 +12,7 @@ func MonitorDatabaseConnectionPool() {
 	}()
 }
 
-// เริ่ม monitoring connection pool ทุก 30 วินาที
+// Start monitoring connection pool every 30 seconds
 func monitorDatabaseConnectionPool() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
@@ -25,17 +25,17 @@ func monitorDatabaseConnectionPool() {
 		}
 		Log("DB_POOL_STATS", logData, uuid.NewString())
 
-		// ถ้า wait_count สูง แสดงว่า connection pool เต็ม
+		// If wait_count is high, connection pool is full
 		if waitCount, ok := stats["wait_count"].(int64); ok && waitCount > 100 {
 			logData["message"] = "High wait count - consider increasing MaxOpenConns"
 			logData["wait_count"] = waitCount
 			LogError("DB_POOL_WARNING", logData, uuid.NewString())
 		}
 
-		// ถ้า in_use ใกล้เคียง max_open_connections แสดงว่าใกล้เต็ม
+		// If in_use is close to max_open_connections, pool is almost full
 		if inUse, ok := stats["in_use"].(int); ok {
 			if maxOpen, ok := stats["max_open_connections"].(int); ok {
-				if inUse >= int(float64(maxOpen)*0.9) { // ใช้ไป 90%
+				if inUse >= int(float64(maxOpen)*0.9) { // 90% usage
 					logData["message"] = "Connection pool almost full"
 					logData["in_use"] = inUse
 					logData["max_open"] = maxOpen

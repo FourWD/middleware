@@ -3,35 +3,30 @@ package common
 import (
 	"context"
 	"fmt"
-	"log"
 
-	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
 	"github.com/FourWD/middleware/orm"
 
 	"github.com/google/uuid"
-	"google.golang.org/api/option"
 )
 
 var FirebaseMessageClient *messaging.Client
 
 func ConnectFirebaseNotification(key string) error {
-	opt := option.WithCredentialsFile(key)
-	app, err := firebase.NewApp(context.Background(), nil, opt)
+	app, err := initFirebaseApp(key)
 	if err != nil {
 		return err
 	}
 
 	FirebaseMessageClient, err = app.Messaging(context.Background())
 	if err != nil {
-		log.Printf("error getting Messaging client: %v\n", err)
+		LogError("FIREBASE_MESSAGING_CLIENT_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		return err
 	}
 
 	return nil
 }
 
-// config struct message
 var MessageConfig = struct {
 	AndroidConfig *messaging.AndroidConfig
 	APNSConfig    *messaging.APNSConfig
@@ -50,8 +45,6 @@ var MessageConfig = struct {
 }
 
 func SendMessageToUser(userToken string, title string, body string, data map[string]string) error {
-	// Access title and body directly from the data map
-	//
 	message := &messaging.Message{
 		Data:  data,
 		Token: userToken,
@@ -81,22 +74,24 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 	Log("AddUserToSubscription", logData, requestID)
 
 	if _, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic); err != nil {
-		LogError("error subscribing user to topic", logData, requestID)
+		LogError("FIREBASE_SUBSCRIBE_ERROR", logData, requestID)
+		return err
 	}
-	// ========================================================================================
+
 	newNotificationTopic := orm.NotificationTopic{
 		ID:   uuid.NewString(),
 		Name: topic,
 	}
 	if err := Database.Create(&newNotificationTopic).Error; err != nil {
-		LogError("failed to insert notification topic", logData, requestID)
+		LogError("FIREBASE_INSERT_TOPIC_ERROR", logData, requestID)
 	}
-	// ========================================================================================
+
 	var notificationTopic orm.NotificationTopic
 	if err := Database.Where("name = ?", topic).First(&notificationTopic).Error; err != nil {
-		LogError("failed to select notification topic", logData, requestID)
+		LogError("FIREBASE_SELECT_TOPIC_ERROR", logData, requestID)
+		return err
 	}
-	// ========================================================================================
+
 	if notificationTopic.ID != "" {
 		notificationTopicUser := orm.NotificationTopicUser{
 			ID:                  uuid.NewString(),
@@ -104,10 +99,11 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 			UserID:              userID,
 		}
 		if err := Database.Create(&notificationTopicUser).Error; err != nil {
-			LogError("failed to insert notification user topic user", logData, requestID)
+			LogError("FIREBASE_INSERT_TOPIC_USER_ERROR", logData, requestID)
+			return err
 		}
 	}
-	// ========================================================================================
+
 	Log("AddUserToSubscription OK", logData, requestID)
 	return nil
 }
@@ -118,28 +114,28 @@ func RemoveUserFromSubscription(topic string, userID string, userToken string) e
 		"userID":    userID,
 		"userToken": userToken,
 	}
-	Log("RemoveUserFromSubscription", logData, "")
+	Log("FIREBASE_REMOVE_USER_FROM_SUBSCRIPTION", logData, "")
 
 	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
-		log.Printf("error unsubscribing user from topic: %v\n", err)
+		LogError("FIREBASE_UNSUBSCRIBE_ERROR", map[string]interface{}{"error": err.Error(), "topic": topic, "userID": userID}, "")
 		return err
 	}
 	var notificationTopicID string
 	err = Database.Table("notification_topics").Select("id").Where("name = ?", topic).Scan(&notificationTopicID).Error
 	if err != nil {
-		log.Printf("error finding notification topic ID: %v\n", err)
+		LogError("FIREBASE_TOPIC_ID_ERROR", map[string]interface{}{"error": err.Error(), "topic": topic}, "")
 		return err
 	}
 
 	if notificationTopicID == "" {
-		log.Printf("notification topic ID not found for topic: %s\n", topic)
+		LogWarning("FIREBASE_TOPIC_ID_NOT_FOUND", map[string]interface{}{"topic": topic}, "")
 		return fmt.Errorf("notification topic ID not found for topic: %s", topic)
 	}
 
-	err = Database.Where("notification_topic_id = ? AND user_id = ?", notificationTopicID, userID).Unscoped().Debug().Delete(&orm.NotificationTopicUser{}).Error
+	err = Database.Where("notification_topic_id = ? AND user_id = ?", notificationTopicID, userID).Unscoped().Delete(&orm.NotificationTopicUser{}).Error
 	if err != nil {
-		log.Printf("error removing user from topic in database: %v\n", err)
+		LogError("FIREBASE_REMOVE_USER_DB_ERROR", map[string]interface{}{"error": err.Error(), "topic": topic, "userID": userID}, "")
 		return err
 	}
 
@@ -152,11 +148,11 @@ func SendMessageToSubscriber(topic string, title string, body string, data map[s
 		"title": title,
 		"body":  body,
 	}
-	Log("SendMessageToSubscriber", logData, "")
+	Log("FIREBASE_SEND_MESSAGE_TO_SUBSCRIBER", logData, "")
 
 	message := &messaging.Message{
 		Data:  data,
-		Topic: topic, // all_users
+		Topic: topic,
 		Notification: &messaging.Notification{
 			Title: title,
 			Body:  body,
@@ -165,7 +161,7 @@ func SendMessageToSubscriber(topic string, title string, body string, data map[s
 
 	_, err := FirebaseMessageClient.Send(context.Background(), message)
 	if err != nil {
-		log.Printf("error sending message: %v\n", err)
+		LogError("FIREBASE_SEND_MESSAGE_ERROR", map[string]interface{}{"error": err.Error(), "topic": topic}, "")
 		return err
 	}
 

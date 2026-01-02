@@ -49,30 +49,3 @@ func RateLimit(c *fiber.Ctx) error {
 
 	return rateLimitMW(c)
 }
-
-func RateLimit2() fiber.Handler {
-	return limiter.New(limiter.Config{
-		Max:        viper.GetInt("rate_limit_per_second"),
-		Expiration: 1 * time.Second,
-
-		Next: func(c *fiber.Ctx) bool {
-			return !isRateLimitPath(c)
-		},
-
-		KeyGenerator: func(c *fiber.Ctx) string {
-			auth := c.Get("Authorization")
-			if auth == "" {
-				return c.IP()
-			}
-			return auth
-		},
-		LimitReached: func(c *fiber.Ctx) error {
-			response := map[string]interface{}{
-				"status":  0,
-				"message": "rate limit exceeded for this token",
-			}
-
-			return FiberCustom(c, fiber.StatusTooManyRequests, response)
-		},
-	})
-}

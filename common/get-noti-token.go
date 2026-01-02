@@ -7,7 +7,7 @@ import (
 )
 
 func GetNotiToken(c *fiber.Ctx) (string, error) {
-	notiToken, _ := EncodedJwtToken(c, "noti_token") // for old login
+	notiToken, _ := EncodedJwtToken(c, "noti_token")
 
 	if notiToken == "" {
 		session := GetSession(c)
@@ -16,19 +16,12 @@ func GetNotiToken(c *fiber.Ctx) (string, error) {
 		}
 
 		if value, ok := session.Remark["noti_token"]; ok {
-			Print("GetNotiToken", value)
+			Log("GET_NOTI_TOKEN", map[string]interface{}{"noti_token": value}, "")
 			return value, nil
 		}
 
 		return "", errors.New("notiToken is nil")
 	}
-
-	// if notiToken == "" {
-	// 	userClaims := c.Locals("user").(*JWTClaims)
-	// 	if value, ok := userClaims.Remark["noti_token"]; ok {
-	// 		return value, nil
-	// 	}
-	// }
 
 	return notiToken, nil
 }

@@ -11,14 +11,14 @@ func GetDatabaseConnectionPoolStats() map[string]interface{} {
 	stats := sqlDB.Stats()
 
 	return map[string]interface{}{
-		"max_open_connections": stats.MaxOpenConnections,          // จำนวน connections สูงสุดที่กำหนด
-		"open_connections":     stats.OpenConnections,             // จำนวน connections ที่เปิดอยู่
-		"in_use":               stats.InUse,                       // จำนวน connections ที่กำลังใช้งาน
-		"idle":                 stats.Idle,                        // จำนวน connections ที่ idle
-		"wait_count":           stats.WaitCount,                   // จำนวนครั้งที่ต้องรอ connection
-		"wait_duration_ms":     stats.WaitDuration.Milliseconds(), // เวลารอรวม (มิลลิวินาที)
-		"max_idle_closed":      stats.MaxIdleClosed,               // จำนวน connections ที่ปิดเพราะเกิน MaxIdleConns
-		"max_idle_time_closed": stats.MaxIdleTimeClosed,           // จำนวน connections ที่ปิดเพราะ idle timeout
-		"max_lifetime_closed":  stats.MaxLifetimeClosed,           // จำนวน connections ที่ปิดเพราะเกิน MaxLifetime
+		"max_open_connections": stats.MaxOpenConnections,          // Maximum number of open connections allowed
+		"open_connections":     stats.OpenConnections,             // Number of currently open connections
+		"in_use":               stats.InUse,                       // Number of connections currently in use
+		"idle":                 stats.Idle,                        // Number of idle connections
+		"wait_count":           stats.WaitCount,                   // Number of times waited for a connection
+		"wait_duration_ms":     stats.WaitDuration.Milliseconds(), // Total wait duration in milliseconds
+		"max_idle_closed":      stats.MaxIdleClosed,               // Number of connections closed due to exceeding MaxIdleConns
+		"max_idle_time_closed": stats.MaxIdleTimeClosed,           // Number of connections closed due to idle timeout
+		"max_lifetime_closed":  stats.MaxLifetimeClosed,           // Number of connections closed due to exceeding MaxLifetime
 	}
 }

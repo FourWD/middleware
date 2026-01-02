@@ -3,7 +3,7 @@ package common
 import (
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/spf13/viper"
 )
 
@@ -11,7 +11,7 @@ type JWTClaims struct {
 	UserID string            `json:"user_id"`
 	Role   string            `json:"role"`
 	Remark map[string]string `json:"remark"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 func GenerateJWTToken(userID string, role string, remark map[string]string, expiresIn time.Duration) (string, error) {
@@ -21,8 +21,9 @@ func GenerateJWTToken(userID string, role string, remark map[string]string, expi
 		UserID: userID,
 		Role:   role,
 		Remark: remark,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(expiresIn).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 

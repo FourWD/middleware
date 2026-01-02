@@ -7,20 +7,82 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/FourWD/middleware/model"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/spf13/viper"
 )
 
-func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
-	// log.Println("InvoiceNo", request.InvoiceNo)
-	// log.Println("Amount", request.Amount)
+// paymentHTTPClient is a dedicated HTTP client for payment requests with timeout
+var paymentHTTPClient = &http.Client{
+	Timeout: 60 * time.Second, // Longer timeout for payment operations
+}
 
+// payment2C2PPayloadResponse is the standard response structure from 2C2P API
+type payment2C2PPayloadResponse struct {
+	Payload string `json:"payload"`
+}
+
+// signJWTPayload creates a signed JWT token from claims using 2C2P secret key
+func signJWTPayload(claims jwt.MapClaims) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(viper.GetString("2c2p_secret_key")))
+}
+
+// send2C2PRequest sends a POST request to 2C2P API and returns the response payload
+func send2C2PRequest(url string, jwtPayload string) (string, error) {
+	body := strings.NewReader(`{"payload":"` + jwtPayload + `"}`)
+
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Add("accept", "application/json")
+	req.Header.Add("content-type", "application/*+json")
+
+	res, err := paymentHTTPClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	responseBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var response payment2C2PPayloadResponse
+	if err := json.Unmarshal(responseBody, &response); err != nil {
+		return "", err
+	}
+
+	return response.Payload, nil
+}
+
+// parse2C2PJWTResponse parses and validates a JWT response from 2C2P
+func parse2C2PJWTResponse(jwtString string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(jwtString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(viper.GetString("2c2p_secret_key")), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid token claims")
+}
+
+func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 	var reqResponse model.Payment2C2PResponse
 
-	// merchantID := viper.GetString("2c2p_merchant_id")
-	url := viper.GetString("2c2p_payment_request_url") // https://sandbox-pgw.2c2p.com/payment/4.3/paymenttoken"
 	payload := jwt.MapClaims{
 		"merchantID":        viper.GetString("2c2p_merchant_id"),
 		"invoiceNo":         request.InvoiceNo,
@@ -32,35 +94,20 @@ func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 		"backendReturnUrl":  request.BackendReturnUrl,
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
-	tokenString, err := token.SignedString([]byte(viper.GetString("2c2p_secret_key")))
+	tokenString, err := signJWTPayload(payload)
 	if err != nil {
 		return reqResponse, err
 	}
 
-	payloads := strings.NewReader("{\"payload\":\"" + tokenString + "\"}")
-	req, _ := http.NewRequest("POST", url, payloads)
-	req.Header.Add("accept", "application/json")
-	req.Header.Add("content-type", "application/*+json")
-
-	res, errs := http.DefaultClient.Do(req)
-	if errs != nil {
-		return reqResponse, err
-	}
-	defer res.Body.Close()
-	body, _ := io.ReadAll(res.Body)
-
-	type response struct {
-		Payload string `json:"payload"`
-	}
-	responseJson := new(response)
-	if err := json.Unmarshal(body, &responseJson); err != nil {
+	url := viper.GetString("2c2p_payment_request_url")
+	responsePayload, err := send2C2PRequest(url, tokenString)
+	if err != nil {
 		return reqResponse, err
 	}
 
-	reqResponse, errResponse := decodePaymentResponse(responseJson.Payload)
-	if errResponse != nil {
-		return reqResponse, errResponse
+	reqResponse, err = decodePaymentResponse(responsePayload)
+	if err != nil {
+		return reqResponse, err
 	}
 
 	if reqResponse.RespCode != "0000" {
@@ -112,12 +159,3 @@ func getFloat64Claim(claims jwt.MapClaims, key string) float64 {
 	}
 	return 0
 }
-
-// func getIntClaim(claims jwt.MapClaims, key string) int {
-// 	if val, exists := claims[key]; exists {
-// 		if num, ok := val.(float64); ok { // JSON numbers are float64 in Go
-// 			return int(num)
-// 		}
-// 	}
-// 	return 0
-// }

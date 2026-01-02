@@ -21,30 +21,18 @@ func FiberNoSniff(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-/* func FiberError(c *fiber.Ctx, errorCode ...string) error {
-	if errorCode[0] != "" {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "code": errorCode[0], "message": "error"})
-	}
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": 0, "message": "error"})
-} */
-
-// func FiberCustom(c *fiber.Ctx, status int, errorCode string, errorMessage string) error {
-// 	responseLog(c)
-// 	return c.Status(status).JSON(fiber.Map{"status": status, "code": errorCode, "message": errorMessage})
-// }
-
 func FiberCustom(c *fiber.Ctx, HTTPStatus int, data map[string]interface{}) error {
 	responseLog(c)
 	c.Set("Content-Type", "application/json")
 	requestID := GetRequestID(c)
 	data["request_id"] = requestID
 
-	logFields := map[string]interface{}{
+	logData := map[string]interface{}{
 		"http_status": HTTPStatus,
 		"data":        data,
 	}
 
-	Log("FiberCustom", logFields, requestID)
+	Log("FiberCustom", logData, requestID)
 	return c.Status(HTTPStatus).JSON(data)
 }
 
@@ -58,14 +46,6 @@ func FiberOK(c *fiber.Ctx, status int, code string, message string) error {
 }
 
 func FiberSuccess(c *fiber.Ctx) error {
-	// responseLog(c)
-	// return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": 1, "message": "success"})
-
-	// response := map[string]interface{}{
-	// 	"status":  1,
-	// 	"message": "success",
-	// }
-	// return FiberCustom(c, fiber.StatusOK, response)
 	return FiberOK(c, 1, "0000", "success")
 }
 
@@ -83,20 +63,9 @@ func FiberReviewPayload(c *fiber.Ctx) error {
 	return FiberError(c, "1002", "review your payload")
 }
 
-// func FiberErrorSql(c *fiber.Ctx, errorMessage string) error {
-// 	log.Println("Error", errorMessage)
-// 	return FiberCustom(c, fiber.StatusInternalServerError, "500", "SQL ERROR")
-// }
-
-// func FiberErrorFirebase(c *fiber.Ctx, errorMessage string) error {
-// 	log.Println("Error", errorMessage)
-// 	return FiberCustom(c, fiber.StatusInternalServerError, "501", "FIREBASE ERROR")
-// }
-
 func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
 	jsonBytes, sql, err := queryToJSON(db, sql, values...)
 	if err != nil {
-		// PrintError(`SQL Error`, err.Error())
 		return FiberError(c, "1001", "sql error")
 	}
 	return FiberSendData(c, string(jsonBytes), sql)
@@ -110,7 +79,7 @@ func FiberQueryWithCustomDBLimit1(c *fiber.Ctx, db *sql.DB, sql string, values .
 	jsonBytes, sql, err := queryToJSON(db, sql, values...)
 	var result []map[string]interface{}
 	if json.Unmarshal(jsonBytes, &result); err != nil {
-		fmt.Println("Error parsing JSON:", err)
+		AppLog.Error("Error parsing JSON in FiberQueryWithCustomDBLimit1: " + err.Error())
 		return FiberError(c, "1001", "sql error")
 	}
 
@@ -139,8 +108,6 @@ func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
 		response["sql"] = sql
 	}
 
-	// responseLog(c)
-	// return c.JSON(response)
 	return FiberCustom(c, fiber.StatusOK, response)
 }
 
@@ -162,9 +129,8 @@ func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
 
 	result := Database.Exec(`UPDATE ? SET deleted_at = now(), deleted_by = ? WHERE id = ?`, tableName, payload.DeleteBy, payload.ID)
 	if result.Error != nil {
-		// PrintError(`FiberDelete`, result.Error.Error())
 		return FiberError(c, "1001", "sql error")
-	} //fmt.Println("Affected Rows:", result.RowsAffected)
+	}
 
 	return FiberSuccess(c)
 }
@@ -187,7 +153,6 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 
 	result := Database.Exec(`DELETE FROM ? WHERE id = ?`, tableName, payload.ID)
 	if result.Error != nil {
-		// PrintError(`FiberDeletePermanent`, result.Error.Error())
 		return FiberError(c, "1001", "sql error")
 	}
 
@@ -256,11 +221,7 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string,
 		return nil, "", errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
 	}
 
-	// Log the SQL query and values for debugging
-	// log.Printf("Executing SQL: %s, with values: %v", sql, values)
-
 	rows, err := db.Query(sql, values...)
-	// log.Println(sql)
 	if err != nil {
 		return nil, "", err
 	}
@@ -271,13 +232,7 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string,
 		return nil, "", err
 	}
 
-	// types, err := rows.ColumnTypes()
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	result := make([]map[string]interface{}, 0)
-	//result := make([]map[string]string, 0)
 	for rows.Next() {
 		values := make([]interface{}, len(columns))
 		valuePtrs := make([]interface{}, len(columns))

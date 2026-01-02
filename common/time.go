@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -13,21 +12,15 @@ var DATE_FORMAT_DAY = "2006-01-02"
 func SetThailandTimezone() {
 	location, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
-		fmt.Println("Error loading timezone:", err)
+		LogError("TIMEZONE_LOAD_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		return
 	}
 
-	// Set the default timezone for the application
 	time.Local = location
 }
 
 func UTCToThailandTime(t time.Time) time.Time {
-	//fmt.Println("UTC Time:", t)
 	bangkokLocation, _ := time.LoadLocation("Asia/Bangkok")
-	//bangkokTime := t.In(bangkokLocation)
-	//bangkokTime = bangkokTime.Round(0)
-	//fmt.Println("Bangkok Time:", bangkokTime)
-
 	return t.In(bangkokLocation)
 }
 
@@ -48,37 +41,3 @@ func SameDate(t1, t2 time.Time) bool {
 	y2, m2, d2 := t2.Date()
 	return y1 == y2 && m1 == m2 && d1 == d2
 }
-
-// func RoundUpToMinute(t time.Time) time.Time {
-// 	rounded := time.Date(
-// 		t.Year(),
-// 		t.Month(),
-// 		t.Day(),
-// 		t.Hour(),
-// 		t.Minute(),
-// 		0, // seconds
-// 		0, // nanoseconds
-// 		t.Location(),
-// 	)
-
-// 	if t.Second() > 0 || t.Nanosecond() > 0 {
-// 		rounded = rounded.Add(time.Minute)
-// 	}
-
-// 	return rounded
-// }
-
-// func RoundDownToMinute(t time.Time) time.Time {
-// 	rounded := time.Date(
-// 		t.Year(),
-// 		t.Month(),
-// 		t.Day(),
-// 		t.Hour(),
-// 		t.Minute(),
-// 		0, // seconds
-// 		0, // nanoseconds
-// 		t.Location(),
-// 	)
-
-// 	return rounded
-// }
