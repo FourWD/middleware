@@ -1,7 +1,6 @@
 package common
 
-func StartMonitoring(name string, logic interface{}) {
+func StartMonitoring() {
 	runLatestVersionOnly()
-	registerPrometheus(name, logic)
 	monitorDatabaseConnectionPool()
 }
