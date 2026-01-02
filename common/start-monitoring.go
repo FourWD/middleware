@@ -1,9 +1,7 @@
 package common
 
-import "github.com/gofiber/fiber/v2"
-
-func StartMonitoring(name string, app *fiber.App, logic interface{}) {
+func StartMonitoring(name string, logic interface{}) {
 	runLatestVersionOnly()
-	registerPrometheus(name, fiberApp, logic)
+	registerPrometheus(name, logic)
 	monitorDatabaseConnectionPool()
 }
