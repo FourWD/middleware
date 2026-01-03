@@ -1,0 +1,46 @@
+stages:
+  - test
+  - tag
+
+test:
+  stage: test
+  image: golang:1.24
+  tags:
+    - docker
+  script:
+    - go mod download
+    - go build ./...
+    - go vet ./...
+  only:
+    - main
+
+auto-tag:
+  stage: tag
+  image: alpine:latest
+  tags:
+    - docker
+  before_script:
+    - apk add --no-cache git curl
+  script:
+    - git fetch --tags
+    - LATEST_TAG=$(git tag --sort=-v:refname | grep "^v" | head -1)
+    - |
+      if [ -z "$LATEST_TAG" ]; then
+        NEW_TAG="v1.0.0"
+      else
+        VERSION=${LATEST_TAG#v}
+        MAJOR=$(echo $VERSION | cut -d. -f1)
+        MINOR=$(echo $VERSION | cut -d. -f2)
+        PATCH=$(echo $VERSION | cut -d. -f3)
+        NEW_PATCH=$((PATCH + 1))
+        NEW_TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+      fi
+    - echo "Creating tag $NEW_TAG"
+    - git config user.email "ci@gitlab.com"
+    - git config user.name "GitLab CI"
+    - git tag $NEW_TAG
+    - git push https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git $NEW_TAG
+  only:
+    - main
+  needs:
+    - test
