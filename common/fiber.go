@@ -159,7 +159,7 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 	return FiberSuccess(c)
 }
 
-func FiberWarmUp(app *fiber.App) {
+func fiberWarmUp(app *fiber.App) {
 	app.Get("/_ah/warmup", func(c *fiber.Ctx) error {
 		return FiberOK(c, 1, "0000", "Warm-up request succeeded")
 	})
@@ -179,7 +179,7 @@ func FiberSql(app *fiber.App) {
 	})
 }
 
-func FiberWakeUp(app *fiber.App) {
+func fiberWakeUp(app *fiber.App) {
 	app.Get("/wake-up", func(c *fiber.Ctx) error {
 		App.AppVersion = viper.GetString("app_version")
 
