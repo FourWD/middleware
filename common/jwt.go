@@ -20,6 +20,8 @@ func AuthenticationMiddleware(c *fiber.Ctx) error {
 
 func isPublicPath(c *fiber.Ctx) bool {
 	publicPaths := viper.GetStringSlice("public_path")
+	hardcodePaths := []string{"/_ah/warmup", "/wake-up", "/metrics"}
+	publicPaths = append(publicPaths, hardcodePaths...)
 	return StringExistsInList(c.Path(), publicPaths)
 }
 
