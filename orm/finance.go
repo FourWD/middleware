@@ -17,6 +17,7 @@ type Finance struct {
 	Color           string `json:"color" query:"color" gorm:"type:varchar(7)"`
 	LoanDescription string `json:"loan_description" query:"loan_description" gorm:"type:text"`
 	Detail          string `json:"detail" query:"detail" gorm:"type:text"`
+	GroupCompany    string `json:"group_company" query:"group_company" gorm:"type:varchar(500)"`
 	Remark          string `json:"remark" query:"remark" gorm:"type:text"`
 
 	model.GormRowOrder
