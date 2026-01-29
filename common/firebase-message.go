@@ -89,7 +89,7 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 	var notificationTopic orm.NotificationTopic
 	if err := Database.Where("name = ?", topic).First(&notificationTopic).Error; err != nil {
 		LogError("FIREBASE_SELECT_TOPIC_ERROR", logData, requestID)
-		return err
+		// return err
 	}
 
 	if notificationTopic.ID != "" {
@@ -100,7 +100,7 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 		}
 		if err := Database.Create(&notificationTopicUser).Error; err != nil {
 			LogError("FIREBASE_INSERT_TOPIC_USER_ERROR", logData, requestID)
-			return err
+			// return err
 		}
 	}
 
