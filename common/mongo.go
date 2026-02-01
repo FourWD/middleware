@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var DatabaseMongo *MongoDB
@@ -18,26 +18,20 @@ type MongoDB struct {
 }
 
 func connectMongoInternal(key string, databaseName string) *MongoDB {
-	clientOptions := options.Client().ApplyURI(key)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	clientOptions := options.Client().ApplyURI(key).SetTimeout(10 * time.Second)
 
 	if clientOptions == nil {
 		LogError("MONGO_CLIENT_OPTIONS_ERROR", map[string]interface{}{"database": databaseName}, "")
 		panic("Failed to create client options")
 	}
 
-	if ctx == nil {
-		LogError("MONGO_CTX_ERROR", map[string]interface{}{"database": databaseName}, "")
-		panic("Failed to create ctx options")
-	}
-
-	client, err := mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(clientOptions)
 	if err != nil {
 		LogError("MONGO_CONNECT_ERROR", map[string]interface{}{"error": err.Error(), "database": databaseName}, "")
 		panic(err)
 	}
 
+	ctx := context.Background()
 	if err = client.Ping(ctx, nil); err != nil {
 		LogError("MONGO_PING_ERROR", map[string]interface{}{"error": err.Error(), "database": databaseName}, "")
 		panic(err)

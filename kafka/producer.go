@@ -5,7 +5,7 @@ import (
 
 	"reflect"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 type EventProducer interface {

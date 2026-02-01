@@ -1,6 +1,12 @@
 package common
 
 func GetDatabaseConnectionPoolStats() map[string]interface{} {
+	if Database == nil {
+		return map[string]interface{}{
+			"error": "database connection is nil",
+		}
+	}
+
 	sqlDB, err := Database.DB()
 	if err != nil {
 		return map[string]interface{}{

@@ -2,90 +2,13 @@ package common
 
 import (
 	"database/sql"
-	"encoding/json"
-	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/spf13/viper"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 var Database *gorm.DB
 var DatabaseSql *sql.DB
-
-type DNS struct {
-	Username string
-	Password string
-	Database string
-	IP       string
-	Instance string
-}
-
-func CreateDSN(isGCP bool, dsn DNS) string {
-	var protocol string
-	setting := "?charset=utf8mb4&parseTime=True"
-	if isGCP {
-		protocol = fmt.Sprintf("unix(/cloudsql/%s)", dsn.Instance)
-	} else {
-		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
-		setting += "&loc=Local"
-	}
-	Log("DB_CREATE_DSN", map[string]interface{}{"database": dsn.Database}, "")
-	return fmt.Sprintf("%s:%s@%s/%s%s", dsn.Username, dsn.Password, protocol, dsn.Database, setting)
-}
-
-func ConnectDatabase(dns string, maxOpenConns int, maxIdleConns int) error {
-	var err error
-
-	Database, err = gorm.Open(mysql.Open(dns+"&loc=Asia%2FBangkok"), &gorm.Config{
-		SkipDefaultTransaction: true,
-		PrepareStmt:            true,
-	})
-
-	if err != nil {
-		LogError("DB_GORM_CONNECTION_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		panic(err)
-	}
-
-	DatabaseSql, err = sql.Open("mysql", dns+"&loc=Asia%2FBangkok")
-	if err != nil {
-		LogError("DB_MYSQL_CONNECTION_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		panic(err)
-	}
-
-	timeZone := "Asia/Bangkok"
-	Database.Raw("SET time_zone=?", timeZone)
-	DatabaseSql.Exec("SET time_zone=?", timeZone)
-
-	Log("DB_GORM_CONNECTION_SUCCESS", map[string]interface{}{}, "")
-	initDatabaseConnectionPool(maxOpenConns, maxIdleConns)
-
-	return nil
-}
-
-func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
-	isGCP := true
-	if App.Env == "local" {
-		isGCP = false
-	}
-
-	dsn := CreateDSN(isGCP, DNS)
-
-	database, err := sql.Open("mysql", dsn+"&loc=Asia%2FBangkok")
-	if err != nil {
-		LogError("DB_MYSQL_GOOGLE_CONNECTION_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		return nil, err
-	}
-
-	timeZone := "Asia/Bangkok"
-	database.Exec("SET time_zone=?", timeZone)
-
-	Log("DB_MYSQL_CONNECTION_SUCCESS", map[string]interface{}{}, "")
-
-	return database, nil
-}
 
 func ConnectDatabaseViper(maxOpenConns int, maxIdleConns int) error {
 	dns := DNS{
@@ -101,97 +24,32 @@ func ConnectDatabaseViper(maxOpenConns int, maxIdleConns int) error {
 		isGCP = false
 	}
 
-	return ConnectDatabase(CreateDSN(isGCP, dns), maxOpenConns, maxIdleConns)
+	return connectDatabase(CreateMySqlDSN(isGCP, dns), maxOpenConns, maxIdleConns)
 }
 
-func DBCreate(requestID string, model interface{}) error {
-	data, _ := toMap(model)
-	logData := map[string]interface{}{
-		"data": data,
+func connectDatabase(dns string, maxOpenConns int, maxIdleConns int) error {
+	Database, DatabaseSql = ConnectMySqlDatabase(dns, maxOpenConns, maxIdleConns)
+	return nil
+}
+
+func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
+	isGCP := true
+	if App.Env == "local" {
+		isGCP = false
 	}
 
-	err := Database.Create(model).Error
+	dsn := CreateMySqlDSN(isGCP, DNS)
 
+	database, err := sql.Open("mysql", dsn+"&loc=Asia%2FBangkok")
 	if err != nil {
-		logData["status"] = "error"
-		logData["error"] = err
-		LogError("DBCreate", logData, requestID)
-	} else {
-		logData["status"] = "success"
-		Log("DBCreate", logData, requestID)
-	}
-
-	return err
-}
-
-func DBUpdate(requestID string, model interface{}) error {
-	data, _ := toMap(model)
-	logData := map[string]interface{}{
-		"data": data,
-	}
-
-	err := Database.Updates(model).Error
-
-	if err != nil {
-		logData["status"] = "error"
-		logData["error"] = err
-		LogError("DBUpdate", logData, requestID)
-	} else {
-		logData["status"] = "success"
-		Log("DBUpdate", logData, requestID)
-	}
-
-	return err
-}
-
-func DBUpdateField(requestID string, model any, id string, updateData map[string]interface{}) error {
-	for key, value := range updateData {
-		if floatValue, ok := value.(float64); ok {
-			updateData[key] = parseToFloat(fmt.Sprintf("%.6f", floatValue))
-		}
-	}
-
-	logData := map[string]interface{}{
-		"data": updateData,
-	}
-
-	err := Database.Model(model).Where("id = ?", id).Updates(updateData).Error
-
-	if err != nil {
-		logData["status"] = "error"
-		logData["error"] = err
-		LogError("DBUpdateField", logData, requestID)
-	} else {
-		logData["status"] = "success"
-		Log("DBUpdateField", logData, requestID)
-	}
-
-	return err
-}
-
-func DBDelete(requestID string, model any, id string, DeletedBy string) error {
-	updateData := map[string]interface{}{}
-	updateData["deleted_at"] = time.Now()
-	updateData["deleted_by"] = DeletedBy
-	return DBUpdateField(requestID, model, id, updateData)
-}
-
-func parseToFloat(str string) float64 {
-	parsedValue, err := strconv.ParseFloat(str, 64)
-	if err != nil {
-		return 0
-	}
-	return parsedValue
-}
-
-func toMap(v interface{}) (map[string]interface{}, error) {
-	var result map[string]interface{}
-	b, err := json.Marshal(v)
-	if err != nil {
+		LogError("DB_MYSQL_GOOGLE_CONNECTION_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		return nil, err
 	}
-	if err := json.Unmarshal(b, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
+
+	timeZone := "Asia/Bangkok"
+	database.Exec("SET time_zone=?", timeZone)
+
+	Log("DB_MYSQL_CONNECTION_SUCCESS", map[string]interface{}{}, "")
+
+	return database, nil
 }

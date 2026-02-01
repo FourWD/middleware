@@ -4,7 +4,9 @@
       "Bash(dir /s /b)",
       "Bash(go build:*)",
       "Bash(go vet:*)",
-      "Bash(del \"c:\\\\Users\\\\puarns\\\\Documents\\\\Work\\\\Projects\\\\middleware\\\\common\\\\http-helper.go\")"
+      "Bash(del \"c:\\\\Users\\\\puarns\\\\Documents\\\\Work\\\\Projects\\\\middleware\\\\common\\\\http-helper.go\")",
+      "Bash(go get:*)",
+      "Bash(go mod tidy:*)"
     ]
   }
 }
