@@ -8,7 +8,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func ConnectPostgresDatabase(dns string) (*gorm.DB, *sql.DB) {
+func ConnectPostgresDatabase(dns string, maxOpenConns int, maxIdleConns int) (*gorm.DB, *sql.DB) {
+	log.Println(maxOpenConns, maxIdleConns)
+
 	dbGorm, err := gorm.Open(postgres.Open(dns), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database: ", err)

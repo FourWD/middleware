@@ -1,8 +1,15 @@
 package common
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 func initDatabaseConnectionPool(maxOpenConns int, maxIdleConns int) error {
+	if Database == nil {
+		return errors.New("database connection is nil")
+	}
+
 	sqlDB, err := Database.DB()
 	if err != nil {
 		return err
