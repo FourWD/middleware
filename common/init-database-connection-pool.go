@@ -1,24 +1,20 @@
 package common
 
 import (
+	"database/sql"
 	"errors"
 	"time"
 )
 
-func initDatabaseConnectionPool(maxOpenConns int, maxIdleConns int) error {
-	if Database == nil {
+func initDatabaseConnectionPool(dbSql *sql.DB, maxOpenConns int, maxIdleConns int) error {
+	if dbSql == nil {
 		return errors.New("database connection is nil")
 	}
 
-	sqlDB, err := Database.DB()
-	if err != nil {
-		return err
-	}
-
-	sqlDB.SetMaxOpenConns(maxOpenConns)
-	sqlDB.SetMaxIdleConns(maxIdleConns)
-	sqlDB.SetConnMaxLifetime(time.Hour)
-	sqlDB.SetConnMaxIdleTime(10 * time.Minute)
+	dbSql.SetMaxOpenConns(maxOpenConns)
+	dbSql.SetMaxIdleConns(maxIdleConns)
+	dbSql.SetConnMaxLifetime(time.Hour)
+	dbSql.SetConnMaxIdleTime(10 * time.Minute)
 
 	logData := map[string]interface{}{
 		"max_open_conns":     maxOpenConns,

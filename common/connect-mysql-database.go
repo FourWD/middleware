@@ -29,7 +29,7 @@ func ConnectMySqlDatabase(dns string, maxOpenConns int, maxIdleConns int) (*gorm
 	dataGorm.Exec("SET time_zone=?", timeZone)
 
 	Log("DB_CONNECTION_SUCCESS", map[string]interface{}{}, "")
-	initDatabaseConnectionPool(maxOpenConns, maxIdleConns)
+	initDatabaseConnectionPool(dbSql, maxOpenConns, maxIdleConns)
 
 	return dataGorm, dbSql
 }
