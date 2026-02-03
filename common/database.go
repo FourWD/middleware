@@ -19,12 +19,11 @@ func ConnectDatabaseViper(maxOpenConns int, maxIdleConns int) error {
 		Instance: viper.GetString("database.instance"),
 	}
 
-	isGCP := true
 	if App.Env == "local" {
-		isGCP = false
+		dns.Instance = ""
 	}
 
-	return connectDatabase(CreateMySqlDSN(isGCP, dns), maxOpenConns, maxIdleConns)
+	return connectDatabase(CreateMySqlDSN(dns), maxOpenConns, maxIdleConns)
 }
 
 func connectDatabase(dns string, maxOpenConns int, maxIdleConns int) error {
@@ -33,12 +32,11 @@ func connectDatabase(dns string, maxOpenConns int, maxIdleConns int) error {
 }
 
 func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
-	isGCP := true
 	if App.Env == "local" {
-		isGCP = false
+		DNS.Instance = ""
 	}
 
-	dsn := CreateMySqlDSN(isGCP, DNS)
+	dsn := CreateMySqlDSN(DNS)
 
 	database, err := sql.Open("mysql", dsn+"&loc=Asia%2FBangkok")
 	if err != nil {

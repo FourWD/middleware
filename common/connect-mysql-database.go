@@ -25,8 +25,12 @@ func ConnectMySqlDatabase(dns string, maxOpenConns int, maxIdleConns int) (*gorm
 	}
 
 	timeZone := "Asia/Bangkok"
-	dbSql.Exec("SET time_zone=?", timeZone)
-	dataGorm.Exec("SET time_zone=?", timeZone)
+	if _, err := dbSql.Exec("SET time_zone=?", timeZone); err != nil {
+		LogError("DB_SET_TIMEZONE_ERROR", map[string]interface{}{"error": err.Error()}, "")
+	}
+	if err := dataGorm.Exec("SET time_zone=?", timeZone).Error; err != nil {
+		LogError("DB_GORM_SET_TIMEZONE_ERROR", map[string]interface{}{"error": err.Error()}, "")
+	}
 
 	Log("DB_CONNECTION_SUCCESS", map[string]interface{}{}, "")
 	initDatabaseConnectionPool(dbSql, maxOpenConns, maxIdleConns)

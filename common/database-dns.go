@@ -10,12 +10,18 @@ type DNS struct {
 	Database string
 	IP       string
 	Instance string
+	IsMySql5 bool
 }
 
-func CreateMySqlDSN(isGCP bool, dsn DNS) string {
+func CreateMySqlDSN(dsn DNS) string {
 	var protocol string
 	setting := "?charset=utf8mb4&parseTime=True"
-	if isGCP {
+
+	if dsn.IsMySql5 {
+		setting = "?charset=utf8&parseTime=True"
+	}
+
+	if dsn.Instance != "" {
 		protocol = fmt.Sprintf("unix(/cloudsql/%s)", dsn.Instance)
 	} else {
 		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
