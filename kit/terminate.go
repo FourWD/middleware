@@ -1,7 +1,11 @@
 package kit
 
-import "os"
+import (
+	"log/slog"
+	"os"
+)
 
-func Terminate() {
+func Terminate(logger *slog.Logger) {
+	logger.Error("TERMINATE", "message", "application terminated")
 	os.Exit(1)
 }
