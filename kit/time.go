@@ -51,3 +51,8 @@ func BeginningOfDay(value time.Time) time.Time {
 func EndOfDay(value time.Time) time.Time {
 	return BeginningOfDay(value).AddDate(0, 0, 1).Add(-time.Nanosecond)
 }
+
+func NilDate() time.Time {
+	date, _ := time.Parse("2006-01-02", "1900-01-01")
+	return date
+}

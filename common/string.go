@@ -3,7 +3,6 @@ package common
 import (
 	"crypto/md5"
 	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/FourWD/middleware/kit"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -60,13 +60,13 @@ func parseWithTimezone(strDateTime string, format string) (time.Time, error) {
 	location, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
 		LogError("STRING_PARSE_ERROR", map[string]interface{}{"error": err.Error(), "input": strDateTime}, "")
-		return NilDate(), err
+		return kit.NilDate(), err
 	}
 
 	parsedTime, err := time.ParseInLocation(format, strDateTime, location)
 	if err != nil {
 		LogError("STRING_PARSE_ERROR", map[string]interface{}{"error": err.Error(), "input": strDateTime}, "")
-		return NilDate(), err
+		return kit.NilDate(), err
 	}
 
 	return parsedTime, nil
@@ -83,12 +83,6 @@ func StringToDate(strDateTime string) (time.Time, error) {
 func MD5(text string) string {
 	hashText := md5.New()
 	hashText.Write([]byte(text))
-	return hex.EncodeToString(hashText.Sum(nil))
-}
-
-func Hash(text string, salt string) string {
-	hashText := sha256.New()
-	hashText.Write([]byte(text + salt))
 	return hex.EncodeToString(hashText.Sum(nil))
 }
 
