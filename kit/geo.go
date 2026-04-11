@@ -15,6 +15,10 @@ func DistanceMeters(lat1, lon1, lat2, lon2 float64) float64 {
 	return earthRadiusMeters * c
 }
 
+func IsInThailand(lat, long float64) bool {
+	return lat >= 5.6 && lat <= 20.5 && long >= 97.3 && long <= 105.7
+}
+
 func IsInThailandBox(lat, lng float64) bool {
 	const (
 		thMinLat = 5.60

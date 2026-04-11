@@ -1,6 +1,9 @@
 package common
 
-import "github.com/jung-kurt/gofpdf"
+import (
+	"github.com/FourWD/middleware/kit"
+	"github.com/jung-kurt/gofpdf"
+)
 
 func UploadPdfToGoogle(pdf *gofpdf.Fpdf, filename string, appID string, bucket string) (string, error) {
 	localPath := "tmp/"
@@ -8,7 +11,7 @@ func UploadPdfToGoogle(pdf *gofpdf.Fpdf, filename string, appID string, bucket s
 		localPath = "/tmp/"
 	}
 
-	path, err := SavePdf(pdf, filename, localPath)
+	path, err := kit.SavePdf(pdf, filename, localPath)
 	if err != nil {
 		return "", err
 	}

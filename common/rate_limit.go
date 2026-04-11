@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/spf13/viper"
@@ -11,7 +12,7 @@ import (
 
 func isRateLimitPath(c *fiber.Ctx) bool {
 	publicPaths := viper.GetStringSlice("rate_limit_path")
-	return StringExistsInList(c.Path(), publicPaths)
+	return kit.StringExistsInList(c.Path(), publicPaths)
 }
 
 var (

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"cloud.google.com/go/firestore"
+	"github.com/FourWD/middleware/kit"
 	firebaseAuth "firebase.google.com/go/v4/auth"
 	"google.golang.org/api/iterator"
 )
@@ -112,7 +113,7 @@ func FirebaseCountByField(documents *firestore.DocumentIterator, groupByField st
 			LogWarning("FIREBASE_FIELD_CONVERT_ERROR", map[string]interface{}{"field": groupByField}, "")
 		}
 
-		if !StringExistsInList(fieldStr, uniqueValues) {
+		if !kit.StringExistsInList(fieldStr, uniqueValues) {
 			uniqueValues = append(uniqueValues, fieldStr)
 		}
 	}

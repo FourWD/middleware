@@ -7,8 +7,10 @@ import (
 	"errors"
 	"io"
 	"maps"
+	"net"
 	"net/http"
 	neturl "net/url"
+	"time"
 
 	mwinfra "github.com/FourWD/middleware/infra"
 
@@ -214,4 +216,71 @@ func (c *StdHTTPClient) request(ctx context.Context, method, url string, params 
 		Headers:    resp.Header,
 		Body:       resp.Body,
 	}, nil
+}
+
+// --- Legacy HTTP helpers migrated from common ---
+
+func CallUrl(url string) string {
+	response, err := http.Get(url)
+	if err != nil {
+		return ""
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return ""
+	}
+
+	return string(body)
+}
+
+// DefaultHTTPTimeout is the default timeout for the legacy shared HTTP client.
+const DefaultHTTPTimeout = 30 * time.Second
+
+// legacyHTTPClient is a shared HTTP client with timeout configured.
+var legacyHTTPClient = &http.Client{
+	Timeout: DefaultHTTPTimeout,
+}
+
+func HttpRequest(url string, method string, token string, jsonString string) (string, error) {
+	jsonByte, err := json.Marshal(jsonString)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonByte))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	response, err := legacyHTTPClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
+}
+
+func NewHttpClient(timeoutSec int) *http.Client {
+	dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext:           dialer.DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   5 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		Timeout: time.Duration(timeoutSec) * time.Second,
+	}
 }

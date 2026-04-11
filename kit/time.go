@@ -56,3 +56,8 @@ func NilDate() time.Time {
 	date, _ := time.Parse("2006-01-02", "1900-01-01")
 	return date
 }
+
+func UTCToThailandTime(t time.Time) time.Time {
+	bangkokLocation, _ := time.LoadLocation("Asia/Bangkok")
+	return t.In(bangkokLocation)
+}

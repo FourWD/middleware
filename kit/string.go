@@ -6,9 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -54,6 +57,38 @@ func TitleCase(text string) string {
 	titleCaser := cases.Title(language.English)
 	normalized := strings.Join(strings.Fields(text), " ")
 	return titleCaser.String(strings.ToLower(normalized))
+}
+
+func StringExistsInList(target string, strList []string) bool {
+	for _, str := range strList {
+		if str == target {
+			return true
+		}
+	}
+	return false
+}
+
+func DateString() string {
+	currentTime := time.Now()
+	dateString := fmt.Sprintf("%d", currentTime.UnixNano())
+	randomDigits := generateRandomDigits(10)
+	return dateString + randomDigits
+}
+
+func generateRandomDigits(count int) string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	result := ""
+	for i := 0; i < count; i++ {
+		result += fmt.Sprintf("%d", r.Intn(10))
+	}
+	return result
+}
+
+func DateToString(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(DateFormatSecond)
 }
 
 func JSONPickKeys(jsonStr string, keys ...string) (map[string]any, error) {

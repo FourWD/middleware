@@ -1,4 +1,4 @@
-package common
+package kit
 
 import (
 	"github.com/jung-kurt/gofpdf"
@@ -16,6 +16,6 @@ func SavePdf(pdf *gofpdf.Fpdf, fileName string, location string) (string, error)
 }
 
 func DateStringPDF() string {
-	randomDigits := generateRandomString(5)
+	randomDigits := RandomString(5)
 	return randomDigits
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/spf13/viper"
@@ -22,7 +23,7 @@ func isPublicPath(c *fiber.Ctx) bool {
 	publicPaths := viper.GetStringSlice("public_path")
 	hardcodePaths := []string{"/_ah/warmup", "/wake-up", "/metrics"}
 	publicPaths = append(publicPaths, hardcodePaths...)
-	return StringExistsInList(c.Path(), publicPaths)
+	return kit.StringExistsInList(c.Path(), publicPaths)
 }
 
 func checkAuth(c *fiber.Ctx) error {

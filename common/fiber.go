@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
 )
@@ -217,7 +218,7 @@ func rawSql(sql string, values ...interface{}) string {
 
 func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string, error) {
 	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
-	if StringExistsInList(strings.ToUpper(sql), list) {
+	if kit.StringExistsInList(strings.ToUpper(sql), list) {
 		return nil, "", errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
 	}
 

@@ -1,4 +1,4 @@
-package common
+package kit
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ type Sprint struct {
 	EndDate   time.Time
 }
 
-// getSprint returns the sprint number, start date, and end date for a given date
+// GetSprint returns the sprint number, start date, and end date for a given date
 func GetSprint(date time.Time) (Sprint, error) {
 	// Check if the date is a Saturday or Sunday
 	if date.Weekday() == time.Saturday || date.Weekday() == time.Sunday {

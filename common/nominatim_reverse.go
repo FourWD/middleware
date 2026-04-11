@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/FourWD/middleware/kit"
 )
 
 func NominatimReverse(ctx context.Context, nomURL string, lat float32, lon float32, lang string) (map[string]any, error) {
@@ -14,7 +16,7 @@ func NominatimReverse(ctx context.Context, nomURL string, lat float32, lon float
 		req.Header.Set("Accept-Language", lang)
 	}
 
-	httpClient := NewHttpClient(10)
+	httpClient := kit.NewHttpClient(10)
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err

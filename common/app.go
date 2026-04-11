@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/FourWD/middleware/model"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
@@ -36,7 +37,7 @@ func handleRunLatestVersionOnly() {
 	}
 
 	var response Response
-	jsonData := CallUrl(wakeUpUrl)
+	jsonData := kit.CallUrl(wakeUpUrl)
 	if err := json.Unmarshal([]byte(jsonData), &response); err != nil {
 		logData["error"] = err.Error()
 		LogError("WakeUp", logData, "")

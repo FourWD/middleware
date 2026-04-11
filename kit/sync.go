@@ -1,4 +1,4 @@
-package common
+package kit
 
 import "github.com/google/uuid"
 

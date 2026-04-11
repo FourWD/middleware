@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/FourWD/middleware/orm"
 	"github.com/gofiber/fiber/v2"
 )
@@ -25,7 +26,7 @@ func CheckRolePermissionByUser(c *fiber.Ctx, role string, action string) error {
 		return errors.New("Unauthorized")
 	}
 
-	if !StringExistsInList(action, []string{"READ", "CREATE", "UPDATE", "DELETE"}) {
+	if !kit.StringExistsInList(action, []string{"READ", "CREATE", "UPDATE", "DELETE"}) {
 		return errors.New("Unauthorized")
 	}
 
@@ -33,7 +34,7 @@ func CheckRolePermissionByUser(c *fiber.Ctx, role string, action string) error {
 		return errors.New("Unauthorized")
 	}
 
-	var permission Permission
+	var permission kit.Permission
 
 	sql := `SELECT
 	COALESCE(rp.is_read, 0) "read",
@@ -46,7 +47,7 @@ func CheckRolePermissionByUser(c *fiber.Ctx, role string, action string) error {
 
 	Database.Raw(sql, employee.RoleID).Scan(&permission)
 
-	if checkPermissionByAction(permission, action) {
+	if kit.CheckPermissionByAction(permission, action) {
 		return nil
 	}
 

@@ -18,9 +18,3 @@ func SetThailandTimezone() {
 
 	time.Local = location
 }
-
-func UTCToThailandTime(t time.Time) time.Time {
-	bangkokLocation, _ := time.LoadLocation("Asia/Bangkok")
-	return t.In(bangkokLocation)
-}
-

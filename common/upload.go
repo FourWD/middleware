@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/FourWD/middleware/model"
 	"github.com/FourWD/middleware/orm"
 	"github.com/spf13/viper"
@@ -67,7 +68,7 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Bearer "+token)
 
-	response, err := httpClient.Do(req)
+	response, err := kit.NewHttpClient(30).Do(req)
 	if err != nil {
 		LogError("UPLOAD_EXECUTE_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		return *result, err

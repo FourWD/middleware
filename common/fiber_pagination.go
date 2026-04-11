@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -22,7 +23,7 @@ func FiberPaginatedQuery(c *fiber.Ctx, baseSQL string, values ...interface{}) er
 
 	// Step 2: Ensure no unsafe SQL command
 	blocked := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
-	if StringExistsInList(strings.ToUpper(baseSQL), blocked) {
+	if kit.StringExistsInList(strings.ToUpper(baseSQL), blocked) {
 		return FiberError(c, "1001", "NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
 	}
 

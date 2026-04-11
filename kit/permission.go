@@ -1,4 +1,4 @@
-package common
+package kit
 
 type Permission struct {
 	Read   int `json:"read"`
@@ -7,7 +7,7 @@ type Permission struct {
 	Delete int `json:"delete"`
 }
 
-func checkPermissionByAction(permission Permission, action string) bool {
+func CheckPermissionByAction(permission Permission, action string) bool {
 	switch action {
 	case "READ":
 		return permission.Read == 1
