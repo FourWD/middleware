@@ -10,7 +10,7 @@ import (
 	"net/http"
 	neturl "net/url"
 
-	mwinfra "pakkad-service/middleware/infra"
+	mwinfra "github.com/FourWD/middleware/infra"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
