@@ -1,19 +1,11 @@
 package common
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"math/rand"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/FourWD/middleware/kit"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 func DateString() string {
@@ -48,14 +40,6 @@ func StringExistsInList(target string, strList []string) bool {
 	return false
 }
 
-func StringToFloat(value string) float64 {
-	parsedValue, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return 0
-	}
-	return parsedValue
-}
-
 func parseWithTimezone(strDateTime string, format string) (time.Time, error) {
 	location, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
@@ -80,27 +64,6 @@ func StringToDate(strDateTime string) (time.Time, error) {
 	return parseWithTimezone(strDateTime, DATE_FORMAT_DAY)
 }
 
-func MD5(text string) string {
-	hashText := md5.New()
-	hashText.Write([]byte(text))
-	return hex.EncodeToString(hashText.Sum(nil))
-}
-
-func GenerateID(input string) string {
-	reg := regexp.MustCompile("[^a-zA-Z0-9]+")
-	clean := reg.ReplaceAllString(input, "")
-	clean = strings.ReplaceAll(clean, " ", "")
-	clean = strings.ToLower(clean)
-
-	sum := sha1.Sum([]byte(clean))
-	return hex.EncodeToString(sum[:8])
-}
-
-func IsUUID(input string) bool {
-	uuidRegex := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-	return uuidRegex.MatchString(input)
-}
-
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func generateRandomString(length int) string {
@@ -110,10 +73,4 @@ func generateRandomString(length int) string {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
 	return string(b)
-}
-
-func TitleCase(text string) string {
-	titleCaser := cases.Title(language.English)
-	normalized := strings.Join(strings.Fields(text), " ")
-	return titleCaser.String(strings.ToLower(normalized))
 }

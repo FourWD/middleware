@@ -24,20 +24,3 @@ func UTCToThailandTime(t time.Time) time.Time {
 	return t.In(bangkokLocation)
 }
 
-func CheckInTime(startHour, startMinute, endHour, endMinute int) bool {
-	// Get the current time
-	now := time.Now()
-
-	// Create time objects for the start and end times using the current date
-	startTime := time.Date(now.Year(), now.Month(), now.Day(), startHour, startMinute, 0, 0, now.Location())
-	endTime := time.Date(now.Year(), now.Month(), now.Day(), endHour, endMinute, 0, 0, now.Location())
-
-	// Check if the current time is between the start and end times
-	return now.After(startTime) && now.Before(endTime)
-}
-
-func SameDate(t1, t2 time.Time) bool {
-	y1, m1, d1 := t1.Date()
-	y2, m2, d2 := t2.Date()
-	return y1 == y2 && m1 == m2 && d1 == d2
-}

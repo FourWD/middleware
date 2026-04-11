@@ -5,6 +5,8 @@ import (
 
 	"cloud.google.com/go/firestore"
 
+	"github.com/FourWD/middleware/kit"
+
 	"github.com/google/uuid"
 )
 
@@ -19,7 +21,7 @@ func FirebaseBatchUpdate(docPaths map[string]map[string]interface{}) error {
 		return nil
 	}
 
-	ctx, cancel := ContextWithTimeout(60 * time.Second)
+	ctx, cancel := kit.ContextWithTimeout(60 * time.Second)
 	defer cancel()
 
 	bw := FirebaseClient.BulkWriter(ctx)

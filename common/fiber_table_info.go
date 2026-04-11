@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
 )
@@ -50,7 +51,7 @@ func FiberTableInfo(app *fiber.App) {
 				if currentTable != "" {
 					tableInfo.TotalColumn = len(tableInfo.ColumnList)
 					md5Byte, _ := json.Marshal(tableInfo)
-					tableInfo.Md5 = MD5(string(md5Byte))
+					tableInfo.Md5 = kit.MD5(string(md5Byte))
 					tables = append(tables, tableInfo)
 				}
 				tableInfo = TableInfo{
@@ -75,7 +76,7 @@ func FiberTableInfo(app *fiber.App) {
 		if currentTable != "" {
 			tableInfo.TotalColumn = len(tableInfo.ColumnList)
 			md5Byte, _ := json.Marshal(tableInfo)
-			tableInfo.Md5 = MD5(string(md5Byte))
+			tableInfo.Md5 = kit.MD5(string(md5Byte))
 			tables = append(tables, tableInfo)
 		}
 
