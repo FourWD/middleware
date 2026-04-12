@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/spf13/viper"
 )
 
 // extractTokenFromHeader extracts JWT token string from Authorization header
-func extractTokenFromHeader(c *fiber.Ctx) (string, error) {
+func extractTokenFromHeader(c fiber.Ctx) (string, error) {
 	authorizeToken := c.Get("Authorization")
 	if authorizeToken == "" {
 		return "", errors.New("authorization header is empty")
@@ -70,7 +70,7 @@ func extractClaimFromToken(tokenString string, claimKey string, allowExpired boo
 }
 
 // EncodedJwtToken extracts a claim from a valid JWT token
-func EncodedJwtToken(c *fiber.Ctx, claimKey string) (string, error) {
+func EncodedJwtToken(c fiber.Ctx, claimKey string) (string, error) {
 	tokenString, err := extractTokenFromHeader(c)
 	if err != nil {
 		return "", err
@@ -81,7 +81,7 @@ func EncodedJwtToken(c *fiber.Ctx, claimKey string) (string, error) {
 // EncodedJwtTokenExpired extracts a claim from JWT token even if expired.
 // This is useful for token refresh scenarios where you need user info from expired token.
 // WARNING: Only use this for reading claims, NOT for authentication decisions.
-func EncodedJwtTokenExpired(c *fiber.Ctx, claimKey string) (string, error) {
+func EncodedJwtTokenExpired(c fiber.Ctx, claimKey string) (string, error) {
 	tokenString, err := extractTokenFromHeader(c)
 	if err != nil {
 		return "", err

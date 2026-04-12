@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type Channel struct {
@@ -47,7 +47,7 @@ func (s *EventServer) RemoveClientFromChannel(channel *Channel, client *bufio.Wr
 	channel.Unlock()
 }
 
-func PrepareHeaderForSSE(c *fiber.Ctx) {
+func PrepareHeaderForSSE(c fiber.Ctx) {
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")

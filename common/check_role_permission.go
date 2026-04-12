@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/FourWD/middleware/kit"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func CheckRolePermission(c *fiber.Ctx, path string, action string) error {
+func CheckRolePermission(c fiber.Ctx, path string, action string) error {
 	userID := GetSessionUserID(c)
 
 	if !kit.StringExistsInList(action, []string{"READ", "CREATE", "UPDATE", "DELETE"}) {

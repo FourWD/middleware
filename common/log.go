@@ -2,17 +2,16 @@ package common
 
 import (
 	"encoding/json"
-	"maps"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/FourWD/middleware/infra"
+	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
-func FiberLog(c *fiber.Ctx) error {
+func FiberLog(c fiber.Ctx) error {
 	requestID := uuid.New().String()
 	c.Locals("request_id", requestID)
 
@@ -20,11 +19,10 @@ func FiberLog(c *fiber.Ctx) error {
 	c.Locals("start_time", startTime)
 
 	authHeader := c.Get("Authorization")
-	var jwtToken string
 	var jwtClaims map[string]interface{} = make(map[string]interface{})
 
 	if strings.HasPrefix(authHeader, "Bearer ") {
-		jwtToken = strings.TrimPrefix(authHeader, "Bearer ")
+		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
 		claimsJson, err := decodeToJson(jwtToken)
 		if err == nil {
 			jwtClaims = claimsJson
@@ -38,61 +36,41 @@ func FiberLog(c *fiber.Ctx) error {
 		jsonBody = map[string]interface{}{"raw_body": string(body)}
 	}
 
-	fields := []zap.Field{
-		zap.String("request_id", requestID),
-		zap.String("method", c.Method()),
-		zap.String("path", c.Path()),
-		zap.Int("status_code", c.Response().StatusCode()),
-		zap.Any("body", jsonBody),
-		zap.Any("jwt_decode", jwtClaims),
-	}
-	AppLog.Info("REQUEST_STARTED", fields...)
+	AppLog.Info(infra.M("REQUEST_STARTED"),
+		infra.WithField("request_id", requestID),
+		infra.WithField("method", c.Method()),
+		infra.WithField("path", c.Path()),
+		infra.WithField("status", c.Response().StatusCode()),
+		infra.WithDataField("body", jsonBody),
+		infra.WithDataField("jwt_decode", jwtClaims),
+	)
 	return c.Next()
 }
 
-func GetRequestID(c *fiber.Ctx) string {
-	requestID, _ := c.Locals("request_id").(string)
+func GetRequestID(c fiber.Ctx) string {
+	requestID := fiber.Locals[string](c, "request_id")
 	return requestID
 }
 
-func prepareLogData(logData map[string]interface{}, requestID string) []zap.Field {
-	fields := maps.Clone(logData)
-
-	if fields == nil {
-		fields = make(map[string]interface{})
-	}
-
-	fields["request_id"] = requestID
-
-	logFields := make([]zap.Field, 0, len(fields))
-	for k, v := range fields {
-		if str, ok := v.(string); ok {
-			var formattedJSON map[string]interface{}
-			if err := json.Unmarshal([]byte(str), &formattedJSON); err == nil {
-				// If successfully parsed, store it as a structured object
-				logFields = append(logFields, zap.Reflect(k, formattedJSON))
-				continue
-			}
-		}
-		logFields = append(logFields, zap.Any(k, v))
-	}
-
-	return logFields
-}
-
 func Log(label string, logData map[string]interface{}, requestID string) {
-	logFields := prepareLogData(logData, requestID)
-	AppLog.Info(label, logFields...)
+	AppLog.Info(infra.M(label),
+		infra.WithField("request_id", requestID),
+		infra.WithDataFields(logData),
+	)
 }
 
 func LogWarning(label string, logData map[string]interface{}, requestID string) {
-	logFields := prepareLogData(logData, requestID)
-	AppLog.Warn(label, logFields...)
+	AppLog.Warn(infra.M(label),
+		infra.WithField("request_id", requestID),
+		infra.WithDataFields(logData),
+	)
 }
 
 func LogError(label string, logData map[string]interface{}, requestID string) {
-	logFields := prepareLogData(logData, requestID)
-	AppLog.Error(label, logFields...)
+	AppLog.Error(nil, infra.M(label),
+		infra.WithField("request_id", requestID),
+		infra.WithDataFields(logData),
+	)
 }
 
 func decodeToJson(jwtToken string) (map[string]interface{}, error) {
@@ -110,14 +88,13 @@ func decodeToJson(jwtToken string) (map[string]interface{}, error) {
 	return nil, nil
 }
 
-func responseLog(c *fiber.Ctx) {
+func responseLog(c fiber.Ctx) {
 	requestID := GetRequestID(c)
-	startTime, _ := c.Locals("start_time").(time.Time)
+	startTime := fiber.Locals[time.Time](c, "start_time")
 	duration := time.Since(startTime)
 
-	fields := []zap.Field{
-		zap.String("request_id", requestID),
-		zap.Int64("duration", duration.Milliseconds()),
-	}
-	AppLog.Info("REQUEST_COMPLETE", fields...)
+	AppLog.Info(infra.M("REQUEST_COMPLETE"),
+		infra.WithField("request_id", requestID),
+		infra.WithField("duration_ms", duration.Milliseconds()),
+	)
 }

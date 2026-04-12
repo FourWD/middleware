@@ -3,10 +3,10 @@ package common
 import (
 	"errors"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func GetNotiToken(c *fiber.Ctx) (string, error) {
+func GetNotiToken(c fiber.Ctx) (string, error) {
 	notiToken, _ := EncodedJwtToken(c, "noti_token")
 
 	if notiToken == "" {

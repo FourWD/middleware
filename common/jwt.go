@@ -6,27 +6,27 @@ import (
 	"net/http"
 
 	"github.com/FourWD/middleware/kit"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func AuthenticationMiddleware(c *fiber.Ctx) error {
+func AuthenticationMiddleware(c fiber.Ctx) error {
 	if isPublicPath(c) {
 		return c.Next()
 	}
 	return checkAuth(c)
 }
 
-func isPublicPath(c *fiber.Ctx) bool {
+func isPublicPath(c fiber.Ctx) bool {
 	publicPaths := viper.GetStringSlice("public_path")
 	hardcodePaths := []string{"/_ah/warmup", "/wake-up", "/metrics"}
 	publicPaths = append(publicPaths, hardcodePaths...)
 	return kit.StringExistsInList(c.Path(), publicPaths)
 }
 
-func checkAuth(c *fiber.Ctx) error {
+func checkAuth(c fiber.Ctx) error {
 	// Extract token from the Authorization header
 	authHeader := c.Get("Authorization")
 	if authHeader == "" {

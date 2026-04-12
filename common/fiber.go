@@ -8,21 +8,21 @@ import (
 	"strings"
 
 	"github.com/FourWD/middleware/kit"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/spf13/viper"
 )
 
-func FiberDisableXFrame(c *fiber.Ctx) error {
+func FiberDisableXFrame(c fiber.Ctx) error {
 	c.Set("X-Frame-Options", "DENY")
 	return c.Next()
 }
 
-func FiberNoSniff(c *fiber.Ctx) error {
+func FiberNoSniff(c fiber.Ctx) error {
 	c.Set("X-Content-Type-Options", "nosniff")
 	return c.Next()
 }
 
-func FiberCustom(c *fiber.Ctx, HTTPStatus int, data map[string]interface{}) error {
+func FiberCustom(c fiber.Ctx, HTTPStatus int, data map[string]interface{}) error {
 	responseLog(c)
 	c.Set("Content-Type", "application/json")
 	requestID := GetRequestID(c)
@@ -37,7 +37,7 @@ func FiberCustom(c *fiber.Ctx, HTTPStatus int, data map[string]interface{}) erro
 	return c.Status(HTTPStatus).JSON(data)
 }
 
-func FiberOK(c *fiber.Ctx, status int, code string, message string) error {
+func FiberOK(c fiber.Ctx, status int, code string, message string) error {
 	response := map[string]interface{}{
 		"status":  status,
 		"code":    code,
@@ -46,11 +46,11 @@ func FiberOK(c *fiber.Ctx, status int, code string, message string) error {
 	return FiberCustom(c, fiber.StatusOK, response)
 }
 
-func FiberSuccess(c *fiber.Ctx) error {
+func FiberSuccess(c fiber.Ctx) error {
 	return FiberOK(c, 1, "0000", "success")
 }
 
-func FiberError(c *fiber.Ctx, code string, message string, err ...error) error {
+func FiberError(c fiber.Ctx, code string, message string, err ...error) error {
 	response := map[string]interface{}{
 		"status":  0,
 		"code":    code,
@@ -60,11 +60,11 @@ func FiberError(c *fiber.Ctx, code string, message string, err ...error) error {
 	return FiberCustom(c, fiber.StatusInternalServerError, response)
 }
 
-func FiberReviewPayload(c *fiber.Ctx) error {
+func FiberReviewPayload(c fiber.Ctx) error {
 	return FiberError(c, "1002", "review your payload")
 }
 
-func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
+func FiberQueryWithCustomDB(c fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
 	jsonBytes, sql, err := queryToJSON(db, sql, values...)
 	if err != nil {
 		return FiberError(c, "1001", "sql error")
@@ -72,15 +72,15 @@ func FiberQueryWithCustomDB(c *fiber.Ctx, db *sql.DB, sql string, values ...inte
 	return FiberSendData(c, string(jsonBytes), sql)
 }
 
-func FiberQuery(c *fiber.Ctx, sql string, values ...interface{}) error {
+func FiberQuery(c fiber.Ctx, sql string, values ...interface{}) error {
 	return FiberQueryWithCustomDB(c, DatabaseSql, sql, values...)
 }
 
-func FiberQueryWithCustomDBLimit1(c *fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
+func FiberQueryWithCustomDBLimit1(c fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
 	jsonBytes, sql, err := queryToJSON(db, sql, values...)
 	var result []map[string]interface{}
 	if json.Unmarshal(jsonBytes, &result); err != nil {
-		AppLog.Error("Error parsing JSON in FiberQueryWithCustomDBLimit1: " + err.Error())
+		LogError("FIBER_QUERY_PARSE_ERROR", map[string]interface{}{"error": err.Error()}, "")
 		return FiberError(c, "1001", "sql error")
 	}
 
@@ -94,11 +94,11 @@ func FiberQueryWithCustomDBLimit1(c *fiber.Ctx, db *sql.DB, sql string, values .
 	return FiberSendData(c, "", "")
 }
 
-func FiberQueryLimit1(c *fiber.Ctx, sql string, values ...interface{}) error {
+func FiberQueryLimit1(c fiber.Ctx, sql string, values ...interface{}) error {
 	return FiberQueryWithCustomDBLimit1(c, DatabaseSql, sql, values...)
 }
 
-func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
+func FiberSendData(c fiber.Ctx, jsonData string, sql string) error {
 	response := map[string]interface{}{
 		"status":  1,
 		"message": "success",
@@ -112,14 +112,14 @@ func FiberSendData(c *fiber.Ctx, jsonData string, sql string) error {
 	return FiberCustom(c, fiber.StatusOK, response)
 }
 
-func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
+func FiberDeleteByID(c fiber.Ctx, tableName string) error {
 	type Delete struct {
 		ID       string `json:"id"`
 		DeleteBy string `json:"delete_by"`
 	}
 
 	var payload Delete
-	err := c.BodyParser(payload)
+	err := c.Bind().Body(payload)
 	if err != nil {
 		return FiberReviewPayload(c)
 	}
@@ -136,14 +136,14 @@ func FiberDeleteByID(c *fiber.Ctx, tableName string) error {
 	return FiberSuccess(c)
 }
 
-func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
+func FiberDeletePermanentByID(c fiber.Ctx, tableName string) error {
 	type Delete struct {
 		ID       string `json:"id"`
 		DeleteBy string `json:"delete_by"`
 	}
 
 	var payload Delete
-	err := c.BodyParser(payload)
+	err := c.Bind().Body(payload)
 	if err != nil {
 		return FiberReviewPayload(c)
 	}
@@ -161,7 +161,7 @@ func FiberDeletePermanentByID(c *fiber.Ctx, tableName string) error {
 }
 
 func fiberWarmUp(app *fiber.App) {
-	app.Get("/_ah/warmup", func(c *fiber.Ctx) error {
+	app.Get("/_ah/warmup", func(c fiber.Ctx) error {
 		return FiberOK(c, 1, "0000", "Warm-up request succeeded")
 	})
 }
@@ -171,9 +171,9 @@ func FiberSql(app *fiber.App) {
 		Query string `json:"query"`
 	}
 
-	app.Post("/sql", func(c *fiber.Ctx) error {
+	app.Post("/sql", func(c fiber.Ctx) error {
 		payload := new(Payload)
-		if err := c.BodyParser(payload); err != nil {
+		if err := c.Bind().Body(payload); err != nil {
 			return FiberReviewPayload(c)
 		}
 		return FiberQuery(c, payload.Query)
@@ -181,7 +181,7 @@ func FiberSql(app *fiber.App) {
 }
 
 func fiberWakeUp(app *fiber.App) {
-	app.Get("/wake-up", func(c *fiber.Ctx) error {
+	app.Get("/wake-up", func(c fiber.Ctx) error {
 		App.AppVersion = viper.GetString("app_version")
 
 		response := map[string]interface{}{

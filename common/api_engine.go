@@ -3,7 +3,7 @@ package common
 // ===== จะย้ายไป middleware ทีหลัง =====
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 var fiberApp *fiber.App

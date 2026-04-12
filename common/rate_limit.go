@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/FourWD/middleware/kit"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/spf13/viper"
 )
 
-func isRateLimitPath(c *fiber.Ctx) bool {
+func isRateLimitPath(c fiber.Ctx) bool {
 	publicPaths := viper.GetStringSlice("rate_limit_path")
 	return kit.StringExistsInList(c.Path(), publicPaths)
 }
@@ -20,17 +20,17 @@ var (
 	rateLimitMW fiber.Handler
 )
 
-func RateLimit(c *fiber.Ctx) error {
+func RateLimit(c fiber.Ctx) error {
 	once.Do(func() {
 		rateLimitMW = limiter.New(limiter.Config{
 			Max:        viper.GetInt("rate_limit_per_second"),
 			Expiration: 1 * time.Second,
 
-			Next: func(c *fiber.Ctx) bool {
+			Next: func(c fiber.Ctx) bool {
 				return !isRateLimitPath(c)
 			},
 
-			KeyGenerator: func(c *fiber.Ctx) string {
+			KeyGenerator: func(c fiber.Ctx) string {
 				auth := c.Get("Authorization")
 				if auth == "" {
 					return c.IP()
@@ -38,7 +38,7 @@ func RateLimit(c *fiber.Ctx) error {
 				return auth
 			},
 
-			LimitReached: func(c *fiber.Ctx) error {
+			LimitReached: func(c fiber.Ctx) error {
 				resp := map[string]interface{}{
 					"status":  0,
 					"message": "rate limit exceeded for this token",

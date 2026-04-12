@@ -1,7 +1,6 @@
 package common
 
 import (
-	"math/rand"
 	"time"
 
 	"github.com/FourWD/middleware/kit"
@@ -29,15 +28,4 @@ func StringToDateTime(strDateTime string) (time.Time, error) {
 
 func StringToDate(strDateTime string) (time.Time, error) {
 	return parseWithTimezone(strDateTime, DATE_FORMAT_DAY)
-}
-
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-func generateRandomString(length int) string {
-	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
 }

@@ -6,10 +6,10 @@ import (
 
 	"github.com/FourWD/middleware/kit"
 	"github.com/FourWD/middleware/orm"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func CheckRolePermissionByUser(c *fiber.Ctx, role string, action string) error {
+func CheckRolePermissionByUser(c fiber.Ctx, role string, action string) error {
 	userID := GetSessionUserID(c)
 
 	sqlEmployee := `SELECT * FROM employees WHERE id = ?`

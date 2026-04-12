@@ -3,10 +3,10 @@ package kit
 import (
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func GetAcceptLanguage(c *fiber.Ctx) string {
+func GetAcceptLanguage(c fiber.Ctx) string {
 	language := c.Get("accept-language", "TH")
 	return strings.ToUpper(language)
 }

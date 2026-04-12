@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"github.com/FourWD/middleware/kit"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func FiberPaginatedQuery(c *fiber.Ctx, baseSQL string, values ...interface{}) error {
+func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) error {
 	// Step 1: Handle pagination parameters
-	page := c.QueryInt("page", 1)
-	limit := c.QueryInt("limit", 10)
+	page := fiber.Query[int](c, "page", 1)
+	limit := fiber.Query[int](c, "limit", 10)
 	if page < 1 {
 		page = 1
 	}

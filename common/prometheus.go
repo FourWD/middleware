@@ -2,10 +2,13 @@ package common
 
 import (
 	"reflect"
+	"strconv"
+	"time"
 
-	fiberprometheus "github.com/ansrivas/fiberprometheus/v2"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var Prometheus = map[string]prometheus.Counter{}
@@ -93,7 +96,12 @@ func registerMetrics(prefix string, category string, data interface{}) {
 	}
 }
 
-func fiberPrometheus(c *fiber.Ctx) error {
+var (
+	httpRequestsTotal *prometheus.CounterVec
+	httpRequestDuration *prometheus.HistogramVec
+)
+
+func fiberPrometheus(c fiber.Ctx) error {
 	if prometheusMiddleware == nil {
 		return c.Next()
 	}
@@ -108,9 +116,35 @@ func registerPrometheus() {
 		registerMetrics(prometheusName, "logic", prometheusLogic)
 	}
 
-	// 2. Register endpoint
-	p := fiberprometheus.New(prometheusName)
-	p.RegisterAt(fiberApp, "/metrics")
-	prometheusMiddleware = p.Middleware
+	// 2. Register HTTP request metrics
+	httpRequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: prometheusName + "_http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "path", "status"},
+	)
+	httpRequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: prometheusName + "_http_request_duration_seconds",
+			Help: "Duration of HTTP requests in seconds",
+		},
+		[]string{"method", "path", "status"},
+	)
+	prometheus.MustRegister(httpRequestsTotal, httpRequestDuration)
+
+	// 3. Register middleware to collect request metrics
+	prometheusMiddleware = func(c fiber.Ctx) error {
+		start := time.Now()
+		err := c.Next()
+		duration := time.Since(start).Seconds()
+		status := strconv.Itoa(c.Response().StatusCode())
+		httpRequestsTotal.WithLabelValues(c.Method(), c.Path(), status).Inc()
+		httpRequestDuration.WithLabelValues(c.Method(), c.Path(), status).Observe(duration)
+		return err
+	}
 	fiberApp.Use(fiberPrometheus)
+
+	// 4. Register /metrics endpoint
+	fiberApp.Get("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
 }

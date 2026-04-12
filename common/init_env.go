@@ -7,14 +7,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/model"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 var App model.AppInfo
-var AppLog *zap.Logger
+var AppLog *infra.Logger
 var prometheusName string
 var prometheusLogic interface{}
 
@@ -50,10 +49,5 @@ func InitEnv(name string, logic interface{}) {
 }
 
 func initLog() {
-	config := zap.NewProductionConfig()
-	config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000000")
-	config.DisableStacktrace = true
-	config.DisableCaller = true
-	AppLog, _ = config.Build()
-	defer AppLog.Sync()
+	AppLog = infra.NewLoggerWith(App.GaeService, App.Env)
 }
