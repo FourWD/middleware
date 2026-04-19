@@ -3,16 +3,16 @@ package common
 import (
 	"errors"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/model"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/spf13/viper"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func Payment2C2PInquiry(info model.Payment2C2PInquiry) (model.Payment2C2PInquiryResponse, error) {
 	var reqResponse model.Payment2C2PInquiryResponse
 
 	payload := jwt.MapClaims{
-		"merchantID": viper.GetString("2c2p_merchant_id"),
+		"merchantID": infra.GetEnv("PAYMENT_2C2P_MERCHANT_ID", ""),
 		"invoiceNo":  info.InvoiceNo,
 		"locale":     "th",
 	}
@@ -22,7 +22,7 @@ func Payment2C2PInquiry(info model.Payment2C2PInquiry) (model.Payment2C2PInquiry
 		return reqResponse, err
 	}
 
-	url := viper.GetString("2c2p_payment_inquiry_url")
+	url := infra.GetEnv("PAYMENT_2C2P_INQUIRY_URL", "")
 	responsePayload, err := send2C2PRequest(url, tokenString)
 	if err != nil {
 		return reqResponse, err

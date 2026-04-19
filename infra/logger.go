@@ -78,8 +78,7 @@ type SlogAPILoggerConfig struct {
 	LogLevel string
 
 	ProjectName string
-	AppName     string
-	CompanyName string
+	AppID       string
 	Environment string
 	AppVersion  string
 	Hostname    string
@@ -212,15 +211,14 @@ func GetCorrelationID(ctx context.Context) (string, bool) {
 	return correlationID, ok
 }
 
-func NewLoggerWith(appName, env string) *Logger {
+func NewLoggerWith(cfg CommonConfig) *Logger {
 	hostname, _ := os.Hostname()
 	return NewSlogAPILogger(os.Stdout, SlogAPILoggerConfig{
-		LogLevel:    strings.ToLower(GetEnv("LOG_LEVEL", "info")),
-		ProjectName: appName,
-		AppName:     appName,
-		CompanyName: GetEnv("COMPANY_NAME", "company"),
-		Environment: env,
-		AppVersion:  GetEnv("APP_VERSION", ""),
+		LogLevel:    cfg.LogLevel,
+		ProjectName: cfg.AppID,
+		AppID:       cfg.AppID,
+		Environment: cfg.AppEnv,
+		AppVersion:  cfg.AppVersion,
 		Hostname:    hostname,
 	})
 }
@@ -253,8 +251,7 @@ func NewSlogAPILogger(w io.Writer, cfg SlogAPILoggerConfig) *Logger {
 
 	baseAttrs := []any{
 		"project_name", cfg.ProjectName,
-		"app_name", cfg.AppName,
-		"company", cfg.CompanyName,
+		"app_id", cfg.AppID,
 		"env", cfg.Environment,
 		"log_type", "api",
 	}

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 
 	"github.com/FourWD/middleware/infra"
-	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
@@ -13,11 +12,11 @@ var DatabaseSql *sql.DB
 
 func ConnectDatabaseViper(maxOpenConns int, maxIdleConns int) error {
 	dns := DNS{
-		Username: viper.GetString("database.username"),
-		Password: viper.GetString("database.password"),
-		Database: viper.GetString("database.database"),
-		IP:       viper.GetString("database.ip"),
-		Instance: viper.GetString("database.instance"),
+		Username: infra.GetEnv("DB_USER", ""),
+		Password: infra.GetEnv("DB_PASSWORD", ""),
+		Database: infra.GetEnv("DB_NAME", ""),
+		IP:       infra.GetEnv("DB_HOST", ""),
+		Instance: infra.GetEnv("DB_INSTANCE", ""),
 	}
 
 	if infra.AppInfo.Env == "local" {

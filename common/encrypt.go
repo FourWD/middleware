@@ -8,11 +8,11 @@ import (
 	"encoding/hex"
 	"io"
 
-	"github.com/spf13/viper"
+	"github.com/FourWD/middleware/infra"
 )
 
 func Encrypt(plaintext string) (string, error) {
-	key := viper.GetString("encrypt_key")
+	key := infra.GetEnv("APP_ENCRYPT_KEY", "")
 	keyBytes := sha256.Sum256([]byte(key))
 	block, err := aes.NewCipher(keyBytes[:])
 	if err != nil {

@@ -23,7 +23,7 @@ func TestValidateHeartbeatConfig_InvalidJitter(t *testing.T) {
 }
 
 func TestNewHeartbeatScheduler_Disabled(t *testing.T) {
-	scheduler, err := NewHeartbeatScheduler(HeartbeatConfig{Enabled: false}, NewLoggerWith("test", "test"))
+	scheduler, err := NewHeartbeatScheduler(HeartbeatConfig{Enabled: false}, NewLoggerWith(CommonConfig{AppID: "test", AppEnv: "test", LogLevel: "info"}))
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}

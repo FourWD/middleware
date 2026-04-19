@@ -58,30 +58,27 @@ type AuthConfig struct {
 	JWTIssuer              string
 	AccessTokenTTLMinutes  int
 	RefreshTokenTTLMinutes int
-	BcryptCost             int
 	BlacklistEnabled       bool
-	BootstrapAdmin         BootstrapAdminConfig
-}
-
-// BootstrapAdminConfig holds the initial admin user seed.
-type BootstrapAdminConfig struct {
-	Name     string
-	Email    string
-	Password string
-	Role     string
 }
 
 // CommonConfig holds infrastructure configuration loaded from environment variables.
 type CommonConfig struct {
-	AppName            string
+	AppID              string
 	AppVersion         string
 	AppEnv             string
+	LogLevel           string
 	Timezone           string
 	GCPProjectID       string
 	HTTPAddress        string
 	ProxyHeader        string
 	DebugAuthToken     string
 	PublicPaths        []string
+
+	// Rate limit (3-tier: strict / default / skip)
+	RateLimitEnabled          bool
+	RateLimitStrictPerMinute  int
+	RateLimitDefaultPerSecond int
+
 	Database           DatabaseConfig
 	SecondaryDatabase  DatabaseConfig
 	SecondaryDBEnabled bool
@@ -99,21 +96,27 @@ type CommonConfig struct {
 
 // LoadCommonConfig reads all infrastructure configuration from environment variables.
 func LoadCommonConfig() CommonConfig {
-	appName := GetEnv("APP_NAME", "")
+	appID := GetEnv("APP_ID", "")
 	if gaeService := os.Getenv("GAE_SERVICE"); gaeService != "" {
-		appName = gaeService
+		appID = gaeService
 	}
 
 	return CommonConfig{
-		AppName:            appName,
+		AppID:              appID,
 		AppVersion:         strings.TrimSpace(GetEnv("APP_VERSION", "")),
 		AppEnv:             strings.ToLower(strings.TrimSpace(GetEnv("APP_ENV", "local"))),
+		LogLevel:           strings.ToLower(strings.TrimSpace(GetEnv("LOG_LEVEL", "info"))),
 		Timezone:           strings.TrimSpace(GetEnv("APP_TIMEZONE", "Asia/Bangkok")),
 		GCPProjectID:       strings.TrimSpace(GetEnv("GCP_PROJECT_ID", "")),
 		HTTPAddress:        resolveHTTPAddress(),
 		ProxyHeader:        resolveProxyHeader(),
 		DebugAuthToken:     strings.TrimSpace(GetEnv("HTTP_DEBUG_AUTH_TOKEN", "")),
 		PublicPaths:        splitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")),
+
+		RateLimitEnabled:          GetEnvBool("RATE_LIMIT_ENABLED", true),
+		RateLimitStrictPerMinute:  GetEnvInt("RATE_LIMIT_STRICT_PER_MINUTE", 10),
+		RateLimitDefaultPerSecond: GetEnvInt("RATE_LIMIT_DEFAULT_PER_SECOND", 100),
+
 		Database:           LoadDatabaseConfig(),
 		SecondaryDBEnabled: GetEnvBool("DB2_ENABLED", false),
 		SecondaryDatabase:  LoadSecondaryDatabaseConfig(),
@@ -147,17 +150,10 @@ func LoadCommonConfig() CommonConfig {
 		Auth: AuthConfig{
 			JWTSecret:              GetEnv("JWT_SECRET", ""),
 			JWTRefreshSecret:       GetEnv("JWT_REFRESH_SECRET", ""),
-			JWTIssuer:              GetEnv("JWT_ISSUER", ""),
-			AccessTokenTTLMinutes:  GetEnvInt("JWT_ACCESS_TTL_MINUTES", 60),
-			RefreshTokenTTLMinutes: GetEnvInt("JWT_REFRESH_TTL_MINUTES", 10080),
-			BcryptCost:             GetEnvInt("AUTH_BCRYPT_COST", 12),
+			JWTIssuer:              appID,
+			AccessTokenTTLMinutes:  60,
+			RefreshTokenTTLMinutes: 10080,
 			BlacklistEnabled:       GetEnvBool("JWT_BLACKLIST_ENABLED", false),
-			BootstrapAdmin: BootstrapAdminConfig{
-				Name:     GetEnv("BOOTSTRAP_ADMIN_NAME", ""),
-				Email:    GetEnv("BOOTSTRAP_ADMIN_EMAIL", ""),
-				Password: GetEnv("BOOTSTRAP_ADMIN_PASSWORD", ""),
-				Role:     GetEnv("BOOTSTRAP_ADMIN_ROLE", "admin"),
-			},
 		},
 	}
 }
@@ -182,6 +178,7 @@ type AppRuntimeDeps struct {
 	ShutdownHooks        *[]func(context.Context) error
 	HeartbeatDebugStatus func() any
 	RegisterWorker       func(w Worker)
+	RateLimit            *RateLimiter
 }
 
 type AppDataDeps struct {
@@ -240,7 +237,7 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	}
 
 	var shutdownHooks []func(context.Context) error
-	appLogger := NewLoggerWith(cfg.AppName, cfg.AppEnv)
+	appLogger := NewLoggerWith(cfg)
 
 	initGlobals(cfg, appLogger)
 	setupTimezone(cfg.Timezone, appLogger)
@@ -277,6 +274,8 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	bindFirebaseGlobals(firebaseClient)
 	bindMongoGlobal(mongoClient)
 
+	rateLimiter := buildRateLimiter(cfg, redisClient, &shutdownHooks)
+
 	registerDBMetrics(dbs, appLogger)
 	registerGAEVersionCheck(cfg, appLogger, &shutdownHooks)
 
@@ -288,7 +287,7 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	}
 
 	web := NewFiberApp(FiberConfig{
-		AppName:     cfg.AppName,
+		AppID:       cfg.AppID,
 		ProxyHeader: cfg.ProxyHeader,
 	})
 
@@ -301,6 +300,7 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 			Config:        cfg,
 			Logger:        appLogger,
 			ShutdownHooks: &shutdownHooks,
+			RateLimit: rateLimiter,
 			HeartbeatDebugStatus: func() any {
 				if heartbeatScheduler == nil {
 					return HeartbeatDebugStatus{Enabled: false}
@@ -444,8 +444,8 @@ func validateCommonConfig(cfg CommonConfig) error {
 	if _, ok := allowedAppEnvs[cfg.AppEnv]; !ok {
 		return fmt.Errorf("invalid APP_ENV: %q (allowed: local, dev, prod, test)", cfg.AppEnv)
 	}
-	if strings.TrimSpace(cfg.AppName) == "" {
-		return fmt.Errorf("invalid APP_NAME")
+	if strings.TrimSpace(cfg.AppID) == "" {
+		return fmt.Errorf("invalid APP_ID")
 	}
 	if strings.TrimSpace(cfg.HTTPAddress) == "" {
 		return fmt.Errorf("invalid HTTP_ADDRESS")
@@ -476,21 +476,6 @@ func validateCommonConfig(cfg CommonConfig) error {
 	if strings.TrimSpace(cfg.Auth.JWTSecret) == "" {
 		return fmt.Errorf("invalid JWT_SECRET")
 	}
-	if strings.TrimSpace(cfg.Auth.JWTIssuer) == "" {
-		return fmt.Errorf("invalid JWT_ISSUER")
-	}
-	if cfg.Auth.AccessTokenTTLMinutes <= 0 {
-		return fmt.Errorf("invalid JWT_ACCESS_TTL_MINUTES")
-	}
-	if cfg.Auth.RefreshTokenTTLMinutes <= 0 {
-		return fmt.Errorf("invalid JWT_REFRESH_TTL_MINUTES")
-	}
-	if cfg.Auth.RefreshTokenTTLMinutes < cfg.Auth.AccessTokenTTLMinutes {
-		return fmt.Errorf("JWT_REFRESH_TTL_MINUTES must be greater than or equal to JWT_ACCESS_TTL_MINUTES")
-	}
-	if cfg.Auth.BcryptCost < 4 || cfg.Auth.BcryptCost > 31 {
-		return fmt.Errorf("invalid AUTH_BCRYPT_COST")
-	}
 	if cfg.Auth.BlacklistEnabled && !cfg.MongoEnabled && !cfg.RedisEnabled {
 		return fmt.Errorf("JWT_BLACKLIST_ENABLED requires MONGO_ENABLED=true or REDIS_ENABLED=true")
 	}
@@ -507,14 +492,6 @@ func validateCommonConfig(cfg CommonConfig) error {
 		if strings.TrimSpace(cfg.Mail.APIKey) == "" {
 			return fmt.Errorf("MAILGUN_API_KEY is required when MAIL_ENABLED=true")
 		}
-	}
-
-	admin := cfg.Auth.BootstrapAdmin
-	if admin.Email != "" && admin.Password == "" {
-		return fmt.Errorf("BOOTSTRAP_ADMIN_PASSWORD must be set when BOOTSTRAP_ADMIN_EMAIL is set")
-	}
-	if admin.Password != "" && admin.Email == "" {
-		return fmt.Errorf("BOOTSTRAP_ADMIN_EMAIL must be set when BOOTSTRAP_ADMIN_PASSWORD is set")
 	}
 
 	return nil

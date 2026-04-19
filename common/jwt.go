@@ -2,13 +2,14 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v3"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/spf13/viper"
+	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
@@ -20,7 +21,7 @@ func AuthenticationMiddleware(c fiber.Ctx) error {
 }
 
 func isPublicPath(c fiber.Ctx) bool {
-	publicPaths := viper.GetStringSlice("public_path")
+	publicPaths := infra.SplitCSV(infra.GetEnv("HTTP_PUBLIC_PATHS", ""))
 	hardcodePaths := []string{"/_ah/warmup", "/wake-up", "/metrics"}
 	publicPaths = append(publicPaths, hardcodePaths...)
 	return kit.StringExistsInList(c.Path(), publicPaths)
@@ -52,18 +53,16 @@ func checkAuth(c fiber.Ctx) error {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(viper.GetString("jwt_secret_key")), nil
+		return []byte(infra.GetEnv("JWT_SECRET", "")), nil
 	})
 
 	if err != nil {
 		// Check for specific validation errors
-		if ve, ok := err.(*jwt.ValidationError); ok {
-			if ve.Errors&jwt.ValidationErrorSignatureInvalid != 0 {
-				return c.Status(http.StatusUnauthorized).SendString("Invalid token signature")
-			}
-			if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				return c.Status(http.StatusUnauthorized).SendString("Token expired")
-			}
+		if errors.Is(err, jwt.ErrTokenSignatureInvalid) {
+			return c.Status(http.StatusUnauthorized).SendString("Invalid token signature")
+		}
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return c.Status(http.StatusUnauthorized).SendString("Token expired")
 		}
 		return c.Status(http.StatusUnauthorized).SendString("Invalid token")
 	}
@@ -78,7 +77,10 @@ func checkAuth(c fiber.Ctx) error {
 }
 
 func IsJwtValid(token string) bool {
-	collection := DatabaseMongoMiddleware.Database.Collection("blacklist_tokens")
+	if infra.Mongo == nil {
+		return true
+	}
+	collection := infra.Mongo.Database().Collection("blacklist_tokens")
 	filter := bson.M{"token": token}
 
 	count, err := collection.CountDocuments(context.TODO(), filter)

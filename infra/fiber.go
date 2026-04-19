@@ -7,13 +7,13 @@ import (
 )
 
 type FiberConfig struct {
-	AppName     string
+	AppID       string
 	ProxyHeader string
 }
 
 func NewFiberApp(cfg FiberConfig) *fiber.App {
 	return fiber.New(fiber.Config{
-		AppName:         cfg.AppName,
+		AppName:         cfg.AppID,
 		ProxyHeader:     cfg.ProxyHeader,
 		ErrorHandler:    AppErrorHandler(),
 		StructValidator: NewValidator(),

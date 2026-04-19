@@ -2,9 +2,10 @@ package infra
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"github.com/FourWD/middleware/model"
 )
 
@@ -25,12 +26,8 @@ func GooglePublicMessage(topicName, message string) (string, error) {
 	}
 	defer client.Close()
 
-	topic := client.Topic(topicName)
-	if topic == nil {
-		return "", err
-	}
-
-	result := topic.Publish(ctx, &pubsub.Message{
+	topicPath := fmt.Sprintf("projects/%s/topics/%s", projectID, topicName)
+	result := client.Publisher(topicPath).Publish(ctx, &pubsub.Message{
 		Data: []byte(message),
 	})
 

@@ -113,32 +113,89 @@ func (s *InMemoryRateLimitStore) IncrWithExpiry(_ context.Context, key string, w
 	return counter.count, nil
 }
 
-func registerRateLimit(app *fiber.App, cfg StackConfig) {
-	if !cfg.RateLimitEnabled || cfg.RateLimitStore == nil {
-		return
+// buildRateLimiter constructs the RateLimiter used by AppRuntimeDeps.
+// When Redis is available it uses RedisRateLimitStore (distributed, atomic via Lua);
+// otherwise falls back to InMemoryRateLimitStore (per-instance counters).
+func buildRateLimiter(cfg CommonConfig, redis *RedisClient, hooks *[]func(context.Context) error) *RateLimiter {
+	if !cfg.RateLimitEnabled {
+		return NewRateLimiter(cfg, nil)
 	}
 
-	if cfg.RateLimitWindowSeconds <= 0 {
-		cfg.RateLimitWindowSeconds = 60
+	var store RateLimitStore
+	if redis != nil {
+		store = NewRedisRateLimitStore(redis)
+	} else {
+		inMem := NewInMemoryRateLimitStore()
+		*hooks = append(*hooks, func(context.Context) error {
+			inMem.Close()
+			return nil
+		})
+		store = inMem
 	}
 
-	window := time.Duration(cfg.RateLimitWindowSeconds) * time.Second
+	return NewRateLimiter(cfg, store)
+}
 
-	app.Use(func(c fiber.Ctx) error {
-		if cfg.RateLimitExemptHealth && c.Path() == "/healthz" {
+// RateLimiter exposes tiered rate-limit middleware factories for use with
+// route groups. Construct via NewRateLimiter; NewApp wires one into AppDeps.
+//
+// Tiers:
+//   - Strict() : low cap per minute — auth endpoints (login, register, reset)
+//   - Default(): high cap per second — regular API traffic
+//   - skip     : do not attach any middleware (e.g. /metrics, /health)
+type RateLimiter struct {
+	store            RateLimitStore
+	enabled          bool
+	strictPerMinute  int
+	defaultPerSecond int
+	keyPrefix        string
+}
+
+// NewRateLimiter builds a RateLimiter from CommonConfig + a store.
+// If cfg.RateLimitEnabled is false or store is nil, middleware becomes a no-op.
+func NewRateLimiter(cfg CommonConfig, store RateLimitStore) *RateLimiter {
+	return &RateLimiter{
+		store:            store,
+		enabled:          cfg.RateLimitEnabled && store != nil,
+		strictPerMinute:  cfg.RateLimitStrictPerMinute,
+		defaultPerSecond: cfg.RateLimitDefaultPerSecond,
+		keyPrefix:        cfg.AppID,
+	}
+}
+
+// Strict returns a middleware with "RateLimitStrictPerMinute" cap per minute.
+// Intended for auth-sensitive endpoints.
+func (r *RateLimiter) Strict() fiber.Handler {
+	return r.build("strict", r.strictPerMinute, time.Minute)
+}
+
+// Default returns a middleware with "RateLimitDefaultPerSecond" cap per second.
+// Intended for regular API routes.
+func (r *RateLimiter) Default() fiber.Handler {
+	return r.build("default", r.defaultPerSecond, time.Second)
+}
+
+func (r *RateLimiter) build(tier string, max int, window time.Duration) fiber.Handler {
+	if r == nil || !r.enabled || max <= 0 {
+		return func(c fiber.Ctx) error { return c.Next() }
+	}
+
+	return func(c fiber.Ctx) error {
+		client := c.IP()
+		if auth := c.Get("Authorization"); auth != "" {
+			client = auth
+		}
+		key := fmt.Sprintf("%s:%s:%s:%s", r.keyPrefix, tier, client, c.Path())
+
+		count, err := r.store.IncrWithExpiry(c.Context(), key, window)
+		if err != nil {
+			// fail-open on store error — prefer availability over strict enforcement
 			return c.Next()
 		}
-
-		key := fmt.Sprintf("%s:%s:%s", cfg.RateLimitKeyPrefix, c.IP(), c.Path())
-		count, err := cfg.RateLimitStore.IncrWithExpiry(c.Context(), key, window)
-		if err != nil {
-			return WriteErrorEnvelope(c, fiber.StatusInternalServerError, "rate_limit_store_error", "rate limit store unavailable")
-		}
-
-		if count > int64(cfg.RateLimitMaxRequests) {
+		if count > int64(max) {
 			return WriteErrorEnvelope(c, fiber.StatusTooManyRequests, "rate_limited", "too many requests")
 		}
-
 		return c.Next()
-	})
+	}
 }
+

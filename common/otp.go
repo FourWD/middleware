@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/model"
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 )
 
 var otpHTTPClient = &http.Client{
@@ -46,7 +46,7 @@ func otpRequestToServer(mobile string) (model.OtpResult, error) {
 	params.Mobile = mobile
 
 	payloadString := "key=" + params.Key + "&secret=" + params.Secret + "&msisdn=" + params.Mobile
-	req, _ := http.NewRequest("POST", viper.GetString("sms.url_request"), strings.NewReader(payloadString))
+	req, _ := http.NewRequest("POST", infra.GetEnv("OTP_URL_REQUEST", ""), strings.NewReader(payloadString))
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
@@ -78,7 +78,7 @@ func otpRequestToServer(mobile string) (model.OtpResult, error) {
 	log.ID = uuid.NewString()
 	log.CreatedAt = time.Now()
 	log.Mobile = params.Mobile
-	log.AppID = viper.GetString("app_id")
+	log.AppID = infra.GetEnv("APP_ID", "")
 	log.Response = jsonBody
 	Database.Save(log)
 
@@ -104,7 +104,7 @@ func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, erro
 
 	payloadString := "key=" + app.AppKey + "&secret=" + app.AppSecret + "&token=" + payload.Token + "&pin=" + payload.Pin
 
-	req, _ := http.NewRequest("POST", viper.GetString("sms.url_verify"), strings.NewReader(payloadString))
+	req, _ := http.NewRequest("POST", infra.GetEnv("OTP_URL_VERIFY", ""), strings.NewReader(payloadString))
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
@@ -140,9 +140,9 @@ func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, erro
 
 func getOtpApp() (model.AppOtp, error) {
 	app := new(model.AppOtp)
-	app.ID = viper.GetString("app_id")
-	app.AppKey = viper.GetString("sms.sms_key")
-	app.AppSecret = viper.GetString("sms.sms_secret")
+	app.ID = infra.GetEnv("APP_ID", "")
+	app.AppKey = infra.GetEnv("OTP_SMS_KEY", "")
+	app.AppSecret = infra.GetEnv("OTP_SMS_SECRET", "")
 	return *app, nil
 }
 

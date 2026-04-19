@@ -7,11 +7,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/spf13/viper"
+	"github.com/FourWD/middleware/infra"
 )
 
 func Decrypt(cipherText string) (string, error) {
-	key := viper.GetString("encrypt_key")
+	key := infra.GetEnv("APP_ENCRYPT_KEY", "")
 	cipherTextBytes, err := hex.DecodeString(cipherText)
 	if err != nil {
 		return "", err

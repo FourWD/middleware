@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/gofiber/fiber/v3"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/spf13/viper"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // extractTokenFromHeader extracts JWT token string from Authorization header
@@ -32,7 +32,7 @@ func extractTokenFromHeader(c fiber.Ctx) (string, error) {
 // If allowExpired is true, it will return the claim even if the token is expired
 // (useful for token refresh scenarios).
 func extractClaimFromToken(tokenString string, claimKey string, allowExpired bool) (string, error) {
-	secretKeyToken := []byte(viper.GetString("jwt_secret_key"))
+	secretKeyToken := []byte(infra.GetEnv("JWT_SECRET", ""))
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -44,15 +44,13 @@ func extractClaimFromToken(tokenString string, claimKey string, allowExpired boo
 	// Handle parsing errors
 	if err != nil {
 		// If allowExpired, check if error is only about expiration
-		if allowExpired {
-			if ve, ok := err.(*jwt.ValidationError); ok && ve.Errors == jwt.ValidationErrorExpired {
-				// Token is expired but signature is valid, we can read claims
-				if claims, ok := token.Claims.(jwt.MapClaims); ok {
-					if claimValue, ok := claims[claimKey].(string); ok {
-						return claimValue, nil
-					}
-					return "", errors.New("claim not found or not a string")
+		if allowExpired && errors.Is(err, jwt.ErrTokenExpired) {
+			// Token is expired but signature is valid, we can read claims
+			if claims, ok := token.Claims.(jwt.MapClaims); ok {
+				if claimValue, ok := claims[claimKey].(string); ok {
+					return claimValue, nil
 				}
+				return "", errors.New("claim not found or not a string")
 			}
 		}
 		return "", err

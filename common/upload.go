@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/kit"
 	"github.com/FourWD/middleware/model"
 	"github.com/FourWD/middleware/orm"
-	"github.com/spf13/viper"
 )
 
 func Upload(payload model.UploadPayload) (model.UploadResult, error) {
-	result, errUpload := uploadFileToServer(payload, viper.GetString("app_id"), viper.GetString("token.upload"))
+	result, errUpload := uploadFileToServer(payload, infra.GetEnv("APP_ID", ""), infra.GetEnv("UPLOAD_TOKEN", ""))
 	if errUpload != nil {
 		return result, errUpload
 	}
@@ -55,7 +55,7 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 		return *result, err
 	}
 
-	uploadUrl := viper.GetString("upload_service_url")
+	uploadUrl := infra.GetEnv("UPLOAD_SERVICE_URL", "")
 	if uploadUrl == "" {
 		uploadUrl = "https://fourwd.as.r.appspot.com/api/v1/upload/"
 	}

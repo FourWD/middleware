@@ -1,7 +1,6 @@
 package infra
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -11,7 +10,10 @@ import (
 
 // StackConfig configures the standard middleware stack.
 // Use LoadStackConfig() to populate from environment variables,
-// then set Logger and RateLimitStore before calling RegisterStack().
+// then set Logger before calling RegisterStack().
+//
+// Rate limiting is NOT part of this stack — use AppDeps.Runtime.RateLimit
+// tiered middleware (Strict/Default) applied to route groups instead.
 type StackConfig struct {
 	// ServiceName used for otel tracer and metrics namespace.
 	ServiceName string
@@ -27,14 +29,6 @@ type StackConfig struct {
 	// CORS
 	AllowOrigins string
 
-	// Rate limit
-	RateLimitEnabled       bool
-	RateLimitMaxRequests   int
-	RateLimitWindowSeconds int
-	RateLimitKeyPrefix     string
-	RateLimitExemptHealth  bool
-	RateLimitStore         RateLimitStore
-
 	// Sentry
 	SentryEnabled bool
 
@@ -43,19 +37,14 @@ type StackConfig struct {
 }
 
 // LoadStackConfig reads standard middleware configuration from environment variables.
-// After calling this, set Logger and RateLimitStore manually as they are project-specific.
+// After calling this, set Logger manually as it is project-specific.
 func LoadStackConfig() StackConfig {
 	return StackConfig{
-		ServiceName:                GetEnv("APP_NAME", "app"),
+		ServiceName:                GetEnv("APP_ID", "app"),
 		RequestLogOmitRequestBody:  GetEnvBool("HTTP_REQUEST_LOG_OMIT_REQUEST_BODY", true),
 		RequestLogOmitResponseBody: GetEnvBool("HTTP_REQUEST_LOG_OMIT_RESPONSE_BODY", true),
 		RequestLogMaxBodyBytes:     GetEnvInt("HTTP_REQUEST_LOG_MAX_BODY_BYTES", 4096),
 		AllowOrigins:               GetEnv("HTTP_ALLOW_ORIGINS", "*"),
-		RateLimitEnabled:           GetEnvBool("RATE_LIMIT_ENABLED", true),
-		RateLimitMaxRequests:       GetEnvInt("RATE_LIMIT_MAX_REQUESTS", 60),
-		RateLimitWindowSeconds:     GetEnvInt("RATE_LIMIT_WINDOW_SECONDS", 60),
-		RateLimitKeyPrefix:         GetEnv("RATE_LIMIT_KEY_PREFIX", "rate_limit"),
-		RateLimitExemptHealth:      GetEnvBool("RATE_LIMIT_EXEMPT_HEALTH", true),
 		SentryEnabled:              GetEnvBool("SENTRY_ENABLED", false),
 		MetricsNamespace:           GetEnv("METRICS_NAMESPACE", "app"),
 	}
@@ -75,25 +64,8 @@ func (c StackConfig) normalized() StackConfig {
 	if cfg.RequestLogMaxBodyBytes <= 0 {
 		cfg.RequestLogMaxBodyBytes = 4096
 	}
-	if cfg.RateLimitMaxRequests <= 0 {
-		cfg.RateLimitMaxRequests = 60
-	}
-	if cfg.RateLimitWindowSeconds <= 0 {
-		cfg.RateLimitWindowSeconds = 60
-	}
-	if strings.TrimSpace(cfg.RateLimitKeyPrefix) == "" {
-		cfg.RateLimitKeyPrefix = "rate_limit"
-	}
 
 	return cfg
-}
-
-func validateStackConfig(cfg StackConfig) error {
-	if cfg.RateLimitEnabled && cfg.RateLimitStore == nil {
-		return fmt.Errorf("rate limit enabled but store is nil")
-	}
-
-	return nil
 }
 
 // RegisterStack registers the full middleware stack in the correct order:
@@ -117,9 +89,11 @@ func RegisterBaseStack(app *fiber.App, cfg StackConfig) {
 	app.Use(recovermw.New())
 }
 
-// RegisterHTTPStack registers HTTP-only middleware: RateLimit → OTel → Metrics → RequestLog.
+// RegisterHTTPStack registers HTTP-only middleware: OTel → Metrics → RequestLog.
 // Call this after registering WebSocket/SSE routes and before registering REST routes.
 // Note: Sentry is registered in RegisterBaseStack (before Recover) so it captures panics with full stack traces.
+// Rate limiting is NOT part of this stack — apply AppDeps.Runtime.RateLimit.Strict()/Default()
+// to route groups in your Register function instead.
 func RegisterHTTPStack(app *fiber.App, cfg StackConfig) {
 	cfg = cfg.normalized()
 
@@ -132,19 +106,7 @@ func RegisterHTTPStack(app *fiber.App, cfg StackConfig) {
 		)
 	}
 
-	if err := validateStackConfig(cfg); err != nil && cfg.Logger != nil {
-		cfg.Logger.Warn(
-			M("invalid middleware stack config, disabling rate limit"),
-			WithComponent("middleware"),
-			WithOperation("rate_limit_init"),
-			WithLogKind("configuration"),
-			WithField("error", err),
-		)
-		cfg.RateLimitEnabled = false
-	}
-
 	app.Use(NewEnvelopeWrapper())
-	registerRateLimit(app, cfg)
 	registerOTelTrace(app, cfg)
 	registerMetrics(app, cfg)
 	if cfg.Logger != nil {
@@ -167,6 +129,11 @@ func registerCORS(app *fiber.App, cfg StackConfig) {
 }
 
 func splitCSV(value string) []string {
+	return SplitCSV(value)
+}
+
+// SplitCSV splits a comma-separated string, trims each element, and drops empties.
+func SplitCSV(value string) []string {
 	parts := strings.Split(value, ",")
 	result := make([]string, 0, len(parts))
 	for _, p := range parts {

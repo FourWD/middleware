@@ -26,7 +26,7 @@ func registerDefaultRoutes(app *fiber.App, cfg CommonConfig) {
 			"status":  1,
 			"message": "success",
 			"data": fiber.Map{
-				"app_name":    cfg.AppName,
+				"app_id":      cfg.AppID,
 				"app_version": cfg.AppVersion,
 				"env":         cfg.AppEnv,
 			},

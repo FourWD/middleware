@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	gcppubsub "cloud.google.com/go/pubsub"
+	gcppubsub "cloud.google.com/go/pubsub/v2"
 	"google.golang.org/api/option"
 )
 
 type PubSubClient struct {
-	client *gcppubsub.Client
+	client    *gcppubsub.Client
+	projectID string
 }
 
 func NewPubSubClient(ctx context.Context, cfg PubSubConfig) (*PubSubClient, error) {
@@ -23,11 +24,12 @@ func NewPubSubClient(ctx context.Context, cfg PubSubConfig) (*PubSubClient, erro
 	if err != nil {
 		return nil, fmt.Errorf("creating pubsub client: %w", err)
 	}
-	return &PubSubClient{client: client}, nil
+	return &PubSubClient{client: client, projectID: cfg.ProjectID}, nil
 }
 
 func (c *PubSubClient) Publish(ctx context.Context, topic, message string) error {
-	result := c.client.Topic(topic).Publish(ctx, &gcppubsub.Message{Data: []byte(message)})
+	topicPath := fmt.Sprintf("projects/%s/topics/%s", c.projectID, topic)
+	result := c.client.Publisher(topicPath).Publish(ctx, &gcppubsub.Message{Data: []byte(message)})
 	_, err := result.Get(ctx)
 	return err
 }

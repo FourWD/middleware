@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/model"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/spf13/viper"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // paymentHTTPClient is a dedicated HTTP client for payment requests with timeout
@@ -27,7 +27,7 @@ type payment2C2PPayloadResponse struct {
 // signJWTPayload creates a signed JWT token from claims using 2C2P secret key
 func signJWTPayload(claims jwt.MapClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(viper.GetString("2c2p_secret_key")))
+	return token.SignedString([]byte(infra.GetEnv("PAYMENT_2C2P_SECRET", "")))
 }
 
 // send2C2PRequest sends a POST request to 2C2P API and returns the response payload
@@ -66,7 +66,7 @@ func parse2C2PJWTResponse(jwtString string) (jwt.MapClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(viper.GetString("2c2p_secret_key")), nil
+		return []byte(infra.GetEnv("PAYMENT_2C2P_SECRET", "")), nil
 	})
 
 	if err != nil {
@@ -84,7 +84,7 @@ func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 	var reqResponse model.Payment2C2PResponse
 
 	payload := jwt.MapClaims{
-		"merchantID":        viper.GetString("2c2p_merchant_id"),
+		"merchantID":        infra.GetEnv("PAYMENT_2C2P_MERCHANT_ID", ""),
 		"invoiceNo":         request.InvoiceNo,
 		"description":       request.Description,
 		"amount":            request.Amount,
@@ -99,7 +99,7 @@ func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 		return reqResponse, err
 	}
 
-	url := viper.GetString("2c2p_payment_request_url")
+	url := infra.GetEnv("PAYMENT_2C2P_REQUEST_URL", "")
 	responsePayload, err := send2C2PRequest(url, tokenString)
 	if err != nil {
 		return reqResponse, err
@@ -125,7 +125,7 @@ func decodePaymentResponse(requestResponseJwt string) (model.Payment2C2PResponse
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(viper.GetString("2c2p_secret_key")), nil
+		return []byte(infra.GetEnv("PAYMENT_2C2P_SECRET", "")), nil
 	})
 
 	if err != nil {

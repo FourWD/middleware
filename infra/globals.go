@@ -45,8 +45,8 @@ var (
 func initGlobals(cfg CommonConfig, logger *Logger) {
 	AppLog = logger
 	AppInfo = model.AppInfo{
-		Name:       cfg.AppName,
-		Version:    os.Getenv("APP_VERSION"),
+		Name:       cfg.AppID,
+		Version:    cfg.AppVersion,
 		Env:        cfg.AppEnv,
 		GaeVersion: os.Getenv("GAE_VERSION"),
 	}

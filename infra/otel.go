@@ -33,7 +33,7 @@ func LoadOTelConfig() OTelConfig {
 		Enabled:           GetEnvBool("OTEL_ENABLED", false),
 		OTLPTraceEndpoint: GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
 		OTLPTraceInsecure: GetEnvBool("OTEL_EXPORTER_OTLP_INSECURE", false),
-		ServiceName:       GetEnv("APP_NAME", "app"),
+		ServiceName:       GetEnv("APP_ID", "app"),
 		ServiceVersion:    GetEnv("APP_VERSION", "0.1.0"),
 		Environment:       GetEnv("APP_ENV", "local"),
 	}

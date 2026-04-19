@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build *)",
+      "Bash(go vet *)",
+      "Bash(go test *)",
+      "Bash(go mod *)",
+      "Bash(rm -v common/mail.go common/zip_file.go)",
+      "Bash(rm -rv kafka/)"
+    ]
+  }
+}

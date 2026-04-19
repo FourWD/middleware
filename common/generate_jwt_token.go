@@ -3,8 +3,8 @@ package common
 import (
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/spf13/viper"
+	"github.com/FourWD/middleware/infra"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type JWTClaims struct {
@@ -15,7 +15,7 @@ type JWTClaims struct {
 }
 
 func GenerateJWTToken(userID string, role string, remark map[string]string, expiresIn time.Duration) (string, error) {
-	key := []byte(viper.GetString("jwt_secret_key"))
+	key := []byte(infra.GetEnv("JWT_SECRET", ""))
 
 	claims := JWTClaims{
 		UserID: userID,

@@ -22,14 +22,14 @@ type SentryConfig struct {
 
 // LoadSentryConfig reads Sentry configuration from environment variables.
 func LoadSentryConfig() SentryConfig {
-	appName := GetEnv("APP_NAME", "app")
+	appID := GetEnv("APP_ID", "app")
 	appVersion := GetEnv("APP_VERSION", "0.1.0")
 
 	return SentryConfig{
 		Enabled:          GetEnvBool("SENTRY_ENABLED", false),
 		DSN:              GetEnv("SENTRY_DSN", ""),
 		Environment:      GetEnv("APP_ENV", "local"),
-		Release:          appName + "@" + appVersion,
+		Release:          appID + "@" + appVersion,
 		TracesSampleRate: GetEnvFloat("SENTRY_TRACES_SAMPLE_RATE", 0),
 	}
 }

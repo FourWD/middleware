@@ -66,39 +66,9 @@ func TestValidateCommonConfig_InvalidSecondaryDatabaseDriver(t *testing.T) {
 	}
 }
 
-func TestValidateCommonConfig_RefreshTTLTooShort(t *testing.T) {
-	cfg := baseCommonConfig()
-	cfg.Auth.AccessTokenTTLMinutes = 120
-	cfg.Auth.RefreshTokenTTLMinutes = 60
-
-	if err := validateCommonConfig(cfg); err == nil {
-		t.Fatal("expected error for refresh ttl less than access ttl")
-	}
-}
-
-func TestValidateCommonConfig_BootstrapAdminEmailWithoutPassword(t *testing.T) {
-	cfg := baseCommonConfig()
-	cfg.Auth.BootstrapAdmin.Email = "admin@example.com"
-	cfg.Auth.BootstrapAdmin.Password = ""
-
-	if err := validateCommonConfig(cfg); err == nil {
-		t.Fatal("expected error when email set without password")
-	}
-}
-
-func TestValidateCommonConfig_BootstrapAdminPasswordWithoutEmail(t *testing.T) {
-	cfg := baseCommonConfig()
-	cfg.Auth.BootstrapAdmin.Email = ""
-	cfg.Auth.BootstrapAdmin.Password = "secret123"
-
-	if err := validateCommonConfig(cfg); err == nil {
-		t.Fatal("expected error when password set without email")
-	}
-}
-
 func baseCommonConfig() CommonConfig {
 	return CommonConfig{
-		AppName:      "pakkad-service",
+		AppID:        "pakkad-service",
 		AppEnv:       "dev",
 		HTTPAddress:  ":8080",
 		RedisEnabled: true,
@@ -131,7 +101,6 @@ func baseCommonConfig() CommonConfig {
 			JWTIssuer:              "issuer",
 			AccessTokenTTLMinutes:  60,
 			RefreshTokenTTLMinutes: 10080,
-			BcryptCost:             12,
 		},
 	}
 }
