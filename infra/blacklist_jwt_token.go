@@ -1,4 +1,4 @@
-package common
+package infra
 
 import (
 	"context"
@@ -12,11 +12,14 @@ func BlacklistJwtToken(jwtToken string) error {
 	if jwtToken == "" {
 		return errors.New("no token")
 	}
+	if Mongo == nil {
+		return errors.New("mongo client not initialized")
+	}
 
 	createdAt := time.Now()
 	expiresAt := createdAt.Add(3 * 24 * time.Hour)
 
-	collection := DatabaseMongoMiddleware.Database.Collection("blacklist_tokens")
+	collection := Mongo.Database().Collection("blacklist_tokens")
 	data := bson.M{
 		"token":     jwtToken,
 		"createdAt": createdAt,

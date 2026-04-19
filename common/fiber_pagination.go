@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v3"
 )
@@ -90,7 +91,7 @@ func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) err
 
 	totalPages := (totalItems + limit - 1) / limit
 	sqlDebug := ""
-	if App.Env != "prod" {
+	if infra.AppInfo.Env != "prod" {
 		sqlDebug = rawSql(paginatedSQL, values...)
 	}
 

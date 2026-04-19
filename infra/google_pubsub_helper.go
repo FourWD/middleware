@@ -1,4 +1,4 @@
-package common
+package infra
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
-	"github.com/spf13/viper"
 )
 
 type PubSubContext struct {
@@ -18,13 +17,13 @@ type PubSubContext struct {
 }
 
 func initPubSubClient(topicName string) (*PubSubContext, error) {
-	projectID := viper.GetString("google_project_id")
+	projectID := GetEnv("GCP_PROJECT_ID", "")
 	ctx := context.Background()
 	subscriptionID := "SUB-" + topicName
 
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
-		LogError("PUBSUB_CLIENT_ERROR", map[string]interface{}{"error": err.Error(), "topic": topicName}, "")
+		AppLog.EventError(err, "PUBSUB_CLIENT_ERROR", map[string]interface{}{"topic": topicName}, "")
 		return nil, err
 	}
 
@@ -35,7 +34,7 @@ func initPubSubClient(topicName string) (*PubSubContext, error) {
 		Topic: topicPath,
 	})
 	if err != nil {
-		LogWarning("PUBSUB_TOPIC_NOT_EXISTS", map[string]interface{}{"topic": topicName, "error": err.Error()}, "")
+		AppLog.EventWarn("PUBSUB_TOPIC_NOT_EXISTS", map[string]interface{}{"topic": topicName, "error": err.Error()}, "")
 	}
 
 	_, err = client.SubscriptionAdminClient.GetSubscription(ctx, &pubsubpb.GetSubscriptionRequest{
@@ -47,13 +46,13 @@ func initPubSubClient(topicName string) (*PubSubContext, error) {
 			Topic: topicPath,
 		})
 		if err != nil {
-			LogError("PUBSUB_SUBSCRIPTION_CREATE_ERROR", map[string]interface{}{"error": err.Error(), "subscription": subscriptionID}, "")
+			AppLog.EventError(err, "PUBSUB_SUBSCRIPTION_CREATE_ERROR", map[string]interface{}{"subscription": subscriptionID}, "")
 			client.Close()
 			return nil, err
 		}
-		Log("PUBSUB_SUBSCRIPTION_CREATED", map[string]interface{}{"subscription": subscriptionID}, "")
+		AppLog.Event("PUBSUB_SUBSCRIPTION_CREATED", map[string]interface{}{"subscription": subscriptionID}, "")
 	} else {
-		Log("PUBSUB_SUBSCRIPTION_EXISTS", map[string]interface{}{"subscription": subscriptionID}, "")
+		AppLog.Event("PUBSUB_SUBSCRIPTION_EXISTS", map[string]interface{}{"subscription": subscriptionID}, "")
 	}
 
 	return &PubSubContext{

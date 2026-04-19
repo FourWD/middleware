@@ -1,18 +1,16 @@
-package common
+package infra
 
 import (
 	"cloud.google.com/go/pubsub/v2"
-	"github.com/spf13/viper"
 )
 
 func GoogleCreateSubscribe(topicName string) *pubsub.Subscriber {
-	projectID := viper.GetString("google_project_id")
+	projectID := GetEnv("GCP_PROJECT_ID", "")
 
-	logData := map[string]interface{}{
+	AppLog.Event("PUBSUB_CREATE_SUBSCRIBE", map[string]interface{}{
 		"project_id": projectID,
 		"topic":      topicName,
-	}
-	Log("PUBSUB_CREATE_SUBSCRIBE", logData, "")
+	}, "")
 
 	pubsubCtx, err := initPubSubClient(topicName)
 	if err != nil {

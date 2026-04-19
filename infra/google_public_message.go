@@ -1,4 +1,4 @@
-package common
+package infra
 
 import (
 	"context"
@@ -6,18 +6,16 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/FourWD/middleware/model"
-	"github.com/spf13/viper"
 )
 
 func GooglePublicMessage(topicName, message string) (string, error) {
-	projectID := viper.GetString("google_project_id")
+	projectID := GetEnv("GCP_PROJECT_ID", "")
 
-	logData := map[string]interface{}{
+	AppLog.Event("GooglePublicMessage", map[string]interface{}{
 		"project_id": projectID,
 		"topic_name": topicName,
 		"message":    message,
-	}
-	Log("GooglePublicMessage", logData, "")
+	}, "")
 
 	ctx := context.Background()
 

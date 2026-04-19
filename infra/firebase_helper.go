@@ -1,4 +1,4 @@
-package common
+package infra
 
 import (
 	"context"
@@ -13,7 +13,7 @@ func initFirebaseApp(credentialsFile string) (*firebase.App, error) {
 
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
-		LogError("FIREBASE_APP_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		AppLog.EventError(err, "FIREBASE_APP_ERROR", nil, "")
 		return nil, err
 	}
 

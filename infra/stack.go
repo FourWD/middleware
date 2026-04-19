@@ -159,15 +159,15 @@ func RegisterHTTPStack(app *fiber.App, cfg StackConfig) {
 
 func registerCORS(app *fiber.App, cfg StackConfig) {
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:  splitOrigins(cfg.AllowOrigins),
+		AllowOrigins:  splitCSV(cfg.AllowOrigins),
 		AllowMethods:  []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", RequestIDHeader},
 		ExposeHeaders: []string{RequestIDHeader},
 	}))
 }
 
-func splitOrigins(origins string) []string {
-	parts := strings.Split(origins, ",")
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
 	result := make([]string, 0, len(parts))
 	for _, p := range parts {
 		p = strings.TrimSpace(p)

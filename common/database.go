@@ -3,6 +3,7 @@ package common
 import (
 	"database/sql"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
@@ -19,7 +20,7 @@ func ConnectDatabaseViper(maxOpenConns int, maxIdleConns int) error {
 		Instance: viper.GetString("database.instance"),
 	}
 
-	if App.Env == "local" {
+	if infra.AppInfo.Env == "local" {
 		dns.Instance = ""
 	}
 
@@ -32,7 +33,7 @@ func connectDatabase(dns string, maxOpenConns int, maxIdleConns int) error {
 }
 
 func ConnectDatabaseMySqlGoogle(DNS DNS) (*sql.DB, error) {
-	if App.Env == "local" {
+	if infra.AppInfo.Env == "local" {
 		DNS.Instance = ""
 	}
 

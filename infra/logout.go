@@ -1,4 +1,4 @@
-package common
+package infra
 
 import (
 	"github.com/gofiber/fiber/v3"

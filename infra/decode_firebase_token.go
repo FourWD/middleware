@@ -1,4 +1,4 @@
-package common
+package infra
 
 import (
 	"context"
@@ -37,7 +37,7 @@ type JWTClaimsDeCode struct {
 // DecodeFirebaseToken verifies and decodes a Firebase ID token.
 // This function properly validates the token signature using Firebase Admin SDK.
 func DecodeFirebaseToken(tokenString string) (*JWTClaimsDeCode, error) {
-	if AuthClient == nil {
+	if FirebaseAuthClient == nil {
 		return nil, errors.New("firebase auth client not initialized")
 	}
 
@@ -45,9 +45,9 @@ func DecodeFirebaseToken(tokenString string) (*JWTClaimsDeCode, error) {
 	defer cancel()
 
 	// VerifyIDToken validates the signature, expiration, issuer, and audience
-	token, err := AuthClient.VerifyIDToken(ctx, tokenString)
+	token, err := FirebaseAuthClient.VerifyIDToken(ctx, tokenString)
 	if err != nil {
-		LogError("FIREBASE_TOKEN_VERIFY_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		AppLog.EventError(err, "FIREBASE_TOKEN_VERIFY_ERROR", nil, "")
 		return nil, err
 	}
 
@@ -91,16 +91,16 @@ func DecodeFirebaseToken(tokenString string) (*JWTClaimsDeCode, error) {
 // VerifyFirebaseToken verifies a Firebase ID token and returns the raw auth.Token.
 // Use this when you need access to all token claims.
 func VerifyFirebaseToken(tokenString string) (*auth.Token, error) {
-	if AuthClient == nil {
+	if FirebaseAuthClient == nil {
 		return nil, errors.New("firebase auth client not initialized")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	token, err := AuthClient.VerifyIDToken(ctx, tokenString)
+	token, err := FirebaseAuthClient.VerifyIDToken(ctx, tokenString)
 	if err != nil {
-		LogError("FIREBASE_TOKEN_VERIFY_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		AppLog.EventError(err, "FIREBASE_TOKEN_VERIFY_ERROR", nil, "")
 		return nil, err
 	}
 

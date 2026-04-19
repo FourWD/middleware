@@ -55,6 +55,22 @@ func (mc *MongoClient) Collection(name string) *mongo.Collection {
 	return mc.database.Collection(name)
 }
 
+// Client returns the underlying *mongo.Client.
+func (mc *MongoClient) Client() *mongo.Client {
+	if mc == nil {
+		return nil
+	}
+	return mc.client
+}
+
+// Database returns the selected *mongo.Database.
+func (mc *MongoClient) Database() *mongo.Database {
+	if mc == nil {
+		return nil
+	}
+	return mc.database
+}
+
 // Close disconnects the MongoDB client.
 func (mc *MongoClient) Close(ctx context.Context) error {
 	if mc.client != nil {

@@ -33,6 +33,7 @@ const correlationIDContextKey loggerContextKey = "correlation_id"
 
 type LoggerOptions struct {
 	disableHook      bool
+	callerSkip       int
 	additionalFields map[string]any
 }
 
@@ -76,12 +77,12 @@ type Logger struct {
 type SlogAPILoggerConfig struct {
 	LogLevel string
 
-	ProjectName     string
-	ApplicationName string
-	CompanyName     string
-	Environment     string
-	ServiceVersion  string
-	Hostname        string
+	ProjectName string
+	AppName     string
+	CompanyName string
+	Environment string
+	AppVersion  string
+	Hostname    string
 
 	RootPath string
 }
@@ -195,6 +196,12 @@ func WithHookDisabled() LoggerOption {
 	}
 }
 
+func WithCallerSkip(n int) LoggerOption {
+	return func(o *LoggerOptions) {
+		o.callerSkip = n
+	}
+}
+
 func InjectCorrelationID(ctx context.Context, correlationID string) context.Context {
 	return context.WithValue(ctx, correlationIDContextKey, correlationID)
 }
@@ -208,13 +215,13 @@ func GetCorrelationID(ctx context.Context) (string, bool) {
 func NewLoggerWith(appName, env string) *Logger {
 	hostname, _ := os.Hostname()
 	return NewSlogAPILogger(os.Stdout, SlogAPILoggerConfig{
-		LogLevel:        strings.ToLower(GetEnv("LOG_LEVEL", "info")),
-		ProjectName:     appName,
-		ApplicationName: appName,
-		CompanyName:     GetEnv("COMPANY_NAME", "company"),
-		Environment:     env,
-		ServiceVersion:  GetEnv("SERVICE_VERSION", ""),
-		Hostname:        hostname,
+		LogLevel:    strings.ToLower(GetEnv("LOG_LEVEL", "info")),
+		ProjectName: appName,
+		AppName:     appName,
+		CompanyName: GetEnv("COMPANY_NAME", "company"),
+		Environment: env,
+		AppVersion:  GetEnv("APP_VERSION", ""),
+		Hostname:    hostname,
 	})
 }
 
@@ -246,13 +253,13 @@ func NewSlogAPILogger(w io.Writer, cfg SlogAPILoggerConfig) *Logger {
 
 	baseAttrs := []any{
 		"project_name", cfg.ProjectName,
-		"app_name", cfg.ApplicationName,
+		"app_name", cfg.AppName,
 		"company", cfg.CompanyName,
 		"env", cfg.Environment,
 		"log_type", "api",
 	}
-	if cfg.ServiceVersion != "" {
-		baseAttrs = append(baseAttrs, "service_version", cfg.ServiceVersion)
+	if cfg.AppVersion != "" {
+		baseAttrs = append(baseAttrs, "app_version", cfg.AppVersion)
 	}
 	if cfg.Hostname != "" {
 		baseAttrs = append(baseAttrs, "hostname", cfg.Hostname)
@@ -303,6 +310,73 @@ func (l *Logger) CriticalError(err error, msg Message, opts ...LoggerOption) {
 	l.log(LevelCritical, err, msg, opts...)
 }
 
+// Event logs an info-level business event without a context.
+// Use for init, cron jobs, or when request-scoped correlation is unavailable.
+func (l *Logger) Event(label string, data map[string]any, requestID string, opts ...LoggerOption) {
+	all := buildEventOpts(data, requestID, opts)
+	l.log(slog.LevelInfo, nil, M(label), all...)
+}
+
+// EventWarn logs a warn-level business event without a context.
+func (l *Logger) EventWarn(label string, data map[string]any, requestID string, opts ...LoggerOption) {
+	all := buildEventOpts(data, requestID, opts)
+	l.log(slog.LevelWarn, nil, M(label), all...)
+}
+
+// EventError logs an error-level business event without a context.
+// Pass err to capture the message and a stack trace.
+func (l *Logger) EventError(err error, label string, data map[string]any, requestID string, opts ...LoggerOption) {
+	all := buildEventOpts(data, requestID, opts)
+	l.log(slog.LevelError, err, M(label), all...)
+}
+
+// EventCtx logs an info-level business event using the request context.
+// request_id, correlation_id, trace_id, and span_id are extracted automatically.
+func (l *Logger) EventCtx(ctx context.Context, label string, data map[string]any, opts ...LoggerOption) {
+	all := buildEventCtxOpts(ctx, data, opts)
+	l.log(slog.LevelInfo, nil, M(label), all...)
+}
+
+// WarnCtx logs a warn-level business event using the request context.
+func (l *Logger) WarnCtx(ctx context.Context, label string, data map[string]any, opts ...LoggerOption) {
+	all := buildEventCtxOpts(ctx, data, opts)
+	l.log(slog.LevelWarn, nil, M(label), all...)
+}
+
+// ErrorCtx logs an error-level business event using the request context.
+// Pass err to capture the message and a stack trace.
+func (l *Logger) ErrorCtx(ctx context.Context, err error, label string, data map[string]any, opts ...LoggerOption) {
+	all := buildEventCtxOpts(ctx, data, opts)
+	l.log(slog.LevelError, err, M(label), all...)
+}
+
+func buildEventOpts(data map[string]any, requestID string, extra []LoggerOption) []LoggerOption {
+	all := make([]LoggerOption, 0, len(extra)+2)
+	if requestID != "" {
+		all = append(all, WithField("request_id", requestID))
+	}
+	if len(data) > 0 {
+		all = append(all, WithDataFields(data))
+	}
+	all = append(all, extra...)
+	return all
+}
+
+func buildEventCtxOpts(ctx context.Context, data map[string]any, extra []LoggerOption) []LoggerOption {
+	all := make([]LoggerOption, 0, len(extra)+3)
+	if ctx != nil {
+		all = append(all, WithContext(ctx))
+		if rid, ok := GetCorrelationID(ctx); ok {
+			all = append(all, WithField("request_id", rid))
+		}
+	}
+	if len(data) > 0 {
+		all = append(all, WithDataFields(data))
+	}
+	all = append(all, extra...)
+	return all
+}
+
 func (l *Logger) log(level slog.Level, err error, msg Message, opts ...LoggerOption) {
 	logCtx := context.Background()
 	if l.hasCtx {
@@ -312,7 +386,7 @@ func (l *Logger) log(level slog.Level, err error, msg Message, opts ...LoggerOpt
 
 	options := MergeOptions[LoggerOptions](opts...)
 	if !options.DisableHook() {
-		addSource(&options, l.rootPath)
+		addSource(&options, l.rootPath, options.callerSkip)
 	}
 
 	attrs := toAttrs(options)
@@ -360,12 +434,12 @@ func toAttrs(options LoggerOptions) []slog.Attr {
 	return attrs
 }
 
-func addSource(options *LoggerOptions, rootPath string) {
+func addSource(options *LoggerOptions, rootPath string, skip int) {
 	if options.additionalFields == nil {
 		options.additionalFields = make(map[string]any)
 	}
 
-	_, file, line, ok := runtime.Caller(3)
+	_, file, line, ok := runtime.Caller(3 + skip)
 	if !ok {
 		return
 	}

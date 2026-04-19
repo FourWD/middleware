@@ -6,14 +6,16 @@ import (
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go/v4"
+	firebaseAuth "firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/messaging"
 	"google.golang.org/api/option"
 )
 
-// FirebaseClient groups optional Firestore and FCM clients.
+// FirebaseClient groups optional Firestore, FCM and Auth clients.
 type FirebaseClient struct {
 	Firestore    *firestore.Client
 	Notification *FirebaseMessagingClient
+	Auth         *firebaseAuth.Client
 }
 
 type FirebaseMessagingClient struct {
@@ -24,10 +26,22 @@ func NewFirebaseClient(ctx context.Context, cfg FirebaseConfig) (*FirebaseClient
 	var fsClient *firestore.Client
 	var err error
 
+	var authClient *firebaseAuth.Client
 	if cfg.CredentialsFile != "" {
 		fsClient, err = firestore.NewClient(ctx, firestore.DetectProjectID, option.WithCredentialsFile(cfg.CredentialsFile))
 		if err != nil {
 			return nil, fmt.Errorf("create firestore client: %w", err)
+		}
+
+		app, appErr := firebase.NewApp(ctx, nil, option.WithCredentialsFile(cfg.CredentialsFile))
+		if appErr != nil {
+			_ = fsClient.Close()
+			return nil, fmt.Errorf("create firebase auth app: %w", appErr)
+		}
+		authClient, err = app.Auth(ctx)
+		if err != nil {
+			_ = fsClient.Close()
+			return nil, fmt.Errorf("create firebase auth client: %w", err)
 		}
 	}
 
@@ -51,14 +65,23 @@ func NewFirebaseClient(ctx context.Context, cfg FirebaseConfig) (*FirebaseClient
 		fcmClient = &FirebaseMessagingClient{client: msgClient}
 	}
 
-	if fsClient == nil && fcmClient == nil {
+	if fsClient == nil && fcmClient == nil && authClient == nil {
 		return nil, nil
 	}
 
 	return &FirebaseClient{
 		Firestore:    fsClient,
 		Notification: fcmClient,
+		Auth:         authClient,
 	}, nil
+}
+
+// Raw returns the underlying FCM messaging client for code that needs direct access.
+func (fc *FirebaseMessagingClient) Raw() *messaging.Client {
+	if fc == nil {
+		return nil
+	}
+	return fc.client
 }
 
 func (c *FirebaseClient) Close() error {

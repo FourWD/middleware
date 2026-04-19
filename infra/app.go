@@ -2,10 +2,12 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -52,6 +54,7 @@ type MailConfig struct {
 // AuthConfig holds JWT and authentication settings.
 type AuthConfig struct {
 	JWTSecret              string
+	JWTRefreshSecret       string
 	JWTIssuer              string
 	AccessTokenTTLMinutes  int
 	RefreshTokenTTLMinutes int
@@ -71,10 +74,14 @@ type BootstrapAdminConfig struct {
 // CommonConfig holds infrastructure configuration loaded from environment variables.
 type CommonConfig struct {
 	AppName            string
+	AppVersion         string
 	AppEnv             string
+	Timezone           string
+	GCPProjectID       string
 	HTTPAddress        string
 	ProxyHeader        string
 	DebugAuthToken     string
+	PublicPaths        []string
 	Database           DatabaseConfig
 	SecondaryDatabase  DatabaseConfig
 	SecondaryDBEnabled bool
@@ -92,12 +99,21 @@ type CommonConfig struct {
 
 // LoadCommonConfig reads all infrastructure configuration from environment variables.
 func LoadCommonConfig() CommonConfig {
+	appName := GetEnv("APP_NAME", "")
+	if gaeService := os.Getenv("GAE_SERVICE"); gaeService != "" {
+		appName = gaeService
+	}
+
 	return CommonConfig{
-		AppName:            GetEnv("APP_NAME", "pakkad-service"),
+		AppName:            appName,
+		AppVersion:         strings.TrimSpace(GetEnv("APP_VERSION", "")),
 		AppEnv:             strings.ToLower(strings.TrimSpace(GetEnv("APP_ENV", "local"))),
+		Timezone:           strings.TrimSpace(GetEnv("APP_TIMEZONE", "Asia/Bangkok")),
+		GCPProjectID:       strings.TrimSpace(GetEnv("GCP_PROJECT_ID", "")),
 		HTTPAddress:        resolveHTTPAddress(),
 		ProxyHeader:        resolveProxyHeader(),
 		DebugAuthToken:     strings.TrimSpace(GetEnv("HTTP_DEBUG_AUTH_TOKEN", "")),
+		PublicPaths:        splitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")),
 		Database:           LoadDatabaseConfig(),
 		SecondaryDBEnabled: GetEnvBool("DB2_ENABLED", false),
 		SecondaryDatabase:  LoadSecondaryDatabaseConfig(),
@@ -129,8 +145,9 @@ func LoadCommonConfig() CommonConfig {
 			Path:    GetEnv("MIGRATIONS_PATH", "migrations"),
 		},
 		Auth: AuthConfig{
-			JWTSecret:              GetEnv("JWT_SECRET", "change-me-in-production"),
-			JWTIssuer:              GetEnv("JWT_ISSUER", "pakkad-service"),
+			JWTSecret:              GetEnv("JWT_SECRET", ""),
+			JWTRefreshSecret:       GetEnv("JWT_REFRESH_SECRET", ""),
+			JWTIssuer:              GetEnv("JWT_ISSUER", ""),
 			AccessTokenTTLMinutes:  GetEnvInt("JWT_ACCESS_TTL_MINUTES", 60),
 			RefreshTokenTTLMinutes: GetEnvInt("JWT_REFRESH_TTL_MINUTES", 10080),
 			BcryptCost:             GetEnvInt("AUTH_BCRYPT_COST", 12),
@@ -164,6 +181,7 @@ type AppRuntimeDeps struct {
 	Logger               *Logger
 	ShutdownHooks        *[]func(context.Context) error
 	HeartbeatDebugStatus func() any
+	RegisterWorker       func(w Worker)
 }
 
 type AppDataDeps struct {
@@ -206,6 +224,7 @@ type App struct {
 	fiber         *fiber.App
 	logger        *Logger
 	shutdownHooks []func(context.Context) error
+	workers       []Worker
 }
 
 // NewApp initializes all infrastructure and calls registrar to wire project-specific routes.
@@ -222,6 +241,9 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 
 	var shutdownHooks []func(context.Context) error
 	appLogger := NewLoggerWith(cfg.AppName, cfg.AppEnv)
+
+	initGlobals(cfg, appLogger)
+	setupTimezone(cfg.Timezone, appLogger)
 
 	cleanup := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
@@ -252,6 +274,12 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 		return nil, err
 	}
 
+	bindFirebaseGlobals(firebaseClient)
+	bindMongoGlobal(mongoClient)
+
+	registerDBMetrics(dbs, appLogger)
+	registerGAEVersionCheck(cfg, appLogger, &shutdownHooks)
+
 	heartbeatScheduler, err := NewHeartbeatScheduler(LoadHeartbeatConfig(), appLogger)
 	if err != nil {
 		appLogger.Error(err, M("init heartbeat failed"), WithComponent("app"), WithOperation("init_heartbeat"), WithLogKind("startup"))
@@ -264,6 +292,10 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 		ProxyHeader: cfg.ProxyHeader,
 	})
 
+	registerDefaultRoutes(web, cfg)
+
+	var workers []Worker
+
 	deps := AppDeps{
 		Runtime: AppRuntimeDeps{
 			Config:        cfg,
@@ -274,6 +306,9 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 					return HeartbeatDebugStatus{Enabled: false}
 				}
 				return heartbeatScheduler.DebugStatus()
+			},
+			RegisterWorker: func(w Worker) {
+				workers = append(workers, w)
 			},
 		},
 		Data: AppDataDeps{
@@ -310,13 +345,38 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 		fiber:         web,
 		logger:        appLogger,
 		shutdownHooks: shutdownHooks,
+		workers:       workers,
 	}, nil
 }
 
-// Run starts the HTTP server and blocks until a shutdown signal is received.
+// Run starts workers + the HTTP server and blocks until a shutdown signal is received.
+// On shutdown: cancel workers → wait bounded → shutdown fiber → run cleanup hooks.
 func (a *App) Run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	engineCtx, engineCancel := context.WithCancel(context.Background())
+	defer engineCancel()
+
+	var wg sync.WaitGroup
+	for _, w := range a.workers {
+		wg.Add(1)
+		go func(worker Worker) {
+			defer wg.Done()
+			a.logger.Info(M("worker started"),
+				WithField("worker", worker.Name),
+				WithComponent("app"), WithOperation("worker_start"), WithLogKind("lifecycle"))
+			if err := worker.Run(engineCtx); err != nil && !errors.Is(err, context.Canceled) {
+				a.logger.Error(err, M("worker stopped with error"),
+					WithField("worker", worker.Name),
+					WithComponent("app"), WithOperation("worker_run"), WithLogKind("lifecycle"))
+				return
+			}
+			a.logger.Info(M("worker stopped"),
+				WithField("worker", worker.Name),
+				WithComponent("app"), WithOperation("worker_stop"), WithLogKind("lifecycle"))
+		}(w)
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -329,10 +389,15 @@ func (a *App) Run() error {
 	select {
 	case err := <-errCh:
 		a.logger.Error(err, M("http server failed"), WithComponent("app"), WithOperation("http_server_run"), WithLogKind("lifecycle"))
+		engineCancel()
+		a.waitWorkers(&wg)
 		return err
 	case <-ctx.Done():
 		a.logger.Info(M("shutdown signal received"), WithComponent("app"), WithOperation("shutdown_signal"), WithLogKind("lifecycle"))
 	}
+
+	engineCancel()
+	a.waitWorkers(&wg)
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
@@ -344,6 +409,20 @@ func (a *App) Run() error {
 
 	runShutdownHooks(shutdownCtx, a.shutdownHooks, a.logger)
 	return nil
+}
+
+func (a *App) waitWorkers(wg *sync.WaitGroup) {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(shutdownTimeout):
+		a.logger.Warn(M("workers shutdown timeout"),
+			WithComponent("app"), WithOperation("workers_shutdown"), WithLogKind("lifecycle"))
+	}
 }
 
 func runShutdownHooks(ctx context.Context, hooks []func(context.Context) error, appLogger *Logger) {

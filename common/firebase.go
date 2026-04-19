@@ -8,34 +8,10 @@ import (
 	"strconv"
 
 	"cloud.google.com/go/firestore"
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/kit"
-	firebaseAuth "firebase.google.com/go/v4/auth"
 	"google.golang.org/api/iterator"
 )
-
-var FirebaseCtx context.Context
-var FirebaseClient *firestore.Client
-var AuthClient *firebaseAuth.Client
-
-func ConnectFirebase(key string) {
-	FirebaseCtx = context.Background()
-
-	app, err := initFirebaseApp(key)
-	if err != nil {
-		panic(err)
-	}
-
-	FirebaseClient, err = app.Firestore(FirebaseCtx)
-	if err != nil {
-		LogError("FIREBASE_FIRESTORE_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		panic(err)
-	}
-
-	AuthClient, err = app.Auth(context.Background())
-	if err != nil {
-		LogError("FIREBASE_AUTH_CLIENT_ERROR", map[string]interface{}{"error": err.Error()}, "")
-	}
-}
 
 func FirebaseValueToInt(a interface{}) int {
 	str := fmt.Sprintf("%d", a)
@@ -72,7 +48,7 @@ func FirebaseSaveBySqlLimit1(client *firestore.Client, path string, sql string, 
 }
 
 func FirebaseDelete(client *firestore.Client, docPath string) error {
-	_, err := client.Doc(docPath).Delete(FirebaseCtx)
+	_, err := client.Doc(docPath).Delete(infra.FirebaseCtx)
 	return err
 }
 

@@ -1,11 +1,10 @@
-package common
+package infra
 
 import (
+	"context"
 	"time"
 
 	"cloud.google.com/go/firestore"
-
-	"github.com/FourWD/middleware/kit"
 
 	"github.com/google/uuid"
 )
@@ -13,7 +12,7 @@ import (
 func FirebaseBatchUpdate(docPaths map[string]map[string]interface{}) error {
 	requestID := uuid.NewString()
 
-	Log("FirebaseBatchUpdate Start", map[string]interface{}{
+	AppLog.Event("FirebaseBatchUpdate Start", map[string]interface{}{
 		"total_docs": len(docPaths),
 	}, requestID)
 
@@ -21,24 +20,24 @@ func FirebaseBatchUpdate(docPaths map[string]map[string]interface{}) error {
 		return nil
 	}
 
-	ctx, cancel := kit.ContextWithTimeout(60 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	bw := FirebaseClient.BulkWriter(ctx)
+	bw := FirestoreClient.BulkWriter(ctx)
 
 	var firstErr error
 	failCount := 0
 
 	for path, updateData := range docPaths {
-		Log("FirebaseBatchUpdate Add", map[string]interface{}{
+		AppLog.Event("FirebaseBatchUpdate Add", map[string]interface{}{
 			"path": path,
 			"data": updateData,
 		}, requestID)
 
-		docRef := FirebaseClient.Doc(path)
+		docRef := FirestoreClient.Doc(path)
 		_, err := bw.Set(docRef, updateData, firestore.MergeAll)
 		if err != nil {
-			Log("FirebaseBatchUpdate Set Error", map[string]interface{}{
+			AppLog.Event("FirebaseBatchUpdate Set Error", map[string]interface{}{
 				"path":  path,
 				"error": err.Error(),
 			}, requestID)
@@ -55,7 +54,7 @@ func FirebaseBatchUpdate(docPaths map[string]map[string]interface{}) error {
 
 	successCount := len(docPaths) - failCount
 
-	Log("FirebaseBatchUpdate Complete", map[string]interface{}{
+	AppLog.Event("FirebaseBatchUpdate Complete", map[string]interface{}{
 		"total_docs":    len(docPaths),
 		"success_count": successCount,
 		"fail_count":    failCount,

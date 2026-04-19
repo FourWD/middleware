@@ -5,27 +5,11 @@ import (
 	"fmt"
 
 	"firebase.google.com/go/v4/messaging"
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/orm"
 
 	"github.com/google/uuid"
 )
-
-var FirebaseMessageClient *messaging.Client
-
-func ConnectFirebaseNotification(key string) error {
-	app, err := initFirebaseApp(key)
-	if err != nil {
-		return err
-	}
-
-	FirebaseMessageClient, err = app.Messaging(context.Background())
-	if err != nil {
-		LogError("FIREBASE_MESSAGING_CLIENT_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		return err
-	}
-
-	return nil
-}
 
 var MessageConfig = struct {
 	AndroidConfig *messaging.AndroidConfig
@@ -56,7 +40,7 @@ func SendMessageToUser(userToken string, title string, body string, data map[str
 		APNS:    MessageConfig.APNSConfig,
 	}
 
-	result, err := FirebaseMessageClient.Send(context.Background(), message)
+	result, err := infra.FirebaseMessageClient.Send(context.Background(), message)
 	if err != nil {
 		return fmt.Errorf("error sending message: %s, %v", result, err)
 	}
@@ -73,7 +57,7 @@ func AddUserToSubscription(topic string, userID string, userToken string) error 
 	}
 	Log("AddUserToSubscription", logData, requestID)
 
-	if _, err := FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic); err != nil {
+	if _, err := infra.FirebaseMessageClient.SubscribeToTopic(context.Background(), []string{userToken}, topic); err != nil {
 		LogError("FIREBASE_SUBSCRIBE_ERROR", logData, requestID)
 		return err
 	}
@@ -116,7 +100,7 @@ func RemoveUserFromSubscription(topic string, userID string, userToken string) e
 	}
 	Log("FIREBASE_REMOVE_USER_FROM_SUBSCRIPTION", logData, "")
 
-	_, err := FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
+	_, err := infra.FirebaseMessageClient.UnsubscribeFromTopic(context.Background(), []string{userToken}, topic)
 	if err != nil {
 		LogError("FIREBASE_UNSUBSCRIBE_ERROR", map[string]interface{}{"error": err.Error(), "topic": topic, "userID": userID}, "")
 		return err
@@ -159,7 +143,7 @@ func SendMessageToSubscriber(topic string, title string, body string, data map[s
 		},
 	}
 
-	_, err := FirebaseMessageClient.Send(context.Background(), message)
+	_, err := infra.FirebaseMessageClient.Send(context.Background(), message)
 	if err != nil {
 		LogError("FIREBASE_SEND_MESSAGE_ERROR", map[string]interface{}{"error": err.Error(), "topic": topic}, "")
 		return err

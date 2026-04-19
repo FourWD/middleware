@@ -12,12 +12,24 @@ import (
 	neturl "net/url"
 	"time"
 
-	mwinfra "github.com/FourWD/middleware/infra"
-
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// traceHTTP wraps fn with an OpenTelemetry span.
+// Inlined here (instead of calling infra.TraceResult) so kit stays free of infra dependency.
+func traceHTTP[T any](tracer trace.Tracer, ctx context.Context, name string, fn func(ctx context.Context) (T, error)) (T, error) {
+	ctx, span := tracer.Start(ctx, name)
+	defer span.End()
+	result, err := fn(ctx)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+	}
+	return result, err
+}
 
 type HTTPStatusCode int
 
@@ -128,31 +140,31 @@ func (r *httpRequestContext) Query() neturl.Values {
 }
 
 func (c *StdHTTPClient) Get(ctx context.Context, url string, params HTTPRequestParams, options ...HTTPClientOption) (HTTPResponse, error) {
-	return mwinfra.TraceResult(c.tracer, ctx, "outbound_http.get", func(ctx context.Context, _ trace.Span) (HTTPResponse, error) {
+	return traceHTTP(c.tracer, ctx, "outbound_http.get", func(ctx context.Context) (HTTPResponse, error) {
 		return c.request(ctx, http.MethodGet, url, params, options...)
 	})
 }
 
 func (c *StdHTTPClient) Post(ctx context.Context, url string, params HTTPRequestParams, options ...HTTPClientOption) (HTTPResponse, error) {
-	return mwinfra.TraceResult(c.tracer, ctx, "outbound_http.post", func(ctx context.Context, _ trace.Span) (HTTPResponse, error) {
+	return traceHTTP(c.tracer, ctx, "outbound_http.post", func(ctx context.Context) (HTTPResponse, error) {
 		return c.request(ctx, http.MethodPost, url, params, options...)
 	})
 }
 
 func (c *StdHTTPClient) Put(ctx context.Context, url string, params HTTPRequestParams, options ...HTTPClientOption) (HTTPResponse, error) {
-	return mwinfra.TraceResult(c.tracer, ctx, "outbound_http.put", func(ctx context.Context, _ trace.Span) (HTTPResponse, error) {
+	return traceHTTP(c.tracer, ctx, "outbound_http.put", func(ctx context.Context) (HTTPResponse, error) {
 		return c.request(ctx, http.MethodPut, url, params, options...)
 	})
 }
 
 func (c *StdHTTPClient) Patch(ctx context.Context, url string, params HTTPRequestParams, options ...HTTPClientOption) (HTTPResponse, error) {
-	return mwinfra.TraceResult(c.tracer, ctx, "outbound_http.patch", func(ctx context.Context, _ trace.Span) (HTTPResponse, error) {
+	return traceHTTP(c.tracer, ctx, "outbound_http.patch", func(ctx context.Context) (HTTPResponse, error) {
 		return c.request(ctx, http.MethodPatch, url, params, options...)
 	})
 }
 
 func (c *StdHTTPClient) Delete(ctx context.Context, url string, params HTTPRequestParams, options ...HTTPClientOption) (HTTPResponse, error) {
-	return mwinfra.TraceResult(c.tracer, ctx, "outbound_http.delete", func(ctx context.Context, _ trace.Span) (HTTPResponse, error) {
+	return traceHTTP(c.tracer, ctx, "outbound_http.delete", func(ctx context.Context) (HTTPResponse, error) {
 		return c.request(ctx, http.MethodDelete, url, params, options...)
 	})
 }

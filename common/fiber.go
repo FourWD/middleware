@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v3"
-	"github.com/spf13/viper"
 )
 
 func FiberDisableXFrame(c fiber.Ctx) error {
@@ -23,17 +23,8 @@ func FiberNoSniff(c fiber.Ctx) error {
 }
 
 func FiberCustom(c fiber.Ctx, HTTPStatus int, data map[string]interface{}) error {
-	responseLog(c)
 	c.Set("Content-Type", "application/json")
-	requestID := GetRequestID(c)
-	data["request_id"] = requestID
-
-	logData := map[string]interface{}{
-		"http_status": HTTPStatus,
-		"data":        data,
-	}
-
-	Log("FiberCustom", logData, requestID)
+	data["request_id"] = infra.GetRequestID(c)
 	return c.Status(HTTPStatus).JSON(data)
 }
 
@@ -51,6 +42,13 @@ func FiberSuccess(c fiber.Ctx) error {
 }
 
 func FiberError(c fiber.Ctx, code string, message string, err ...error) error {
+	data := map[string]any{"code": code, "message": message}
+	if len(err) > 0 && err[0] != nil {
+		infra.AppLog.ErrorCtx(c.Context(), err[0], "FIBER_ERROR", data)
+	} else {
+		infra.AppLog.WarnCtx(c.Context(), "FIBER_ERROR", data)
+	}
+
 	response := map[string]interface{}{
 		"status":  0,
 		"code":    code,
@@ -67,7 +65,7 @@ func FiberReviewPayload(c fiber.Ctx) error {
 func FiberQueryWithCustomDB(c fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
 	jsonBytes, sql, err := queryToJSON(db, sql, values...)
 	if err != nil {
-		return FiberError(c, "1001", "sql error")
+		return FiberError(c, "1001", "sql error", err)
 	}
 	return FiberSendData(c, string(jsonBytes), sql)
 }
@@ -78,10 +76,13 @@ func FiberQuery(c fiber.Ctx, sql string, values ...interface{}) error {
 
 func FiberQueryWithCustomDBLimit1(c fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
 	jsonBytes, sql, err := queryToJSON(db, sql, values...)
+	if err != nil {
+		return FiberError(c, "1001", "sql error", err)
+	}
+
 	var result []map[string]interface{}
-	if json.Unmarshal(jsonBytes, &result); err != nil {
-		LogError("FIBER_QUERY_PARSE_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		return FiberError(c, "1001", "sql error")
+	if err := json.Unmarshal(jsonBytes, &result); err != nil {
+		return FiberError(c, "1001", "sql error", err)
 	}
 
 	if len(result) == 1 {
@@ -105,7 +106,7 @@ func FiberSendData(c fiber.Ctx, jsonData string, sql string) error {
 		"data":    json.RawMessage(jsonData), // Ensures `jsonData` is treated as raw JSON
 	}
 
-	if App.Env != "prod" {
+	if infra.AppInfo.Env != "prod" {
 		response["sql"] = sql
 	}
 
@@ -130,7 +131,7 @@ func FiberDeleteByID(c fiber.Ctx, tableName string) error {
 
 	result := Database.Exec(`UPDATE ? SET deleted_at = now(), deleted_by = ? WHERE id = ?`, tableName, payload.DeleteBy, payload.ID)
 	if result.Error != nil {
-		return FiberError(c, "1001", "sql error")
+		return FiberError(c, "1001", "sql error", result.Error)
 	}
 
 	return FiberSuccess(c)
@@ -154,16 +155,10 @@ func FiberDeletePermanentByID(c fiber.Ctx, tableName string) error {
 
 	result := Database.Exec(`DELETE FROM ? WHERE id = ?`, tableName, payload.ID)
 	if result.Error != nil {
-		return FiberError(c, "1001", "sql error")
+		return FiberError(c, "1001", "sql error", result.Error)
 	}
 
 	return FiberSuccess(c)
-}
-
-func fiberWarmUp(app *fiber.App) {
-	app.Get("/_ah/warmup", func(c fiber.Ctx) error {
-		return FiberOK(c, 1, "0000", "Warm-up request succeeded")
-	})
 }
 
 func FiberSql(app *fiber.App) {
@@ -177,20 +172,6 @@ func FiberSql(app *fiber.App) {
 			return FiberReviewPayload(c)
 		}
 		return FiberQuery(c, payload.Query)
-	})
-}
-
-func fiberWakeUp(app *fiber.App) {
-	app.Get("/wake-up", func(c fiber.Ctx) error {
-		App.AppVersion = viper.GetString("app_version")
-
-		response := map[string]interface{}{
-			"status":  1,
-			"message": "success",
-			"data":    App,
-		}
-
-		return FiberCustom(c, fiber.StatusOK, response)
 	})
 }
 
@@ -274,7 +255,7 @@ func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string,
 	}
 
 	raw := ""
-	if App.Env != "prod" {
+	if infra.AppInfo.Env != "prod" {
 		raw = rawSql(sql, values...)
 	}
 	jByte, err := json.Marshal(result)

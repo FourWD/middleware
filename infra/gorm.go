@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -64,6 +65,24 @@ func loadDatabaseConfigWithPrefix(prefix, defaultName string) DatabaseConfig {
 type Databases struct {
 	Primary   *gorm.DB
 	Secondary *gorm.DB // nil if DB2_ENABLED=false
+}
+
+// BindDatabase validates the primary GORM DB and returns it with its underlying *sql.DB.
+// Use this in Register to wire legacy package-level globals:
+//
+//	db, sqlDB, err := infra.BindDatabase(deps.Data.Databases)
+//	if err != nil { return err }
+//	common.Database = db
+//	common.DatabaseSql = sqlDB
+func BindDatabase(dbs Databases) (*gorm.DB, *sql.DB, error) {
+	if dbs.Primary == nil {
+		return nil, nil, fmt.Errorf("bind database: primary is nil")
+	}
+	sqlDB, err := dbs.Primary.DB()
+	if err != nil {
+		return nil, nil, fmt.Errorf("bind database: resolve sql.DB: %w", err)
+	}
+	return dbs.Primary, sqlDB, nil
 }
 
 func OpenDB(cfg DatabaseConfig, appLogger *Logger) (*gorm.DB, error) {

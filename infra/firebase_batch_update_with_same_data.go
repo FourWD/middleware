@@ -1,4 +1,4 @@
-package common
+package infra
 
 func FirebaseBatchUpdateWithSameData(docPaths []string, updateData map[string]interface{}) error {
 	if len(docPaths) == 0 {

@@ -1,20 +1,18 @@
-package common
+package infra
 
 import (
 	"context"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/spf13/viper"
 )
 
 func GoogleCreateTopic(topic string) error {
-	projectID := viper.GetString("google_project_id")
+	projectID := GetEnv("GCP_PROJECT_ID", "")
 
-	logData := map[string]interface{}{
+	AppLog.Event("GoogleCreateTopic", map[string]interface{}{
 		"project_id": projectID,
 		"topic":      topic,
-	}
-	Log("GoogleCreateTopic", logData, "")
+	}, "")
 
 	ctx := context.Background()
 	client, err := pubsub.NewClient(ctx, projectID)
