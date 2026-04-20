@@ -45,7 +45,7 @@ type HeartbeatConfig struct {
 // LoadHeartbeatConfig reads heartbeat configuration from environment variables.
 func LoadHeartbeatConfig() HeartbeatConfig {
 	return HeartbeatConfig{
-		Enabled:                    GetEnvBool("BACKGROUND_JOBS_ENABLED", true),
+		Enabled:                    GetEnvBool("BACKGROUND_JOBS_ENABLED", false),
 		Cron:                       GetEnv("BACKGROUND_HEARTBEAT_CRON", "*/1 * * * *"),
 		TimeoutSeconds:             GetEnvInt("BACKGROUND_HEARTBEAT_TIMEOUT_SECONDS", 5),
 		RetryMaxAttempts:           GetEnvInt("BACKGROUND_RETRY_MAX_ATTEMPTS", 3),

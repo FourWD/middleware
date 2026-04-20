@@ -113,7 +113,7 @@ func LoadCommonConfig() CommonConfig {
 		DebugAuthToken:     strings.TrimSpace(GetEnv("HTTP_DEBUG_AUTH_TOKEN", "")),
 		PublicPaths:        splitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")),
 
-		RateLimitEnabled:          GetEnvBool("RATE_LIMIT_ENABLED", true),
+		RateLimitEnabled:          GetEnvBool("RATE_LIMIT_ENABLED", false),
 		RateLimitStrictPerMinute:  GetEnvInt("RATE_LIMIT_STRICT_PER_MINUTE", 10),
 		RateLimitDefaultPerSecond: GetEnvInt("RATE_LIMIT_DEFAULT_PER_SECOND", 100),
 
@@ -121,7 +121,7 @@ func LoadCommonConfig() CommonConfig {
 		SecondaryDBEnabled: GetEnvBool("DB2_ENABLED", false),
 		SecondaryDatabase:  LoadSecondaryDatabaseConfig(),
 		Redis:              LoadRedisConfig(),
-		RedisEnabled:       GetEnvBool("REDIS_ENABLED", true),
+		RedisEnabled:       GetEnvBool("REDIS_ENABLED", false),
 		Mongo:              LoadMongoConfig(),
 		MongoEnabled:       GetEnvBool("MONGO_ENABLED", false),
 		Firebase: FirebaseConfig{
@@ -144,7 +144,7 @@ func LoadCommonConfig() CommonConfig {
 			APIKey:  GetEnv("MAILGUN_API_KEY", ""),
 		},
 		Migration: MigrationConfig{
-			Enabled: GetEnvBool("MIGRATIONS_ENABLED", true),
+			Enabled: GetEnvBool("MIGRATIONS_ENABLED", false),
 			Path:    GetEnv("MIGRATIONS_PATH", "migrations"),
 		},
 		Auth: AuthConfig{
