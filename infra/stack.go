@@ -22,9 +22,11 @@ type StackConfig struct {
 	Logger *Logger
 
 	// Request log
-	RequestLogOmitRequestBody  bool
-	RequestLogOmitResponseBody bool
-	RequestLogMaxBodyBytes     int
+	RequestLogOmitRequestBody     bool
+	RequestLogOmitResponseBody    bool
+	RequestLogOmitRequestHeaders  bool
+	RequestLogOmitResponseHeaders bool
+	RequestLogMaxBodyBytes        int
 
 	// CORS
 	AllowOrigins string
@@ -43,10 +45,12 @@ type StackConfig struct {
 // After calling this, set Logger manually as it is project-specific.
 func LoadStackConfig() StackConfig {
 	return StackConfig{
-		ServiceName:                GetEnv("APP_ID", "app"),
-		RequestLogOmitRequestBody:  GetEnvBool("HTTP_REQUEST_LOG_OMIT_REQUEST_BODY", true),
-		RequestLogOmitResponseBody: GetEnvBool("HTTP_REQUEST_LOG_OMIT_RESPONSE_BODY", true),
-		RequestLogMaxBodyBytes:     GetEnvInt("HTTP_REQUEST_LOG_MAX_BODY_BYTES", 4096),
+		ServiceName:                   GetEnv("APP_ID", "app"),
+		RequestLogOmitRequestBody:     GetEnvBool("HTTP_REQUEST_LOG_OMIT_REQUEST_BODY", true),
+		RequestLogOmitResponseBody:    GetEnvBool("HTTP_REQUEST_LOG_OMIT_RESPONSE_BODY", true),
+		RequestLogOmitRequestHeaders:  GetEnvBool("HTTP_REQUEST_LOG_OMIT_REQUEST_HEADERS", true),
+		RequestLogOmitResponseHeaders: GetEnvBool("HTTP_REQUEST_LOG_OMIT_RESPONSE_HEADERS", true),
+		RequestLogMaxBodyBytes:        GetEnvInt("HTTP_REQUEST_LOG_MAX_BODY_BYTES", 4096),
 		AllowOrigins:               GetEnv("HTTP_ALLOW_ORIGINS", "*"),
 		EnvelopeEnabled:            GetEnvBool("HTTP_ENVELOPE_ENABLED", false),
 		SentryEnabled:              GetEnvBool("SENTRY_ENABLED", false),
@@ -117,10 +121,12 @@ func RegisterHTTPStack(app *fiber.App, cfg StackConfig) {
 	registerMetrics(app, cfg)
 	if cfg.Logger != nil {
 		app.Use(NewRequestLog(RequestLogConfig{
-			RequestLogger:    NewSlogRequestLogger(cfg.Logger),
-			OmitRequestBody:  cfg.RequestLogOmitRequestBody,
-			OmitResponseBody: cfg.RequestLogOmitResponseBody,
-			MaxBodyBytes:     cfg.RequestLogMaxBodyBytes,
+			RequestLogger:       NewSlogRequestLogger(cfg.Logger),
+			OmitRequestBody:     cfg.RequestLogOmitRequestBody,
+			OmitResponseBody:    cfg.RequestLogOmitResponseBody,
+			OmitRequestHeaders:  cfg.RequestLogOmitRequestHeaders,
+			OmitResponseHeaders: cfg.RequestLogOmitResponseHeaders,
+			MaxBodyBytes:        cfg.RequestLogMaxBodyBytes,
 		}))
 	}
 }

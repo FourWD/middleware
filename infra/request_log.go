@@ -56,10 +56,12 @@ type SlogRequestLogger struct {
 }
 
 type RequestLogConfig struct {
-	RequestLogger    RequestLogger
-	OmitRequestBody  bool
-	OmitResponseBody bool
-	MaxBodyBytes     int
+	RequestLogger       RequestLogger
+	OmitRequestBody     bool
+	OmitResponseBody    bool
+	OmitRequestHeaders  bool
+	OmitResponseHeaders bool
+	MaxBodyBytes        int
 }
 
 func WithRequestLogField(key string, value any) RequestLoggerOption {
@@ -88,16 +90,24 @@ func NewRequestLog(cfg RequestLogConfig) fiber.Handler {
 			return err
 		}
 
+		var reqHeaders, respHeaders map[string][]string
+		if !cfg.OmitRequestHeaders {
+			reqHeaders = sanitizeHeaders(c.GetReqHeaders())
+		}
+		if !cfg.OmitResponseHeaders {
+			respHeaders = sanitizeHeaders(c.GetRespHeaders())
+		}
+
 		entry := Entry{
 			Request: RequestEntry{
-				Headers:     sanitizeHeaders(c.GetReqHeaders()),
+				Headers:     reqHeaders,
 				FullURI:     c.OriginalURL(),
 				RelativeURI: c.Path(),
 				Method:      c.Method(),
 				Body:        bodyString(c.BodyRaw(), c.Get("Content-Type"), cfg.OmitRequestBody, cfg.MaxBodyBytes),
 			},
 			Response: ResponseEntry{
-				Headers:  sanitizeHeaders(c.GetRespHeaders()),
+				Headers:  respHeaders,
 				Status:   c.Response().StatusCode(),
 				Body:     bodyString(c.Response().Body(), c.GetRespHeader("Content-Type"), cfg.OmitResponseBody, cfg.MaxBodyBytes),
 				Duration: time.Since(startedAt),
@@ -125,9 +135,7 @@ func (l *SlogRequestLogger) Log(ctx context.Context, entry Entry, options ...Req
 		WithField("method", entry.Request.Method),
 		WithField("route_name", route),
 		WithField("raw_uri", entry.Request.FullURI),
-		WithField("req_header", marshalUnfailable(entry.Request.Headers)),
 		WithField("req_body", entry.Request.Body),
-		WithField("resp_header", marshalUnfailable(entry.Response.Headers)),
 		WithField("resp_body", entry.Response.Body),
 		WithComponent("http"),
 		WithOperation("request"),
@@ -135,7 +143,17 @@ func (l *SlogRequestLogger) Log(ctx context.Context, entry Entry, options ...Req
 		WithoutSource(),
 	}
 
+	if entry.Request.Headers != nil {
+		fields = append(fields, WithField("req_header", marshalUnfailable(entry.Request.Headers)))
+	}
+	if entry.Response.Headers != nil {
+		fields = append(fields, WithField("resp_header", marshalUnfailable(entry.Response.Headers)))
+	}
+
 	for key, value := range opts.additionalFields {
+		if key == "route" {
+			continue
+		}
 		fields = append(fields, WithField(key, value))
 	}
 
