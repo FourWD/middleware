@@ -7,12 +7,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type JWTClaims struct {
-	UserID string            `json:"user_id"`
-	Role   string            `json:"role"`
-	Remark map[string]string `json:"remark"`
-	jwt.RegisteredClaims
-}
+// JWTClaims is an alias for infra.JWTClaims, kept for backwards compatibility.
+type JWTClaims = infra.JWTClaims
 
 func GenerateJWTToken(userID string, role string, remark map[string]string, expiresIn time.Duration) (string, error) {
 	key := []byte(infra.GetEnv("JWT_SECRET", ""))

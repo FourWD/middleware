@@ -12,16 +12,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func FiberDisableXFrame(c fiber.Ctx) error {
-	c.Set("X-Frame-Options", "DENY")
-	return c.Next()
-}
-
-func FiberNoSniff(c fiber.Ctx) error {
-	c.Set("X-Content-Type-Options", "nosniff")
-	return c.Next()
-}
-
 func FiberCustom(c fiber.Ctx, HTTPStatus int, data map[string]interface{}) error {
 	c.Set("Content-Type", "application/json")
 	data["request_id"] = infra.GetRequestID(c)

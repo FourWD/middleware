@@ -29,6 +29,9 @@ type StackConfig struct {
 	// CORS
 	AllowOrigins string
 
+	// Envelope wrapper
+	EnvelopeEnabled bool
+
 	// Sentry
 	SentryEnabled bool
 
@@ -45,6 +48,7 @@ func LoadStackConfig() StackConfig {
 		RequestLogOmitResponseBody: GetEnvBool("HTTP_REQUEST_LOG_OMIT_RESPONSE_BODY", true),
 		RequestLogMaxBodyBytes:     GetEnvInt("HTTP_REQUEST_LOG_MAX_BODY_BYTES", 4096),
 		AllowOrigins:               GetEnv("HTTP_ALLOW_ORIGINS", "*"),
+		EnvelopeEnabled:            GetEnvBool("HTTP_ENVELOPE_ENABLED", false),
 		SentryEnabled:              GetEnvBool("SENTRY_ENABLED", false),
 		MetricsNamespace:           GetEnv("METRICS_NAMESPACE", "app"),
 	}
@@ -106,7 +110,9 @@ func RegisterHTTPStack(app *fiber.App, cfg StackConfig) {
 		)
 	}
 
-	app.Use(NewEnvelopeWrapper())
+	if cfg.EnvelopeEnabled {
+		app.Use(NewEnvelopeWrapper())
+	}
 	registerOTelTrace(app, cfg)
 	registerMetrics(app, cfg)
 	if cfg.Logger != nil {

@@ -233,9 +233,21 @@ type App struct {
 
 // NewApp initializes all infrastructure and calls registrar to wire project-specific routes.
 // It loads configuration from environment variables automatically and registers the
-// default middleware stack (RequestID → CORS → Sentry → Recover → Envelope → OTel →
-// Metrics → RequestLog) before invoking registrar. Do NOT call RegisterStack again
-// inside your registrar — it is already wired.
+// default middleware stack (RequestID → CORS → Sentry → Recover → OTel → Metrics →
+// RequestLog, plus Envelope when HTTP_ENVELOPE_ENABLED=true) before invoking registrar.
+// Do NOT call RegisterStack again inside your registrar — it is already wired.
+//
+// AuthenticationMiddleware and MigrateInfra are NOT registered automatically. Call
+// them yourself from registrar when needed:
+//
+//	func Register(app *fiber.App, deps infra.AppDeps) error {
+//	    if err := infra.MigrateInfra(deps); err != nil {
+//	        return err
+//	    }
+//	    app.Use(infra.AuthenticationMiddleware)
+//	    router.SetupRoutes(app)
+//	    return nil
+//	}
 //
 // For WebSocket/SSE projects that need realtime routes registered between base and
 // HTTP stack, construct the fiber app manually using RegisterBaseStack +
