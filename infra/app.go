@@ -264,6 +264,7 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 
 	var shutdownHooks []func(context.Context) error
 	appLogger := NewLoggerWith(cfg)
+	redirectStdlibLog(appLogger)
 
 	initGlobals(cfg, appLogger)
 	setupTimezone(cfg.Timezone, appLogger)

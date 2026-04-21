@@ -132,6 +132,7 @@ func (l *SlogRequestLogger) Log(ctx context.Context, entry Entry, options ...Req
 		WithComponent("http"),
 		WithOperation("request"),
 		WithLogKind("request"),
+		WithoutSource(),
 	}
 
 	for key, value := range opts.additionalFields {

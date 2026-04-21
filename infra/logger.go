@@ -195,6 +195,15 @@ func WithHookDisabled() LoggerOption {
 	}
 }
 
+// WithoutSource omits the "source" field (caller file:line) from the log entry.
+// Use this for middleware-level logs where the source is always the middleware
+// itself and therefore adds no diagnostic value (e.g. HTTP request logs).
+func WithoutSource() LoggerOption {
+	return func(o *LoggerOptions) {
+		o.disableHook = true
+	}
+}
+
 func WithCallerSkip(n int) LoggerOption {
 	return func(o *LoggerOptions) {
 		o.callerSkip = n
