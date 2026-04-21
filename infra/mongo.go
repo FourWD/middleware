@@ -14,11 +14,21 @@ type MongoConfig struct {
 	Database string
 }
 
-// LoadMongoConfig reads MongoDB configuration from environment variables.
+// LoadMongoConfig reads the primary MongoDB configuration from environment variables.
 func LoadMongoConfig() MongoConfig {
 	return MongoConfig{
 		URI:      GetEnv("MONGO_URI", ""),
 		Database: GetEnv("MONGO_DATABASE", "middleware"),
+	}
+}
+
+// LoadMongoMiddlewareConfig reads the dedicated middleware MongoDB configuration.
+// Use this when auth/blacklist data should live in a cluster separate from
+// business data.
+func LoadMongoMiddlewareConfig() MongoConfig {
+	return MongoConfig{
+		URI:      GetEnv("MONGO_MIDDLEWARE_URI", ""),
+		Database: GetEnv("MONGO_MIDDLEWARE_DATABASE", "middleware"),
 	}
 }
 

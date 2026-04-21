@@ -104,13 +104,14 @@ func checkAuth(c fiber.Ctx) error {
 	return c.Next()
 }
 
-// IsJwtValid returns false if the token is in the Mongo blacklist. When Mongo
-// is not initialized (blacklist disabled), it returns true.
+// IsJwtValid returns false if the token is in the blacklist stored on the
+// dedicated middleware Mongo cluster (MongoMiddleware).
+// Returns true when MongoMiddleware is not initialized (blacklist disabled).
 func IsJwtValid(token string) bool {
-	if Mongo == nil {
+	if MongoMiddleware == nil {
 		return true
 	}
-	collection := Mongo.Database().Collection("blacklist_tokens")
+	collection := MongoMiddleware.Database().Collection("blacklist_tokens")
 	filter := bson.M{"token": token}
 
 	count, err := collection.CountDocuments(context.TODO(), filter)

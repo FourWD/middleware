@@ -27,21 +27,55 @@ func RegisterDatabaseSync(hook func(*gorm.DB, *sql.DB)) {
 	databaseSyncHook = hook
 }
 
-// MigrateInfra binds the primary database from deps into the infra-level
-// Database/DatabaseSql globals and invokes any registered sync hook.
-// NewApp calls this automatically — downstream code no longer needs to.
+// mongoSyncHook mirrors the primary MongoClient into legacy packages that
+// expose their own global (e.g. common.DatabaseMongo). Deliberately receives
+// only the primary Mongo — the middleware Mongo is reserved for infra
+// internals (e.g. the JWT blacklist) and must not leak to common.
+var mongoSyncHook func(*MongoClient)
+
+// RegisterMongoSync registers a callback invoked by NewApp after the primary
+// Mongo client is resolved. The middleware Mongo is NOT propagated.
+func RegisterMongoSync(hook func(*MongoClient)) {
+	mongoSyncHook = hook
+}
+
+// MigrateInfra binds the primary database and the primary MongoDB into the
+// package-level globals (infra.Database, infra.DatabaseSql) and notifies the
+// registered sync hooks so that legacy packages such as common can mirror the
+// values into their own globals (common.Database, common.DatabaseSql,
+// common.DatabaseMongo).
+//
+// NewApp does NOT call this automatically — projects that still rely on the
+// common.* globals must call it from their Register function:
+//
+//	func Register(app *fiber.App, deps infra.AppDeps) error {
+//	    if err := infra.MigrateInfra(deps); err != nil {
+//	        return err
+//	    }
+//	    ...
+//	}
+//
+// New projects that access the database exclusively through deps (or the
+// infra.* globals populated by NewApp) can skip this call entirely.
+//
+// The middleware MongoDB (MONGO_MIDDLEWARE_URI) is intentionally NOT exposed
+// through any sync hook — it stays reachable only via infra.MongoMiddleware.
 func MigrateInfra(deps AppDeps) error {
-	if deps.Data.Databases.Primary == nil {
-		return nil
+	if deps.Data.Databases.Primary != nil {
+		db, sqlDB, err := BindDatabase(deps.Data.Databases)
+		if err != nil {
+			return fmt.Errorf("migrate infra: %w", err)
+		}
+		Database = db
+		DatabaseSql = sqlDB
+		if databaseSyncHook != nil {
+			databaseSyncHook(db, sqlDB)
+		}
 	}
-	db, sqlDB, err := BindDatabase(deps.Data.Databases)
-	if err != nil {
-		return fmt.Errorf("migrate infra: %w", err)
+
+	if mongoSyncHook != nil && deps.Data.Mongo != nil {
+		mongoSyncHook(deps.Data.Mongo)
 	}
-	Database = db
-	DatabaseSql = sqlDB
-	if databaseSyncHook != nil {
-		databaseSyncHook(db, sqlDB)
-	}
+
 	return nil
 }

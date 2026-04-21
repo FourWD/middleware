@@ -39,7 +39,8 @@ var (
 	FirebaseAuthClient    *firebaseAuth.Client
 	FirebaseMessageClient *messaging.Client
 
-	Mongo *MongoClient
+	Mongo           *MongoClient
+	MongoMiddleware *MongoClient
 )
 
 func initGlobals(cfg CommonConfig, logger *Logger) {
@@ -68,9 +69,11 @@ func bindFirebaseGlobals(fc *FirebaseClient) {
 	}
 }
 
-func bindMongoGlobal(mc *MongoClient) {
-	if mc == nil {
-		return
+func bindMongoGlobal(primary, middleware *MongoClient) {
+	if primary != nil {
+		Mongo = primary
 	}
-	Mongo = mc
+	if middleware != nil {
+		MongoMiddleware = middleware
+	}
 }

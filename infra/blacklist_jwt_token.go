@@ -12,14 +12,14 @@ func BlacklistJwtToken(jwtToken string) error {
 	if jwtToken == "" {
 		return errors.New("no token")
 	}
-	if Mongo == nil {
-		return errors.New("mongo client not initialized")
+	if MongoMiddleware == nil {
+		return errors.New("mongo middleware client not initialized")
 	}
 
 	createdAt := time.Now()
 	expiresAt := createdAt.Add(3 * 24 * time.Hour)
 
-	collection := Mongo.Database().Collection("blacklist_tokens")
+	collection := MongoMiddleware.Database().Collection("blacklist_tokens")
 	data := bson.M{
 		"token":     jwtToken,
 		"createdAt": createdAt,

@@ -84,8 +84,10 @@ type CommonConfig struct {
 	SecondaryDBEnabled bool
 	Redis              RedisConfig
 	RedisEnabled       bool
-	Mongo              MongoConfig
-	MongoEnabled       bool
+	Mongo                  MongoConfig
+	MongoEnabled           bool
+	MongoMiddleware        MongoConfig
+	MongoMiddlewareEnabled bool
 	Firebase           FirebaseConfig
 	PubSub             PubSubConfig
 	Storage            StorageConfig
@@ -122,8 +124,10 @@ func LoadCommonConfig() CommonConfig {
 		SecondaryDatabase:  LoadSecondaryDatabaseConfig(),
 		Redis:              LoadRedisConfig(),
 		RedisEnabled:       GetEnvBool("REDIS_ENABLED", false),
-		Mongo:              LoadMongoConfig(),
-		MongoEnabled:       GetEnvBool("MONGO_ENABLED", false),
+		Mongo:                  LoadMongoConfig(),
+		MongoEnabled:           GetEnvBool("MONGO_ENABLED", false),
+		MongoMiddleware:        LoadMongoMiddlewareConfig(),
+		MongoMiddlewareEnabled: GetEnvBool("MONGO_MIDDLEWARE_ENABLED", false),
 		Firebase: FirebaseConfig{
 			CredentialsFile:             GetEnv("FIREBASE_CREDENTIALS", ""),
 			NotificationCredentialsFile: GetEnv("FIREBASE_NOTIFICATION_CREDENTIALS", ""),
@@ -189,9 +193,10 @@ type AppRuntimeDeps struct {
 }
 
 type AppDataDeps struct {
-	Databases Databases
-	Redis     *RedisClient
-	Mongo     *MongoClient
+	Databases       Databases
+	Redis           *RedisClient
+	Mongo           *MongoClient
+	MongoMiddleware *MongoClient
 }
 
 type AppSecurityDeps struct {
@@ -291,19 +296,19 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	}
 	shutdownHooks = append(shutdownHooks, otelShutdown)
 
-	dbs, redisClient, mongoClient, firebaseClient, blacklistStore, pubSubClient, storageClient, mailClient, err := initInfrastructure(cfg, appLogger, &shutdownHooks)
+	clients, err := initInfrastructure(cfg, appLogger, &shutdownHooks)
 	if err != nil {
 		appLogger.Error(err, M("init infrastructure failed"), WithComponent("app"), WithOperation("init_infrastructure"), WithLogKind("startup"))
 		cleanup()
 		return nil, err
 	}
 
-	bindFirebaseGlobals(firebaseClient)
-	bindMongoGlobal(mongoClient)
+	bindFirebaseGlobals(clients.Firebase)
+	bindMongoGlobal(clients.Mongo, clients.MongoMiddleware)
 
-	rateLimiter := buildRateLimiter(cfg, redisClient, &shutdownHooks)
+	rateLimiter := buildRateLimiter(cfg, clients.Redis, &shutdownHooks)
 
-	registerDBMetrics(dbs, appLogger)
+	registerDBMetrics(clients.Databases, appLogger)
 	registerGAEVersionCheck(cfg, appLogger, &shutdownHooks)
 
 	heartbeatScheduler, err := NewHeartbeatScheduler(LoadHeartbeatConfig(), appLogger)
@@ -343,20 +348,21 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 			},
 		},
 		Data: AppDataDeps{
-			Databases: dbs,
-			Redis:     redisClient,
-			Mongo:     mongoClient,
+			Databases:       clients.Databases,
+			Redis:           clients.Redis,
+			Mongo:           clients.Mongo,
+			MongoMiddleware: clients.MongoMiddleware,
 		},
 		Security: AppSecurityDeps{
-			BlacklistStore: blacklistStore,
+			BlacklistStore: clients.Blacklist,
 		},
 		Cloud: AppCloudDeps{
-			Firebase: firebaseClient,
-			PubSub:   pubSubClient,
-			Storage:  storageClient,
+			Firebase: clients.Firebase,
+			PubSub:   clients.PubSub,
+			Storage:  clients.Storage,
 		},
 		Integrations: AppIntegrationDeps{
-			Mail: mailClient,
+			Mail: clients.Mail,
 		},
 	}
 
@@ -507,8 +513,8 @@ func validateCommonConfig(cfg CommonConfig) error {
 	if strings.TrimSpace(cfg.Auth.JWTSecret) == "" {
 		return fmt.Errorf("invalid JWT_SECRET")
 	}
-	if cfg.Auth.BlacklistEnabled && !cfg.MongoEnabled && !cfg.RedisEnabled {
-		return fmt.Errorf("JWT_BLACKLIST_ENABLED requires MONGO_ENABLED=true or REDIS_ENABLED=true")
+	if cfg.Auth.BlacklistEnabled && !cfg.MongoMiddlewareEnabled && !cfg.RedisEnabled {
+		return fmt.Errorf("JWT_BLACKLIST_ENABLED requires MONGO_MIDDLEWARE_ENABLED or REDIS_ENABLED")
 	}
 	if cfg.PubSub.Enabled && strings.TrimSpace(cfg.PubSub.ProjectID) == "" {
 		return fmt.Errorf("PUBSUB_PROJECT_ID is required when PUBSUB_ENABLED=true")
