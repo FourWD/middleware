@@ -303,6 +303,11 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 		return nil, err
 	}
 
+	if err := bindDatabaseGlobal(clients.Databases.Primary); err != nil {
+		appLogger.Error(err, M("bind database global failed"), WithComponent("app"), WithOperation("bind_database"), WithLogKind("startup"))
+		cleanup()
+		return nil, err
+	}
 	bindFirebaseGlobals(clients.Firebase)
 	bindMongoGlobal(clients.Mongo, clients.MongoMiddleware)
 

@@ -39,11 +39,29 @@ func RegisterMongoSync(hook func(*MongoClient)) {
 	mongoSyncHook = hook
 }
 
-// MigrateInfra binds the primary database and the primary MongoDB into the
-// package-level globals (infra.Database, infra.DatabaseSql) and notifies the
-// registered sync hooks so that legacy packages such as common can mirror the
-// values into their own globals (common.Database, common.DatabaseSql,
-// common.DatabaseMongo).
+// bindDatabaseGlobal populates the infra-level Database/DatabaseSql globals.
+// NewApp calls this automatically after initInfrastructure so infra code
+// (e.g. DBCreate/DBUpdate, FirebaseSaveBySqlLimit1) can reach the primary DB
+// without threading deps through every call.
+//
+// This does NOT invoke sync hooks — common-level globals still require an
+// explicit infra.MigrateInfra(deps) call from the project's Register.
+func bindDatabaseGlobal(primary *gorm.DB) error {
+	if primary == nil {
+		return nil
+	}
+	sqlDB, err := primary.DB()
+	if err != nil {
+		return fmt.Errorf("resolve sql.DB: %w", err)
+	}
+	Database = primary
+	DatabaseSql = sqlDB
+	return nil
+}
+
+// MigrateInfra notifies the registered sync hooks so that legacy packages
+// such as common can mirror the primary DB + Mongo values into their own
+// globals (common.Database, common.DatabaseSql, common.DatabaseMongo).
 //
 // NewApp does NOT call this automatically — projects that still rely on the
 // common.* globals must call it from their Register function:
@@ -61,21 +79,11 @@ func RegisterMongoSync(hook func(*MongoClient)) {
 // The middleware MongoDB (MONGO_MIDDLEWARE_URI) is intentionally NOT exposed
 // through any sync hook — it stays reachable only via infra.MongoMiddleware.
 func MigrateInfra(deps AppDeps) error {
-	if deps.Data.Databases.Primary != nil {
-		db, sqlDB, err := BindDatabase(deps.Data.Databases)
-		if err != nil {
-			return fmt.Errorf("migrate infra: %w", err)
-		}
-		Database = db
-		DatabaseSql = sqlDB
-		if databaseSyncHook != nil {
-			databaseSyncHook(db, sqlDB)
-		}
+	if databaseSyncHook != nil && Database != nil && DatabaseSql != nil {
+		databaseSyncHook(Database, DatabaseSql)
 	}
-
 	if mongoSyncHook != nil && deps.Data.Mongo != nil {
 		mongoSyncHook(deps.Data.Mongo)
 	}
-
 	return nil
 }
