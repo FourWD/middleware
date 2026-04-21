@@ -164,12 +164,19 @@ func resolveProxyHeader() string {
 
 func resolveHTTPAddress() string {
 	if httpAddress := strings.TrimSpace(os.Getenv("HTTP_ADDRESS")); httpAddress != "" {
-		return httpAddress
+		return normalizeHTTPAddress(httpAddress)
 	}
 	if port := strings.TrimSpace(os.Getenv("PORT")); port != "" {
 		return ":" + port
 	}
 	return ":8080"
+}
+
+func normalizeHTTPAddress(addr string) string {
+	if strings.Contains(addr, ":") {
+		return addr
+	}
+	return ":" + addr
 }
 
 type AppRuntimeDeps struct {
@@ -225,7 +232,14 @@ type App struct {
 }
 
 // NewApp initializes all infrastructure and calls registrar to wire project-specific routes.
-// It loads configuration from environment variables automatically.
+// It loads configuration from environment variables automatically and registers the
+// default middleware stack (RequestID → CORS → Sentry → Recover → Envelope → OTel →
+// Metrics → RequestLog) before invoking registrar. Do NOT call RegisterStack again
+// inside your registrar — it is already wired.
+//
+// For WebSocket/SSE projects that need realtime routes registered between base and
+// HTTP stack, construct the fiber app manually using RegisterBaseStack +
+// RegisterHTTPStack instead of using NewApp.
 func NewApp(registrar RouteRegistrar) (*App, error) {
 	if err := LoadEnvFiles(); err != nil {
 		return nil, err
@@ -290,6 +304,10 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 		AppID:       cfg.AppID,
 		ProxyHeader: cfg.ProxyHeader,
 	})
+
+	stackCfg := LoadStackConfig()
+	stackCfg.Logger = appLogger
+	RegisterStack(web, stackCfg)
 
 	registerDefaultRoutes(web, cfg)
 
