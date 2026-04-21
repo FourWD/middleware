@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/FourWD/middleware/infra"
-	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -24,7 +25,32 @@ func isPublicPath(c fiber.Ctx) bool {
 	publicPaths := infra.SplitCSV(infra.GetEnv("HTTP_PUBLIC_PATHS", ""))
 	hardcodePaths := []string{"/_ah/warmup", "/wake-up", "/metrics"}
 	publicPaths = append(publicPaths, hardcodePaths...)
-	return kit.StringExistsInList(c.Path(), publicPaths)
+	// return kit.StringExistsInList(c.Path(), publicPaths)
+	for _, pattern := range publicPaths {
+		if matchesPublicPathPattern(pattern, c.Path()) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func matchesPublicPathPattern(pattern string, path string) bool {
+	pattern = strings.TrimSpace(pattern)
+	if pattern == "" {
+		return false
+	}
+
+	if !looksLikeRegexPattern(pattern) {
+		return pattern == path
+	}
+
+	matched, err := regexp.MatchString(pattern, path)
+	return err == nil && matched
+}
+
+func looksLikeRegexPattern(pattern string) bool {
+	return strings.ContainsAny(pattern, `\.^$*+?()[]{}|`)
 }
 
 func checkAuth(c fiber.Ctx) error {
