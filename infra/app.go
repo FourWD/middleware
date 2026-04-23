@@ -80,7 +80,6 @@ type CommonConfig struct {
 
 	Database           DatabaseConfig
 	SecondaryDatabase  DatabaseConfig
-	SecondaryDBEnabled bool
 	Redis              RedisConfig
 	RedisEnabled       bool
 	Mongo                  MongoConfig
@@ -117,9 +116,8 @@ func LoadCommonConfig() CommonConfig {
 		RateLimitStrictPerMinute:  GetEnvInt("RATE_LIMIT_STRICT_PER_MINUTE", 10),
 		RateLimitDefaultPerSecond: GetEnvInt("RATE_LIMIT_DEFAULT_PER_SECOND", 100),
 
-		Database:           LoadDatabaseConfig(),
-		SecondaryDBEnabled: GetEnvBool("DB2_ENABLED", false),
-		SecondaryDatabase:  LoadSecondaryDatabaseConfig(),
+		Database:          LoadDatabaseConfig(),
+		SecondaryDatabase: LoadSecondaryDatabaseConfig(),
 		Redis:              LoadRedisConfig(),
 		RedisEnabled:       GetEnvBool("REDIS_ENABLED", false),
 		Mongo:                  LoadMongoConfig(),
@@ -502,7 +500,7 @@ func validateCommonConfig(cfg CommonConfig) error {
 			return err
 		}
 	}
-	if cfg.SecondaryDBEnabled {
+	if strings.TrimSpace(cfg.SecondaryDatabase.Name) != "" {
 		if err := validateDatabaseConfig("DB2", cfg.SecondaryDatabase); err != nil {
 			return err
 		}

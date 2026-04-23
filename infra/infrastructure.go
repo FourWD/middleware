@@ -49,7 +49,7 @@ func initInfrastructure(
 		out.Databases.Primary = primary
 	}
 
-	if cfg.SecondaryDBEnabled {
+	if strings.TrimSpace(cfg.SecondaryDatabase.Name) != "" {
 		secondary, err := OpenDB(cfg.SecondaryDatabase, appLogger)
 		if err != nil {
 			return out, err

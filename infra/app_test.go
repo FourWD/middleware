@@ -58,7 +58,6 @@ func TestValidateCommonConfig_InvalidPrimaryDatabaseDriver(t *testing.T) {
 
 func TestValidateCommonConfig_InvalidSecondaryDatabaseDriver(t *testing.T) {
 	cfg := baseCommonConfig()
-	cfg.SecondaryDBEnabled = true
 	cfg.SecondaryDatabase.Driver = "sqlite"
 
 	if err := validateCommonConfig(cfg); err == nil {

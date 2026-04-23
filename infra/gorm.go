@@ -64,7 +64,7 @@ func loadDatabaseConfigWithPrefix(prefix, defaultName string) DatabaseConfig {
 
 type Databases struct {
 	Primary   *gorm.DB
-	Secondary *gorm.DB // nil if DB2_ENABLED=false
+	Secondary *gorm.DB // nil when DB2_NAME is empty
 }
 
 // BindDatabase validates the primary GORM DB and returns it with its underlying *sql.DB.
