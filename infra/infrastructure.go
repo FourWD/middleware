@@ -3,6 +3,7 @@ package infra
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // InfraClients bundles all the clients built by initInfrastructure so the
@@ -26,22 +27,27 @@ func initInfrastructure(
 ) (InfraClients, error) {
 	out := InfraClients{}
 
-	if err := RunMigrations(cfg); err != nil {
-		return out, err
-	}
-
-	primary, err := OpenDB(cfg.Database, appLogger)
-	if err != nil {
-		return out, err
-	}
-	*cleanupHooks = append(*cleanupHooks, func(context.Context) error {
-		sqlDB, err := primary.DB()
-		if err != nil {
-			return err
+	// Primary database is opt-out: empty DB_NAME means the service runs
+	// without a database (gateway, webhook relay, etc.). Migrations also
+	// skip automatically when no DB is available.
+	if strings.TrimSpace(cfg.Database.Name) != "" {
+		if err := RunMigrations(cfg); err != nil {
+			return out, err
 		}
-		return sqlDB.Close()
-	})
-	out.Databases.Primary = primary
+
+		primary, err := OpenDB(cfg.Database, appLogger)
+		if err != nil {
+			return out, err
+		}
+		*cleanupHooks = append(*cleanupHooks, func(context.Context) error {
+			sqlDB, err := primary.DB()
+			if err != nil {
+				return err
+			}
+			return sqlDB.Close()
+		})
+		out.Databases.Primary = primary
+	}
 
 	if cfg.SecondaryDBEnabled {
 		secondary, err := OpenDB(cfg.SecondaryDatabase, appLogger)

@@ -494,8 +494,13 @@ func validateCommonConfig(cfg CommonConfig) error {
 	if cfg.DebugAuthToken != "" && len(cfg.DebugAuthToken) < 16 {
 		return fmt.Errorf("invalid HTTP_DEBUG_AUTH_TOKEN: must be at least 16 characters")
 	}
-	if err := validateDatabaseConfig("DB", cfg.Database); err != nil {
-		return err
+	// Primary database is opt-out via empty DB_NAME — services that don't need
+	// a database (gateways, webhook relays, pure stateless aggregators) can
+	// leave DB_NAME blank and skip all DB_* validation.
+	if strings.TrimSpace(cfg.Database.Name) != "" {
+		if err := validateDatabaseConfig("DB", cfg.Database); err != nil {
+			return err
+		}
 	}
 	if cfg.SecondaryDBEnabled {
 		if err := validateDatabaseConfig("DB2", cfg.SecondaryDatabase); err != nil {
