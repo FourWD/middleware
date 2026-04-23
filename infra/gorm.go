@@ -32,14 +32,14 @@ type DatabaseConfig struct {
 }
 
 func LoadDatabaseConfig() DatabaseConfig {
-	return loadDatabaseConfigWithPrefix("DB", "pakkad_service")
+	return loadDatabaseConfigWithPrefix("DB")
 }
 
 func LoadSecondaryDatabaseConfig() DatabaseConfig {
-	return loadDatabaseConfigWithPrefix("DB2", "pakkad_service_secondary")
+	return loadDatabaseConfigWithPrefix("DB2")
 }
 
-func loadDatabaseConfigWithPrefix(prefix, defaultName string) DatabaseConfig {
+func loadDatabaseConfigWithPrefix(prefix string) DatabaseConfig {
 	driver := GetEnv(prefix+"_DRIVER", DBDriverMySQL)
 
 	defaultParams := "charset=utf8mb4&parseTime=True&loc=Local"
@@ -54,7 +54,7 @@ func loadDatabaseConfigWithPrefix(prefix, defaultName string) DatabaseConfig {
 		Instance:     GetEnv(prefix+"_INSTANCE", ""),
 		User:         GetEnv(prefix+"_USER", "root"),
 		Password:     GetEnv(prefix+"_PASSWORD", "root"),
-		Name:         GetEnv(prefix+"_NAME", defaultName),
+		Name:         GetEnv(prefix+"_NAME", ""),
 		Params:       GetEnv(prefix+"_PARAMS", defaultParams),
 		MaxIdleConns: GetEnvInt(prefix+"_MAX_IDLE_CONNS", 10),
 		MaxOpenConns: GetEnvInt(prefix+"_MAX_OPEN_CONNS", 25),
