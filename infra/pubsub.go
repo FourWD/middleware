@@ -31,10 +31,15 @@ func NewPubSubClient(ctx context.Context, cfg PubSubConfig) (*PubSubClient, erro
 }
 
 func (c *PubSubClient) Publish(ctx context.Context, topic, message string) error {
-	topicPath := fmt.Sprintf("projects/%s/topics/%s", c.projectID, topic)
-	result := c.client.Publisher(topicPath).Publish(ctx, &gcppubsub.Message{Data: []byte(message)})
-	_, err := result.Get(ctx)
+	_, err := c.PublishMessage(ctx, topic, []byte(message))
 	return err
+}
+
+// PublishMessage publishes raw bytes and returns the server-assigned message ID.
+func (c *PubSubClient) PublishMessage(ctx context.Context, topic string, data []byte) (string, error) {
+	topicPath := fmt.Sprintf("projects/%s/topics/%s", c.projectID, topic)
+	result := c.client.Publisher(topicPath).Publish(ctx, &gcppubsub.Message{Data: data})
+	return result.Get(ctx)
 }
 
 func (c *PubSubClient) PublishJSON(ctx context.Context, topic, prefix string, data any) error {

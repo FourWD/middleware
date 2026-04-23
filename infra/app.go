@@ -68,7 +68,6 @@ type CommonConfig struct {
 	AppEnv             string
 	LogLevel           string
 	Timezone           string
-	GCPProjectID       string
 	HTTPAddress        string
 	ProxyHeader        string
 	DebugAuthToken     string
@@ -109,7 +108,6 @@ func LoadCommonConfig() CommonConfig {
 		AppEnv:             strings.ToLower(strings.TrimSpace(GetEnv("APP_ENV", "local"))),
 		LogLevel:           strings.ToLower(strings.TrimSpace(GetEnv("LOG_LEVEL", "info"))),
 		Timezone:           strings.TrimSpace(GetEnv("APP_TIMEZONE", "Asia/Bangkok")),
-		GCPProjectID:       strings.TrimSpace(GetEnv("GCP_PROJECT_ID", "")),
 		HTTPAddress:        resolveHTTPAddress(),
 		ProxyHeader:        resolveProxyHeader(),
 		DebugAuthToken:     strings.TrimSpace(GetEnv("HTTP_DEBUG_AUTH_TOKEN", "")),
@@ -310,6 +308,7 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	}
 	bindFirebaseGlobals(clients.Firebase)
 	bindMongoGlobal(clients.Mongo, clients.MongoMiddleware)
+	bindPubSubGlobal(clients.PubSub)
 
 	rateLimiter := buildRateLimiter(cfg, clients.Redis, &shutdownHooks)
 

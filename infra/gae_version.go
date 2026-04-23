@@ -35,10 +35,7 @@ func registerGAEVersionCheck(cfg CommonConfig, logger *Logger, hooks *[]func(con
 
 	project := strings.TrimSpace(os.Getenv("GOOGLE_CLOUD_PROJECT"))
 	if project == "" {
-		project = cfg.GCPProjectID
-	}
-	if project == "" {
-		logger.Warn(M("gae version check disabled: project id unknown"),
+		logger.Warn(M("gae version check disabled: GOOGLE_CLOUD_PROJECT not set"),
 			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("startup"))
 		return
 	}

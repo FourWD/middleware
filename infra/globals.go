@@ -41,6 +41,8 @@ var (
 
 	Mongo           *MongoClient
 	MongoMiddleware *MongoClient
+
+	PubSub *PubSubClient
 )
 
 func initGlobals(cfg CommonConfig, logger *Logger) {
@@ -75,5 +77,14 @@ func bindMongoGlobal(primary, middleware *MongoClient) {
 	}
 	if middleware != nil {
 		MongoMiddleware = middleware
+	}
+}
+
+// bindPubSubGlobal exposes the managed PubSub client so legacy package-level
+// helpers (GooglePublicMessage, GoogleSubscribe, etc.) can route through the
+// same client lifecycle instead of creating ad-hoc ones.
+func bindPubSubGlobal(pc *PubSubClient) {
+	if pc != nil {
+		PubSub = pc
 	}
 }
