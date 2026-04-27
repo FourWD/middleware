@@ -9,15 +9,22 @@ import (
 type FiberConfig struct {
 	AppID       string
 	ProxyHeader string
+	// BodyLimit is the maximum request body size in bytes. Zero means use
+	// fiber's default (4 MB).
+	BodyLimit int
 }
 
 func NewFiberApp(cfg FiberConfig) *fiber.App {
-	return fiber.New(fiber.Config{
+	fc := fiber.Config{
 		AppName:         cfg.AppID,
 		ProxyHeader:     cfg.ProxyHeader,
 		ErrorHandler:    AppErrorHandler(),
 		StructValidator: NewValidator(),
-	})
+	}
+	if cfg.BodyLimit > 0 {
+		fc.BodyLimit = cfg.BodyLimit
+	}
+	return fiber.New(fc)
 }
 
 func AppErrorHandler() func(fiber.Ctx, error) error {

@@ -72,6 +72,7 @@ type CommonConfig struct {
 	ProxyHeader        string
 	DebugAuthToken     string
 	PublicPaths        []string
+	HTTPBodyLimitMB    int
 
 	// Rate limit (3-tier: strict / default / skip)
 	RateLimitEnabled          bool
@@ -111,6 +112,7 @@ func LoadCommonConfig() CommonConfig {
 		ProxyHeader:        resolveProxyHeader(),
 		DebugAuthToken:     strings.TrimSpace(GetEnv("HTTP_DEBUG_AUTH_TOKEN", "")),
 		PublicPaths:        splitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")),
+		HTTPBodyLimitMB:    GetEnvInt("HTTP_BODY_LIMIT_MB", 0),
 
 		RateLimitEnabled:          GetEnvBool("RATE_LIMIT_ENABLED", false),
 		RateLimitStrictPerMinute:  GetEnvInt("RATE_LIMIT_STRICT_PER_MINUTE", 10),
@@ -323,6 +325,7 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	web := NewFiberApp(FiberConfig{
 		AppID:       cfg.AppID,
 		ProxyHeader: cfg.ProxyHeader,
+		BodyLimit:   cfg.HTTPBodyLimitMB * 1024 * 1024,
 	})
 
 	stackCfg := LoadStackConfig()
