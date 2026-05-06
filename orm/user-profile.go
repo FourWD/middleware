@@ -45,4 +45,6 @@ type UserProfile struct {
 	IdcardNo               string `json:"idcard_no" query:"idcard_no" gorm:"type:varchar(13)"`
 	//P'ped req 2025-8-10
 	CompanyGroupID string `json:"company_group_id" query:"company_group_id" gorm:"type:varchar(36)"`
+
+	IsForeigner bool `json:"is_foreigner" query:"is_foreigner" gorm:"type:bool" default:"false"`
 }
