@@ -199,6 +199,13 @@ type AppDataDeps struct {
 
 type AppSecurityDeps struct {
 	BlacklistStore BlacklistStore
+	// RefreshTokens is auto-wired by NewApp when MongoMiddleware or Redis
+	// is enabled. Plug it into TokenManager via NewTokenManager(cfg, store)
+	// to get one-shot refresh-token rotation backed by the same Mongo (or
+	// Redis) that holds the blacklist. Field stays nil when no compatible
+	// backend is configured — TokenManager construction is the caller's
+	// responsibility, so projects can opt in at their own pace.
+	RefreshTokens RefreshTokenStore
 }
 
 type AppCloudDeps struct {
@@ -310,6 +317,13 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	bindMongoGlobal(clients.Mongo, clients.MongoMiddleware)
 	bindPubSubGlobal(clients.PubSub)
 
+	// Best-effort: ensure Mongo auth-store indexes exist. Fired in a
+	// goroutine with its own timeout so a slow Mongo (or one whose user
+	// lacks createIndex permission) never blocks boot. Failures land in
+	// the structured log so operators can reconcile manually; the service
+	// itself stays up. Idempotent — re-running on every boot is fine.
+	ensureAuthStoreIndexes(clients, appLogger)
+
 	rateLimiter := buildRateLimiter(cfg, clients.Redis, &shutdownHooks)
 
 	registerDBMetrics(clients.Databases, appLogger)
@@ -331,6 +345,13 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	stackCfg := LoadStackConfig()
 	stackCfg.Logger = appLogger
 	RegisterStack(web, stackCfg)
+
+	// Stamp client IP + User-Agent onto every request's ctx so use-case
+	// layers (audit log writers, etc.) can read network identity without
+	// threading fiber.Ctx through every signature. Installed *after*
+	// RegisterStack so it sits at the same scope as user middleware but
+	// before any custom auth gate the registrar adds.
+	web.Use(NewRequestMetaMiddleware())
 
 	registerDefaultRoutes(web, cfg)
 
@@ -360,6 +381,7 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 		},
 		Security: AppSecurityDeps{
 			BlacklistStore: clients.Blacklist,
+			RefreshTokens:  clients.RefreshTokens,
 		},
 		Cloud: AppCloudDeps{
 			Firebase: clients.Firebase,
@@ -473,6 +495,39 @@ func runShutdownHooks(ctx context.Context, hooks []func(context.Context) error, 
 			appLogger.Error(err, M("cleanup hook failed"), WithComponent("app"), WithOperation("cleanup_hook"), WithLogKind("lifecycle"))
 		}
 	}
+}
+
+// ensureAuthStoreIndexes asks the Mongo-backed auth stores to create their
+// lookup + TTL indexes. Wrapped in a goroutine with its own deadline so
+// startup never blocks on Mongo; non-Mongo backends (Redis, nil) and
+// permission errors are silently skipped (with a warning log) — the
+// service still boots and serves traffic, just without the index
+// optimisation. Operators reading the structured log can reconcile
+// manually if needed.
+func ensureAuthStoreIndexes(clients InfraClients, logger *Logger) {
+	mbs, mbsOK := clients.Blacklist.(*MongoBlacklistStore)
+	mrs, mrsOK := clients.RefreshTokens.(*MongoRefreshTokenStore)
+	if !mbsOK && !mrsOK {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if mbsOK {
+			if err := mbs.EnsureIndexes(ctx); err != nil {
+				logger.Warn(M("blacklist EnsureIndexes failed — create indexes manually"),
+					WithComponent("auth"), WithOperation("ensure_indexes"),
+					WithLogKind("startup"), WithField("error", err.Error()))
+			}
+		}
+		if mrsOK {
+			if err := mrs.EnsureIndexes(ctx); err != nil {
+				logger.Warn(M("refresh-token EnsureIndexes failed — create indexes manually"),
+					WithComponent("auth"), WithOperation("ensure_indexes"),
+					WithLogKind("startup"), WithField("error", err.Error()))
+			}
+		}
+	}()
 }
 
 var allowedAppEnvs = map[string]struct{}{

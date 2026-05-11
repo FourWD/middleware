@@ -15,6 +15,7 @@ type InfraClients struct {
 	MongoMiddleware *MongoClient
 	Firebase        *FirebaseClient
 	Blacklist       BlacklistStore
+	RefreshTokens   RefreshTokenStore
 	PubSub          *PubSubClient
 	Storage         *StorageClient
 	Mail            *MailClient
@@ -123,6 +124,17 @@ func initInfrastructure(
 		default:
 			return out, fmt.Errorf("jwt blacklist requires MONGO_MIDDLEWARE_ENABLED or REDIS_ENABLED")
 		}
+	}
+
+	// Refresh token store sits next to the blacklist. Wiring is best-effort
+	// — projects that don't issue refresh tokens (TokenManager never built)
+	// simply ignore deps.Security.RefreshTokens. MongoMiddleware wins over
+	// Redis when both are enabled so auth state stays in a single store.
+	switch {
+	case out.MongoMiddleware != nil:
+		out.RefreshTokens = NewMongoRefreshTokenStore(out.MongoMiddleware, cfg.Auth)
+	case out.Redis != nil:
+		out.RefreshTokens = NewRedisRefreshTokenStore(out.Redis, cfg.Auth)
 	}
 
 	if cfg.PubSub.Enabled {

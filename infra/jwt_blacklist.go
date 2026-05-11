@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // BlacklistStore checks and manages token blacklisting.
@@ -41,6 +42,30 @@ func (s *MongoBlacklistStore) Add(ctx context.Context, token string, expiresAt t
 		"token":     token,
 		"createdAt": time.Now(),
 		"expiresAt": expiresAt,
+	})
+	return err
+}
+
+// EnsureIndexes creates the unique lookup + TTL indexes the store needs.
+// Idempotent — safe to call on every boot. Without the TTL index the
+// collection grows without bound; without the unique index on `token`,
+// IsBlacklisted does a collection scan that gets linearly slower as the
+// table fills up.
+//
+// Caller should treat errors as non-fatal: a Mongo user without
+// createIndex permission, a pre-existing index with conflicting options,
+// or a transient Mongo blip should not block the service from booting.
+// Log the error and let the operator reconcile indexes manually.
+func (s *MongoBlacklistStore) EnsureIndexes(ctx context.Context) error {
+	_, err := s.collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "token", Value: 1}},
+			Options: options.Index().SetUnique(true).SetName("token_unique"),
+		},
+		{
+			Keys:    bson.D{{Key: "expiresAt", Value: 1}},
+			Options: options.Index().SetExpireAfterSeconds(0).SetName("expiresAt_ttl"),
+		},
 	})
 	return err
 }
