@@ -152,11 +152,15 @@ func FiberDeletePermanentByID(c fiber.Ctx, tableName string) error {
 }
 
 func FiberSql(app *fiber.App) {
+
 	type Payload struct {
 		Query string `json:"query"`
 	}
 
 	app.Post("/sql", func(c fiber.Ctx) error {
+		if infra.AppInfo.Env == "prod" {
+			return FiberError(c, "1003", "not allowed in production environment")
+		}
 		payload := new(Payload)
 		if err := c.Bind().Body(payload); err != nil {
 			return FiberReviewPayload(c)

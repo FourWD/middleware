@@ -12,6 +12,7 @@ import (
 )
 
 func FiberTableInfo(app *fiber.App) {
+
 	type ColumnInfo struct {
 		Name string `json:"name"`
 		Type string `json:"type"`
@@ -26,6 +27,9 @@ func FiberTableInfo(app *fiber.App) {
 	}
 
 	app.Get("/api/table", func(c fiber.Ctx) error {
+		if infra.AppInfo.Env == "prod" {
+			return FiberError(c, "1003", "not allowed in production environment")
+		}
 		DBName := infra.GetEnv("DB_NAME", "")
 		rows, err := DatabaseSql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, 
 		CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? 
