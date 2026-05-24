@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Config &amp; Deployment — middleware</title>
+  <link rel="stylesheet" href="https://pakkad.fourwd.me/docs/style.css">
+</head>
+<body>
+  <nav class="top">
+    <div class="inner">
+      <span class="brand">middleware</span>
+      <a href="index.html">Overview</a>
+      <a href="ui-flow.html">UI &amp; Flow</a>
+      <a href="database.html">Database</a>
+      <a href="api.html">API &amp; Integration</a>
+      <a href="deployment.html" class="active">Config &amp; Deployment</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <h1>Config &amp; Deployment</h1>
+    <p class="lead">
+      Configuration is environment-driven: <code>.env</code> +
+      <code>.env.{APP_ENV}</code> at boot, with existing OS env vars taking
+      precedence. The library is consumed by Go services that build a single
+      binary deployed to App Engine; this page enumerates every env var,
+      describes the module layout, and documents the per-service rollout
+      pattern.
+    </p>
+    <p class="docmeta">
+      <span class="badge">v1</span>
+      Owned by: <code>@puarns</code> · Last reviewed: 2026-05-24
+    </p>
+
+    <h2 id="env-vars">5.1 Environment Variables</h2>
+    <p>
+      Loaded by <code>LoadEnvFiles</code> then read by <code>LoadCommonConfig</code>.
+      File precedence: <code>.env</code> values are seeded first, then
+      <code>.env.{APP_ENV}</code> overrides; finally any value already present in
+      the OS environment wins (never overwritten). Authoritative template:
+      <code>.env.example</code> at repo root.
+    </p>
+
+    <h3>App identity</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>APP_ID</code></td><td>string</td><td>—</td><td><strong>Required.</strong> Boot fails. On GAE <code>GAE_SERVICE</code> overrides (<a href="index.html#br-1">BR-1</a>).</td></tr>
+        <tr><td><code>APP_ENV</code></td><td>enum</td><td><code>local</code></td><td>Must be <code>local|dev|prod|test</code> (<a href="index.html#br-2">BR-2</a>).</td></tr>
+        <tr><td><code>APP_VERSION</code></td><td>string</td><td>empty</td><td>Logged + returned by <code>/wake-up</code>; empty is allowed but disables GAE version drift detection.</td></tr>
+        <tr><td><code>APP_TIMEZONE</code></td><td>tz string</td><td><code>Asia/Bangkok</code></td><td>Sets process timezone via <code>time.LoadLocation</code>.</td></tr>
+        <tr><td><code>APP_ENCRYPT_KEY</code></td><td>string</td><td>empty</td><td>AES-GCM key material; SHA-256-hashed before use by <code>common/encrypt.go</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>HTTP server</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>HTTP_ADDRESS</code></td><td>port or host:port</td><td><code>:8080</code></td><td>Bare port (<code>8080</code>) is normalised to <code>:8080</code>. <code>PORT</code> is honoured as a fallback (GAE-style).</td></tr>
+        <tr><td><code>HTTP_ALLOW_ORIGINS</code></td><td>CSV</td><td><code>*</code></td><td>Passed to Fiber CORS middleware.</td></tr>
+        <tr><td><code>HTTP_PUBLIC_PATHS</code></td><td>CSV</td><td>empty</td><td>Exact-match paths added to the Auth V2 exempt set (<a href="index.html#br-8">BR-8</a>).</td></tr>
+        <tr><td><code>HTTP_PROXY_HEADER</code></td><td>string</td><td>empty</td><td>Header from which Fiber reads the client IP (e.g. <code>X-Forwarded-For</code>).</td></tr>
+        <tr><td><code>HTTP_DEBUG_AUTH_TOKEN</code></td><td>string</td><td>empty</td><td>≥ 16 chars when set; required to access debug routes outside <code>prod</code>.</td></tr>
+        <tr><td><code>HTTP_ENVELOPE_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Wrap legacy raw-JSON responses in the success envelope.</td></tr>
+        <tr><td><code>HTTP_BODY_LIMIT_MB</code></td><td>int</td><td>0 (Fiber default 4 MB)</td><td>Caps request body size.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Request log</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>HTTP_REQUEST_LOG_OMIT_REQUEST_BODY</code></td><td>bool</td><td><code>true</code></td><td>Set <code>false</code> to log request bodies (debugging only — bodies may carry PII).</td></tr>
+        <tr><td><code>HTTP_REQUEST_LOG_OMIT_RESPONSE_BODY</code></td><td>bool</td><td><code>true</code></td><td>Same, for responses.</td></tr>
+        <tr><td><code>HTTP_REQUEST_LOG_OMIT_REQUEST_HEADERS</code></td><td>bool</td><td><code>true</code></td><td>Request headers off by default.</td></tr>
+        <tr><td><code>HTTP_REQUEST_LOG_OMIT_RESPONSE_HEADERS</code></td><td>bool</td><td><code>true</code></td><td>Response headers off by default.</td></tr>
+        <tr><td><code>HTTP_REQUEST_LOG_MAX_BODY_BYTES</code></td><td>int</td><td><code>4096</code></td><td>Body truncation cap when logging is enabled.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Rate limit (3-tier)</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>RATE_LIMIT_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — strict/default groups become no-ops.</td></tr>
+        <tr><td><code>RATE_LIMIT_STRICT_PER_MINUTE</code></td><td>int</td><td>10</td><td>Cap per subject per minute on strict routes.</td></tr>
+        <tr><td><code>RATE_LIMIT_DEFAULT_PER_SECOND</code></td><td>int</td><td>100</td><td>Cap per subject per second on default routes.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Primary database</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>DB_DRIVER</code></td><td>enum</td><td><code>mysql</code></td><td>Must be <code>mysql</code> or <code>postgres</code>.</td></tr>
+        <tr><td><code>DB_HOST</code></td><td>string</td><td><code>127.0.0.1</code></td><td>Ignored when <code>DB_INSTANCE</code> is set.</td></tr>
+        <tr><td><code>DB_PORT</code></td><td>int</td><td>3306</td><td>Required when not using Cloud SQL socket.</td></tr>
+        <tr><td><code>DB_USER</code></td><td>string</td><td><code>root</code></td><td>Required (validated when <code>DB_NAME</code> non-empty).</td></tr>
+        <tr><td><code>DB_PASSWORD</code></td><td>string</td><td><code>root</code></td><td>Empty allowed; included verbatim in DSN.</td></tr>
+        <tr><td><code>DB_NAME</code></td><td>string</td><td>empty</td><td><strong>Empty disables the primary pool</strong> (<a href="index.html#br-4">BR-4</a>) — migrations also skip.</td></tr>
+        <tr><td><code>DB_PARAMS</code></td><td>string</td><td>driver-specific</td><td>MySQL: <code>charset=utf8mb4&amp;parseTime=True&amp;loc=Local</code>; Postgres: <code>sslmode=disable TimeZone=UTC</code>.</td></tr>
+        <tr><td><code>DB_INSTANCE</code></td><td>string</td><td>empty</td><td>Cloud SQL instance connection name; switches MySQL DSN to a Unix socket at <code>/cloudsql/&lt;instance&gt;</code>.</td></tr>
+        <tr><td><code>DB_MAX_OPEN_CONNS</code></td><td>int</td><td>25</td><td>Must be &gt; 0 when DB is enabled.</td></tr>
+        <tr><td><code>DB_MAX_IDLE_CONNS</code></td><td>int</td><td>10</td><td>Must be &gt; 0 when DB is enabled.</td></tr>
+        <tr><td><code>DB_MAX_LIFETIME_MINUTES</code></td><td>int</td><td>30</td><td>Must be &gt; 0 when DB is enabled.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Secondary database</h3>
+    <p>Same shape as primary, with <code>DB2_</code> prefix. Empty <code>DB2_NAME</code> skips the pool entirely.</p>
+
+    <h3>Migrations</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>MIGRATIONS_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — <code>RunMigrations</code> returns nil immediately.</td></tr>
+        <tr><td><code>MIGRATIONS_PATH</code></td><td>path</td><td><code>migrations</code></td><td>Must exist when enabled (relative to cwd).</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Redis</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>REDIS_ENABLED</code></td><td>bool</td><td><code>true</code> in <code>.env.example</code></td><td>Off — rate limit falls back to in-memory; blacklist needs Mongo instead.</td></tr>
+        <tr><td><code>REDIS_ADDR</code></td><td>host:port</td><td><code>127.0.0.1:6379</code></td><td>Required when enabled.</td></tr>
+        <tr><td><code>REDIS_PASSWORD</code></td><td>string</td><td>empty</td><td>Empty allowed.</td></tr>
+        <tr><td><code>REDIS_DB</code></td><td>int</td><td>0</td><td>Must be ≥ 0.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Mongo (primary &amp; middleware)</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>MONGO_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — business Mongo client not built.</td></tr>
+        <tr><td><code>MONGO_URI</code></td><td>connection string</td><td>empty</td><td>Required when enabled.</td></tr>
+        <tr><td><code>MONGO_DATABASE</code></td><td>string</td><td><code>middleware</code></td><td>Database selected on the client.</td></tr>
+        <tr><td><code>MONGO_MIDDLEWARE_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — auth state falls back to Redis when blacklist enabled.</td></tr>
+        <tr><td><code>MONGO_MIDDLEWARE_URI</code></td><td>connection string</td><td>empty</td><td>Required when enabled.</td></tr>
+        <tr><td><code>MONGO_MIDDLEWARE_DATABASE</code></td><td>string</td><td><code>middleware</code></td><td>Holds <code>blacklist_tokens</code> + <code>refresh_tokens</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Firebase</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>FIREBASE_CREDENTIALS</code></td><td>file path</td><td>empty</td><td>Empty disables Firestore/Auth client.</td></tr>
+        <tr><td><code>FIREBASE_NOTIFICATION_CREDENTIALS</code></td><td>file path</td><td>empty</td><td>Empty disables FCM messaging client.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Google Cloud</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>GOOGLE_CLOUD_PROJECT</code></td><td>string</td><td>empty</td><td>Auto-set on GAE; used to build the version-check URL.</td></tr>
+        <tr><td><code>WAKE_UP_MINUTE</code></td><td>int (0–10)</td><td>empty</td><td>0 or empty disables the GAE wake-up loop; max 10 minutes.</td></tr>
+        <tr><td><code>PUBSUB_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — Pub/Sub client not built.</td></tr>
+        <tr><td><code>PUBSUB_PROJECT_ID</code></td><td>string</td><td>empty</td><td>Required when Pub/Sub enabled.</td></tr>
+        <tr><td><code>PUBSUB_CREDENTIALS_FILE</code></td><td>file path</td><td>empty</td><td>Falls back to ADC when empty.</td></tr>
+        <tr><td><code>STORAGE_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — Storage client not built.</td></tr>
+        <tr><td><code>STORAGE_BUCKET</code></td><td>string</td><td>empty</td><td>Required when Storage enabled.</td></tr>
+        <tr><td><code>STORAGE_CREDENTIALS_FILE</code></td><td>file path</td><td>empty</td><td>Falls back to ADC.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Mail (Mailgun)</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>MAIL_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — Mailgun client not built.</td></tr>
+        <tr><td><code>MAILGUN_DOMAIN</code></td><td>string</td><td>empty</td><td>Required when mail enabled.</td></tr>
+        <tr><td><code>MAILGUN_API_KEY</code></td><td>string</td><td>empty</td><td>Required when mail enabled.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Auth / JWT</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>JWT_SECRET</code></td><td>string</td><td>—</td><td><strong>Required</strong> (<a href="index.html#br-3">BR-3</a>); boot fails when empty.</td></tr>
+        <tr><td><code>JWT_REFRESH_SECRET</code></td><td>string</td><td>empty</td><td>Optional — used only by legacy refresh-token paths.</td></tr>
+        <tr><td><code>JWT_BLACKLIST_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Requires a store (<a href="index.html#br-5">BR-5</a>).</td></tr>
+      </tbody>
+    </table>
+    <p>
+      <code>JWT_ISSUER</code>, access TTL (60 min) and refresh TTL (10080 min /
+      7 days) are not env-driven — they derive from <code>APP_ID</code> and
+      are set in <code>LoadCommonConfig</code>.
+    </p>
+
+    <h3>OTP / payment / upload (legacy business integrations)</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>OTP_URL_REQUEST</code> / <code>OTP_URL_VERIFY</code> / <code>OTP_SMS_KEY</code> / <code>OTP_SMS_SECRET</code></td><td>SMS OTP provider (ThaiBulkSMS or similar) used by <code>common/otp.go</code>.</td></tr>
+        <tr><td><code>PAYMENT_2C2P_SECRET</code> / <code>PAYMENT_2C2P_MERCHANT_ID</code> / <code>PAYMENT_2C2P_REQUEST_URL</code> / <code>PAYMENT_2C2P_INQUIRY_URL</code> / <code>PAYMENT_2C2P_REFUND_URL</code></td><td>2C2P payment endpoints (<code>common/payment_2c2p*.go</code>).</td></tr>
+        <tr><td><code>UPLOAD_SERVICE_URL</code> / <code>UPLOAD_TOKEN</code></td><td>Internal file-upload API used by <code>common/upload*.go</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Observability</h3>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>LOG_LEVEL</code></td><td>enum</td><td><code>info</code></td><td><code>debug|info|warn|error|critical</code>.</td></tr>
+        <tr><td><code>SENTRY_DSN</code></td><td>string</td><td>empty</td><td>Empty disables Sentry.</td></tr>
+        <tr><td><code>SENTRY_ENV</code></td><td>string</td><td>empty</td><td>Tags Sentry events.</td></tr>
+        <tr><td><code>OTEL_EXPORTER_OTLP_ENDPOINT</code></td><td>URL</td><td>empty</td><td>Empty disables OTLP exporter (no spans/metrics exported).</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="config-toml">5.2 config.toml</h2>
+    <p>
+      Not applicable. The library never reads <code>config.toml</code>,
+      <code>config.yaml</code> or any other on-disk config beyond
+      <code>.env</code> / <code>.env.{APP_ENV}</code>. This is intentional — env
+      vars are the only source-of-truth so behaviour stays identical between
+      local <code>go run</code>, CI and GAE.
+    </p>
+
+    <h2 id="tuning">5.3 Tuning Knobs</h2>
+    <table>
+      <thead>
+        <tr><th>Knob</th><th>Default</th><th>Why you might change it</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>DB pool sizes</td><td>25 open / 10 idle / 30 min lifetime</td><td>Match the Cloud SQL instance's <code>max_connections</code> ÷ instance count. App Engine spawns up to F4 × auto-scaling instances — set conservatively to avoid pool exhaustion.</td></tr>
+        <tr><td>Rate limit thresholds</td><td>10/min strict, 100/s default</td><td>Strict: dial down when seeing brute-force; default: raise for batch/import endpoints.</td></tr>
+        <tr><td><code>HTTP_BODY_LIMIT_MB</code></td><td>4 MB (Fiber default)</td><td>Raise for file-upload endpoints; pair with explicit per-route caps so a single endpoint doesn't open everything else.</td></tr>
+        <tr><td><code>BootstrapTimeout</code> / <code>shutdownTimeout</code></td><td>5 s / 10 s</td><td>Compile-time constants in <code>infra/app.go</code>; raise only if a known slow client (e.g. cold Cloud SQL) needs a longer window. Past 30 s the GAE healthcheck will mark the instance dead.</td></tr>
+        <tr><td>Request-log bodies</td><td>off</td><td>Flip <code>HTTP_REQUEST_LOG_OMIT_*</code> to <code>false</code> for short-lived debug sessions; keep off in prod (PII).</td></tr>
+        <tr><td><code>WAKE_UP_MINUTE</code></td><td>disabled</td><td>Set 1–10 to wake idle GAE instances and run the version-drift check. Don't enable below 1 — GAE charges per request.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="stack">5.4 Tech Stack &amp; Module Layout</h2>
+
+    <h3>Stack</h3>
+    <table>
+      <thead>
+        <tr><th>Layer</th><th>Choice</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Language</td><td>Go 1.26.1</td></tr>
+        <tr><td>HTTP framework</td><td><code>github.com/gofiber/fiber/v3</code></td></tr>
+        <tr><td>ORM</td><td><code>gorm.io/gorm</code> with MySQL &amp; Postgres drivers + OTel plugin</td></tr>
+        <tr><td>Migrations</td><td><code>golang-migrate/migrate/v4</code></td></tr>
+        <tr><td>Mongo driver</td><td><code>go.mongodb.org/mongo-driver/v2</code></td></tr>
+        <tr><td>Redis client</td><td><code>github.com/redis/go-redis/v9</code></td></tr>
+        <tr><td>JWT</td><td><code>github.com/golang-jwt/jwt/v5</code> (HS256)</td></tr>
+        <tr><td>Cloud SDKs</td><td><code>cloud.google.com/go/firestore</code>, <code>pubsub/v2</code>, <code>storage</code>, <code>logging</code>; <code>firebase.google.com/go/v4</code></td></tr>
+        <tr><td>Mail</td><td><code>github.com/mailgun/mailgun-go/v4</code></td></tr>
+        <tr><td>Observability</td><td><code>github.com/getsentry/sentry-go</code>, <code>go.opentelemetry.io/otel</code> (OTLP HTTP), <code>github.com/prometheus/client_golang</code></td></tr>
+        <tr><td>Scheduling</td><td><code>github.com/go-co-op/gocron/v2</code></td></tr>
+        <tr><td>Validation</td><td><code>github.com/go-playground/validator/v10</code></td></tr>
+        <tr><td>Env loading</td><td><code>github.com/joho/godotenv</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Repository layout</h3>
+    <pre><code>middleware/
+├── infra/           framework + lifecycle + clients (67 files)
+│                    NewApp, Run, env, logger, fiber, jwt, auth_v2,
+│                    gorm, mongo, redis, firebase, pubsub, storage,
+│                    mail, rate_limit, metrics, otel, sentry, …
+├── common/          business helpers + legacy bridges to infra (38 files)
+│                    encrypt/decrypt, otp, payment_2c2p, upload,
+│                    discord, fiber_pagination, log_action, …
+├── kit/             stateless utilities (41 files)
+│                    slice, time, http, image, qr, geo, validate,
+│                    mail, pdf, zip, runtime, sync, …
+├── model/           shared DTOs and the GormModel mixin
+├── orm/             117 shared GORM models (User, Vehicle, Booking, …)
+├── permission/      single-file RBAC primitive
+└── docs/            this documentation site
+
+go.mod              module github.com/FourWD/middleware
+.env.example        authoritative env template
+.gitlab-ci.yml      GitLab CI pipeline
+</code></pre>
+
+    <h3>Consuming the library from a service</h3>
+    <pre><code>// main.go
+package main
+
+import (
+    "log"
+
+    "github.com/FourWD/middleware/infra"
+    "myservice/internal/app"
+)
+
+func main() {
+    a, err := infra.NewApp(app.Register)
+    if err != nil {
+        log.Fatal(err)
+    }
+    if err := a.Run(); err != nil {
+        log.Fatal(err)
+    }
+}
+
+// internal/app/register.go
+package app
+
+import (
+    "github.com/FourWD/middleware/infra"
+    "github.com/gofiber/fiber/v3"
+)
+
+func Register(web *fiber.App, deps infra.AppDeps) error {
+    if err := infra.MigrateInfra(deps); err != nil {
+        return err
+    }
+
+    tm := infra.NewTokenManager(deps.Runtime.Config.Auth, deps.Security.RefreshTokens)
+    web.Use(infra.AuthenticationMiddlewareV2(infra.AuthMiddlewareV2Config{
+        TokenManager: tm,
+        Blacklist:    deps.Security.BlacklistStore,
+        ExemptPaths:  []string{"/api/v1/auth/login", "/api/v1/auth/refresh"},
+    }))
+
+    routes.Mount(web, deps, tm)
+    return nil
+}
+</code></pre>
+
+    <h2 id="rollout">5.5 Rollout Steps</h2>
+    <p>
+      The library is published as a Go module; consuming services pin a
+      specific commit in their <code>go.mod</code>. There is no deployable
+      artefact to roll out from this repo — the rollout below is for a change
+      to this library that needs to land in downstream services.
+    </p>
+    <ol>
+      <li><strong>Branch &amp; PR</strong> in this repo. Make the change behind a new function or new optional config field so existing callers stay compiling.</li>
+      <li><strong>Run the test suite</strong>: <code>go vet ./...</code> then <code>go test ./...</code>. CI mirrors this via <code>.gitlab-ci.yml</code>.</li>
+      <li><strong>Tag a commit</strong> on <code>main</code> (no semver yet — services pin by commit hash).</li>
+      <li><strong>Update consumers one at a time</strong>: <code>go get github.com/FourWD/middleware@&lt;sha&gt;</code> + <code>go mod tidy</code> in the service repo. Run the service's own test suite.</li>
+      <li><strong>Deploy each service to its <code>dev</code> GAE service</strong>, exercise the affected surface, watch logs and Sentry.</li>
+      <li><strong>Promote to <code>prod</code></strong> per service, one at a time. Keep the previous GAE version "serving" (no migrate traffic) for ~15 min so rollback is one click.</li>
+      <li><strong>Update <code>.env.example</code></strong> in this repo whenever a new env var is introduced, and announce the variable in the team channel so ops can populate it in Secret Manager.</li>
+    </ol>
+
+    <h2 id="rollback">5.6 Rollback Plan</h2>
+
+    <h3>Service-level (per consumer)</h3>
+    <ol>
+      <li>In GCP Console → App Engine → Versions, migrate 100% traffic back to the previous version. Takes ~30 s; in-flight requests get the new version's bounded shutdown.</li>
+      <li>If the regression was triggered by a new env var, set/unset it in Secret Manager and redeploy — most flags here are opt-in, so unsetting is safe.</li>
+      <li>If a Mongo index was created via <code>EnsureIndexes</code> and turned out wrong, drop it manually: <code>db.&lt;coll&gt;.dropIndex("&lt;name&gt;")</code>. Boot logs a warning and continues.</li>
+      <li>If a SQL migration was applied: <code>migrate -path ./migrations -database "&lt;dsn&gt;" down 1</code> against the affected service's DB (see <a href="database.html#migration">3.3</a>).</li>
+    </ol>
+
+    <h3>Library-level (this repo)</h3>
+    <ol>
+      <li>Revert the offending commit on <code>main</code> and push.</li>
+      <li>In each affected service, <code>go get github.com/FourWD/middleware@&lt;previous-sha&gt;</code> + <code>go mod tidy</code> + redeploy.</li>
+      <li>Capture the regression in an incident note so the next iteration of the change includes a regression test.</li>
+    </ol>
+
+    <h2 id="roadmap">5.7 Roadmap</h2>
+    <ul>
+      <li><strong>Retire <code>common/</code> business helpers.</strong> Long-term plan is to keep <code>common/</code> as bridge code only; move OTP, payment, upload, Discord and similar concerns into the service that actually uses them.</li>
+      <li><strong>Consolidate Auth V1 → V2.</strong> V1 (<code>infra/auth_middleware.go</code>) and the legacy <code>JWTClaims</code> shape remain for backwards compatibility; new code should target Auth V2 + <code>TokenManager</code> exclusively.</li>
+      <li><strong>Decide on the <code>kafka</code> package.</strong> Currently orphan (no callers, not wired into <code>infra</code>) — either integrate as a first-class client with config + lifecycle, or delete.</li>
+      <li><strong>Semver tags.</strong> Consumers currently pin by commit hash; introduce tagged releases once the surface is stable enough to commit to a compatibility promise.</li>
+    </ul>
+
+    <footer>middleware · last updated 2026-05-24</footer>
+  </div>
+</body>
+</html>

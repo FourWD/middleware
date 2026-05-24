@@ -6,7 +6,8 @@
       "Bash(go test *)",
       "Bash(go mod *)",
       "Bash(rm -v common/mail.go common/zip_file.go)",
-      "Bash(rm -rv kafka/)"
+      "Bash(rm -rv kafka/)",
+      "WebFetch(domain:pakkad.fourwd.me)"
     ]
   }
 }

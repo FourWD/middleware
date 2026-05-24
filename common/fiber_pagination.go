@@ -22,10 +22,9 @@ func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) err
 	}
 	offset := (page - 1) * limit
 
-	// Step 2: Ensure no unsafe SQL command
-	blocked := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
-	if kit.StringExistsInList(strings.ToUpper(baseSQL), blocked) {
-		return FiberError(c, "1001", "NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
+	// Step 2: Ensure base SQL is a read-only statement before wrapping with pagination.
+	if !kit.IsReadOnlySQL(baseSQL) {
+		return FiberError(c, "1001", "NOT ALLOW: only SELECT/WITH/SHOW/EXPLAIN/DESC statements are permitted")
 	}
 
 	// Step 3: Construct paginated SQL

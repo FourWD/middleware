@@ -192,9 +192,8 @@ func rawSql(sql string, values ...interface{}) string {
 }
 
 func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string, error) {
-	list := []string{"INSERT ", "UPDATE ", "DELETE ", "CREATE ", "EMPTY ", "DROP ", "ALTER ", "TRUNCATE "}
-	if kit.StringExistsInList(strings.ToUpper(sql), list) {
-		return nil, "", errors.New("NOT ALLOW: INSERT/UPDATE/DELETE/CREATE/EMPTY/DROP/ALTER/TRUNCATE")
+	if !kit.IsReadOnlySQL(sql) {
+		return nil, "", errors.New("NOT ALLOW: only SELECT/WITH/SHOW/EXPLAIN/DESC statements are permitted")
 	}
 
 	rows, err := db.Query(sql, values...)

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database — middleware</title>
+  <link rel="stylesheet" href="https://pakkad.fourwd.me/docs/style.css">
+</head>
+<body>
+  <nav class="top">
+    <div class="inner">
+      <span class="brand">middleware</span>
+      <a href="index.html">Overview</a>
+      <a href="ui-flow.html">UI &amp; Flow</a>
+      <a href="database.html" class="active">Database</a>
+      <a href="api.html">API &amp; Integration</a>
+      <a href="deployment.html">Config &amp; Deployment</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <h1>Database</h1>
+    <p class="lead">
+      The library owns three persistence surfaces: GORM-backed SQL pools
+      (MySQL or Postgres, with optional Cloud SQL Unix socket), MongoDB (two
+      independent clients — business and middleware) and Redis. The
+      <code>orm</code> package ships shared GORM models reused across services;
+      this library itself stores only two Mongo collections —
+      <code>blacklist_tokens</code> and <code>refresh_tokens</code> — used by auth.
+    </p>
+    <p class="docmeta">
+      <span class="badge">v1</span>
+      Owned by: <code>@puarns</code> · Last reviewed: 2026-05-24
+    </p>
+
+    <h2 id="er-diagram">3.1 ER Diagram</h2>
+    <p>
+      Persistence surfaces owned or wired by this library. Solid arrows are
+      writes; dashed arrows are reads. The boxes labelled "service-owned" are
+      the schemas each consuming service ships in its own
+      <code>migrations/</code> directory — they are out of scope for this repo.
+    </p>
+    <pre class="diagram">
+                  ┌─────────────────────────────────────────────────────┐
+                  │                  infra.NewApp                       │
+                  └─────────────────────────────────────────────────────┘
+                       │            │              │             │
+                       ▼            ▼              ▼             ▼
+              ┌──────────────┐ ┌──────────┐ ┌──────────────┐ ┌────────┐
+              │ SQL (GORM)   │ │  Redis   │ │ Mongo        │ │Mongo   │
+              │ DB_*         │ │ REDIS_*  │ │ MONGO_*      │ │MWARE_* │
+              │ MySQL/PG     │ │          │ │ (business)   │ │(auth)  │
+              └──────┬───────┘ └────┬─────┘ └──────┬───────┘ └───┬────┘
+                     │              │              │             │
+                     ▼              ▼              ▼             ▼
+         ┌───────────────────┐ ┌─────────┐  service-owned   ┌──────────────────┐
+         │ orm.* shared      │ │ rate    │  collections     │ blacklist_tokens │
+         │ (User, Vehicle,   │ │ limit   │                  │ refresh_tokens   │
+         │  Booking, …)      │ │ keys    │                  │   ← LIB OWNS     │
+         │ + service tables  │ └─────────┘                  └──────────────────┘
+         │ (service-owned)   │
+         └───────────────────┘
+                     ▲
+                     │
+              ┌──────┴────────┐
+              │ DB2_*         │ optional secondary GORM pool (reporting, mirror)
+              └───────────────┘
+    </pre>
+
+    <h2 id="schema">3.2 Schema</h2>
+
+    <h3>3.2.1 SQL connection model (MySQL / Postgres)</h3>
+    <p>
+      Driver is selected by <code>DB_DRIVER</code> (or <code>DB2_DRIVER</code>).
+      DSN is assembled by <code>BuildMySQLDSN</code> or <code>BuildPostgresDSN</code>;
+      when <code>DB_INSTANCE</code> is set the MySQL DSN switches to a Cloud SQL
+      Unix socket at <code>/cloudsql/&lt;instance&gt;</code> and the host/port fields
+      are ignored.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Driver</th><th>DSN template</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>mysql</code> (TCP)</td><td><code>user:pass@tcp(host:port)/name?charset=utf8mb4&amp;parseTime=True&amp;loc=Local</code></td></tr>
+        <tr><td><code>mysql</code> (Cloud SQL)</td><td><code>user:pass@unix(/cloudsql/&lt;DB_INSTANCE&gt;)/name?…</code></td></tr>
+        <tr><td><code>postgres</code></td><td><code>host=… user=… password=… dbname=… port=… sslmode=disable TimeZone=UTC</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.2.2 Pool tuning</h3>
+    <p>
+      Each pool sets <code>SetMaxIdleConns</code>, <code>SetMaxOpenConns</code> and
+      <code>SetConnMaxLifetime</code> from env. Defaults below; OpenTelemetry
+      tracing is auto-registered via <code>gorm.io/plugin/opentelemetry</code>.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Setting</th><th>Env (primary)</th><th>Env (secondary)</th><th>Default</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Driver</td><td><code>DB_DRIVER</code></td><td><code>DB2_DRIVER</code></td><td><code>mysql</code></td></tr>
+        <tr><td>Max open conns</td><td><code>DB_MAX_OPEN_CONNS</code></td><td><code>DB2_MAX_OPEN_CONNS</code></td><td>25</td></tr>
+        <tr><td>Max idle conns</td><td><code>DB_MAX_IDLE_CONNS</code></td><td><code>DB2_MAX_IDLE_CONNS</code></td><td>10</td></tr>
+        <tr><td>Max lifetime</td><td><code>DB_MAX_LIFETIME_MINUTES</code></td><td><code>DB2_MAX_LIFETIME_MINUTES</code></td><td>30 min</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>Note —</strong> the secondary pool is fully optional. Leaving
+      <code>DB2_NAME</code> empty skips <code>OpenDB</code> for the secondary —
+      <code>Databases.Secondary</code> stays nil and any caller that wants it
+      must nil-check.
+    </div>
+
+    <h3>3.2.3 Auth-store collections (Mongo, library-owned)</h3>
+    <p>
+      Auto-created lazily by <code>ensureAuthStoreIndexes</code> on boot. Live
+      in whichever Mongo client wins under
+      <a href="index.html#br-5">BR-5</a>: <code>MongoMiddleware</code> if
+      enabled, otherwise <code>Mongo</code> (primary). Both stores call
+      <code>EnsureIndexes</code> in a background goroutine — permission errors
+      log and continue, not abort boot.
+    </p>
+
+    <h4>blacklist_tokens</h4>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>token</code></td><td>string</td><td>Raw JWT access token string. Unique.</td></tr>
+        <tr><td><code>createdAt</code></td><td>BSON date</td><td>Insert time (UTC).</td></tr>
+        <tr><td><code>expiresAt</code></td><td>BSON date</td><td>Original token expiry; the TTL index sweeps on this field.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead>
+        <tr><th>Index name</th><th>Keys</th><th>Options</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>token_unique</code></td><td><code>{ token: 1 }</code></td><td>unique</td></tr>
+        <tr><td><code>expiresAt_ttl</code></td><td><code>{ expiresAt: 1 }</code></td><td><code>expireAfterSeconds: 0</code></td></tr>
+      </tbody>
+    </table>
+
+    <h4>refresh_tokens</h4>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>token_id</code></td><td>string</td><td>JWT <code>jti</code>. Unique within an issuer.</td></tr>
+        <tr><td><code>issuer</code></td><td>string</td><td><code>JWT_ISSUER</code> (= <code>APP_ID</code>). Prevents cross-service collisions.</td></tr>
+        <tr><td><code>user_email</code></td><td>string</td><td>JWT <code>sub</code>; convenience for ops queries.</td></tr>
+        <tr><td><code>expires_at</code></td><td>BSON date</td><td>Refresh-token expiry. Filter <code>expires_at &gt; now</code> covers the window between expiry and TTL sweep.</td></tr>
+        <tr><td><code>created_at</code></td><td>BSON date</td><td>Insert time (UTC).</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead>
+        <tr><th>Index name</th><th>Keys</th><th>Options</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>token_issuer_unique</code></td><td><code>{ token_id: 1, issuer: 1 }</code></td><td>unique</td></tr>
+        <tr><td><code>expires_at_ttl</code></td><td><code>{ expires_at: 1 }</code></td><td><code>expireAfterSeconds: 0</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.2.4 Redis key layout</h3>
+    <table>
+      <thead>
+        <tr><th>Key pattern</th><th>Type</th><th>TTL</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>blacklist:&lt;token&gt;</code></td><td>string (value <code>1</code>)</td><td>token remaining lifetime</td><td><code>RedisBlacklistStore</code>; alternative to the Mongo backend.</td></tr>
+        <tr><td><code>&lt;APP_ID&gt;:refresh_token:&lt;jti&gt;</code></td><td>string (value <code>user_email</code>)</td><td>refresh-token TTL</td><td><code>RedisRefreshTokenStore</code>; prefix isolates multiple services on the same Redis DB.</td></tr>
+        <tr><td><code>&lt;APP_ID&gt;:rate_limit:strict:&lt;route&gt;:&lt;subject&gt;</code></td><td>counter (INCR)</td><td>60 s</td><td>Strict-tier rate limit (auth endpoints). Atomic <code>INCR + EXPIRE</code> via Lua to avoid lingering keys without TTL.</td></tr>
+        <tr><td><code>&lt;APP_ID&gt;:rate_limit:default:&lt;route&gt;:&lt;subject&gt;</code></td><td>counter (INCR)</td><td>1 s</td><td>Default-tier rate limit (regular API).</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.2.5 Shared <code>orm</code> models</h3>
+    <p>
+      The <code>orm</code> package ships <strong>117 GORM model files</strong>
+      reused across services (vehicle, booking, finance, log, survey, etc.).
+      Every domain row embeds the common <code>model.GormModel</code> mixin
+      below; soft-delete is on by default via <code>gorm.DeletedAt</code>.
+    </p>
+    <pre><code>package model
+
+type GormModel struct {
+    CreatedAt time.Time      `gorm:"&lt;-:create"`
+    UpdatedAt time.Time
+    DeletedAt gorm.DeletedAt `gorm:"index"`
+    CreatedBy string         `gorm:"type:varchar(36)"`
+    UpdatedBy string         `gorm:"type:varchar(36)"`
+    DeletedBy string         `gorm:"type:varchar(36)"`
+}</code></pre>
+    <p>
+      Conventions enforced by the existing models in <a href="https://github.com/FourWD/middleware/tree/main/orm">orm/</a>:
+    </p>
+    <ul>
+      <li>Primary key is always <code>id varchar(36)</code> (UUID) with <code>uniqueIndex:idx_id</code>; integer auto-increment <code>RunningNo</code> is added where humans need a stable monotonic reference.</li>
+      <li>FK columns are bare <code>varchar(36)</code> — relations are described in code, not at the schema level.</li>
+      <li>Lookup tables use a short typed code: <code>varchar(2)</code> for two-character status/type IDs.</li>
+      <li>Soft delete is always on; physical deletes happen through migration scripts only, not the API.</li>
+    </ul>
+
+    <h2 id="migration">3.3 Data Migration</h2>
+    <p>
+      <code>infra.RunMigrations(cfg)</code> runs <code>golang-migrate/migrate/v4</code>
+      against the <em>primary</em> pool at boot. The runner is a no-op when
+      <code>MIGRATIONS_ENABLED=false</code> or the migrations directory has no
+      files; this means a service can ship without migrations and still boot.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Setting</th><th>Env</th><th>Default</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Enabled</td><td><code>MIGRATIONS_ENABLED</code></td><td><code>false</code></td></tr>
+        <tr><td>Source directory</td><td><code>MIGRATIONS_PATH</code></td><td><code>migrations</code> (relative to working dir)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>File naming</h3>
+    <p>
+      Each service owns its migration files. They follow the standard
+      <code>golang-migrate</code> convention:
+    </p>
+    <pre><code>migrations/
+  0001_init.up.sql
+  0001_init.down.sql
+  0002_add_user_status.up.sql
+  0002_add_user_status.down.sql</code></pre>
+
+    <h3>Rollback</h3>
+    <p>
+      The runner only calls <code>Up()</code> — there is no auto-rollback. Manual
+      rollback is performed via the <code>migrate</code> CLI against the same
+      database with the same source URL:
+    </p>
+    <pre><code>migrate -path ./migrations \
+        -database "mysql://user:pass@tcp(host:3306)/name" \
+        down 1</code></pre>
+
+    <div class="warn">
+      <strong>Warn —</strong> migrations run synchronously <em>before</em>
+      <code>OpenDB</code> opens the application pool. A failing migration
+      aborts boot. Schema-altering migrations that take minutes on a large
+      table should be applied out-of-band first, then committed as a no-op
+      file to bring the version table in sync.
+    </div>
+
+    <h2 id="seed-data">3.4 Seed Data</h2>
+    <p>
+      The library does not ship seed data. Per-service seeds (lookup tables,
+      default roles, admin user) live in the consuming service's
+      <code>migrations/</code> directory as additional <code>.up.sql</code> files
+      so the migration runner brings them in alongside the schema.
+    </p>
+
+    <h2 id="throughput">3.5 Throughput Patterns</h2>
+    <p>
+      The library does not impose query patterns on service code. The two
+      throughput surfaces it does provide:
+    </p>
+    <ul>
+      <li><strong>DB pool metrics</strong> — <code>registerDBMetrics</code> exposes a Prometheus collector that scrapes <code>sql.DBStats</code> lazily on each <code>/metrics</code> hit. Watch <code>db_open_connections</code>, <code>db_wait_count</code>, <code>db_wait_duration_seconds_total</code> for pool saturation.</li>
+      <li><strong>Rate-limit Lua script</strong> — the strict and default tiers run a single round-trip <code>INCR</code> + conditional <code>EXPIRE</code> script (<code>rateLimitScript</code> in <code>infra/rate_limit.go</code>) so a counter never lingers without TTL even if the second command races. The fallback in-memory store sweeps expired keys every 30 s.</li>
+    </ul>
+
+    <footer>middleware · last updated 2026-05-24</footer>
+  </div>
+</body>
+</html>

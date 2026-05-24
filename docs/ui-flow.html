@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI &amp; Flow — middleware</title>
+  <link rel="stylesheet" href="https://pakkad.fourwd.me/docs/style.css">
+</head>
+<body>
+  <nav class="top">
+    <div class="inner">
+      <span class="brand">middleware</span>
+      <a href="index.html">Overview</a>
+      <a href="ui-flow.html" class="active">UI &amp; Flow</a>
+      <a href="database.html">Database</a>
+      <a href="api.html">API &amp; Integration</a>
+      <a href="deployment.html">Config &amp; Deployment</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <h1>UI &amp; Flow</h1>
+    <p class="lead">
+      The library has no end-user UI. "Flows" here describe the runtime
+      sequences operators and service authors deal with: boot, request, auth,
+      and shutdown. Each flow lists the actors, the order of effects, the
+      success path and the documented failure branches.
+    </p>
+    <p class="docmeta">
+      <span class="badge">v1</span>
+      Owned by: <code>@puarns</code> · Last reviewed: 2026-05-24
+    </p>
+
+    <h2 id="user-flows">2.1 User Flows</h2>
+
+    <h3 id="uf-1">UF-1 — Service boot via <code>infra.NewApp</code></h3>
+    <p>
+      A service's <code>main</code> calls <code>infra.NewApp(registrar).Run()</code>.
+      <code>NewApp</code> performs all infra initialisation in a fixed order; any
+      step that returns an error runs accumulated cleanup hooks and aborts boot.
+    </p>
+    <pre class="diagram">
+main()
+  └─ infra.NewApp(registrar)
+       1. LoadEnvFiles        .env → .env.{APP_ENV}   (existing env wins)
+       2. LoadCommonConfig    CommonConfig from env (APP_ID, DB, Redis, …)
+       3. validateCommonConfig fail-fast on bad values
+       4. NewLoggerWith        structured logger (slog, JSON in non-local)
+       5. initGlobals + tz     bind globals, set process timezone
+       6. SetupSentry          register Sentry transport (optional)
+       7. SetupOTel            OTLP tracer + meter (optional)
+       8. initInfrastructure   DB, Redis, Mongo, Firebase, PubSub, Storage, Mail
+       9. bindDatabaseGlobal   wire global infra.Database for legacy callers
+      10. ensureAuthStoreIndexes  best-effort Mongo TTL/index create (async)
+      11. buildRateLimiter    Redis-backed if REDIS_ENABLED, else in-memory
+      12. registerDBMetrics    Prometheus pool collector
+      13. registerGAEVersionCheck  background poller (GAE only)
+      14. NewHeartbeatScheduler   gocron jobs
+      15. NewFiberApp + RegisterStack
+      16. registerDefaultRoutes  /_ah/warmup, /wake-up
+      17. registrar(web, deps)   PROJECT CODE — mount routes
+      18. start heartbeat       if scheduler is non-nil
+  └─ App.Run()
+       19. spawn workers
+       20. fiber.Listen
+       21. wait SIGINT / SIGTERM
+       22. cancel engine → wait workers (≤ 10 s)
+       23. fiber.ShutdownWithContext (≤ 10 s)
+       24. run shutdown hooks LIFO (≤ 5 s)
+    </pre>
+
+    <div class="note">
+      <strong>Note —</strong> the registrar is the <em>only</em> hook for
+      project-specific code. Auth middleware, migrations and project routes
+      all live there. <code>NewApp</code> deliberately does not call
+      <code>AuthenticationMiddleware</code> automatically because not every service uses
+      the same gate (V1 vs V2, custom Firebase-token middleware, etc.).
+    </div>
+
+    <h3 id="uf-2">UF-2 — Authenticated HTTP request (V2 stack)</h3>
+    <p>
+      The default stack <code>RegisterStack</code> mounts middleware in a fixed
+      order. Auth V2 sits at the registrar layer, after the base stack, before
+      any business middleware.
+    </p>
+    <pre class="diagram">
+HTTP request
+  │
+  ├─ RequestID           inject X-Request-ID, stamp ctx
+  ├─ CORS                Allow-Origin from HTTP_ALLOW_ORIGINS
+  ├─ Sentry              recover panic → Sentry event
+  ├─ Recover             secondary panic guard, 500 envelope
+  ├─ OTel                start server span, attach trace_id to ctx
+  ├─ Metrics             http_request_duration_seconds, in-flight gauge
+  ├─ RequestLog          structured access log (body/headers gated by env)
+  ├─ Envelope            if HTTP_ENVELOPE_ENABLED, wrap raw JSON
+  ├─ RequestMeta         stamp client IP + User-Agent on ctx
+  │
+  ├─ AuthenticationMiddlewareV2  (registrar-installed)
+  │     • OPTIONS → next                  (CORS preflight)
+  │     • path in exempt set → next       (built-ins + env + caller list)
+  │     • Authorization: Bearer &lt;jwt&gt;     parse → ParseAccessToken
+  │       └─ blacklist check (fail-open on lookup error)
+  │       └─ inject AuthSession into ctx
+  │
+  ├─ RateLimit           (per-group: strict / default / skip)
+  │
+  └─ Handler             handler reads AuthSessionFrom(ctx)
+                         returns JSON via WriteSuccess / WriteErrorEnvelope
+                         or returns *AppError → AppErrorHandler envelopes it
+    </pre>
+
+    <h3 id="uf-3">UF-3 — Refresh token rotation</h3>
+    <pre class="diagram">
+POST /auth/refresh  { refresh_token }
+  │
+  └─ TokenManager.Refresh(ctx, refreshToken)
+       1. Parse              signature, exp, issuer, alg = HS256
+       2. require token_type == "refresh"        else WRONG_TOKEN_TYPE
+       3. store.IsActive(jti)                   else TOKEN_REVOKED
+       4. store.Revoke(jti)                     one-shot rotation
+       5. GeneratePair(user)                    new access + new refresh jti
+       6. store.Save(newRefreshJti, sub, exp)
+       7. return TokenPair { access, refresh, ttls, "Bearer" }
+    </pre>
+
+    <h3 id="uf-4">UF-4 — Graceful shutdown</h3>
+    <pre class="diagram">
+SIGINT / SIGTERM
+  │
+  ├─ cancel engine ctx        (workers see ctx.Done())
+  ├─ wait workers (≤ 10 s)    timeout → "workers shutdown timeout" log
+  ├─ fiber.ShutdownWithContext (≤ 10 s)
+  └─ runShutdownHooks (LIFO, ≤ 5 s)
+        • DB pools close
+        • Redis close
+        • Mongo close
+        • Firebase close
+        • PubSub close
+        • Storage close
+        • OTel shutdown (flush spans)
+        • Sentry flush
+        • Heartbeat scheduler shutdown
+        • GAE version watcher stop
+    </pre>
+
+    <h3 id="uf-5">UF-5 — App Engine warmup &amp; wake-up</h3>
+    <p>
+      Two routes are mounted automatically by <code>registerDefaultRoutes</code>.
+      Both are public (no auth) and idempotent.
+    </p>
+    <ul>
+      <li><code>GET /_ah/warmup</code> — App Engine sends this before routing traffic to a new instance. Always returns <code>200 {status:1, code:"0000"}</code>; the side-effect is that handler initialisation has already happened by the time the first user request arrives.</li>
+      <li><code>GET /wake-up</code> — used by the in-process GAE version watcher. Returns the running <code>app_id</code>, <code>app_version</code> and <code>env</code>. When the watcher sees a version mismatch it logs and exits so the process restarts on the new build.</li>
+    </ul>
+
+    <h2 id="mockups">2.2 Mockups</h2>
+    <p>Not applicable — this library has no UI. Operator surfaces are JSON over HTTP only (see <a href="api.html">API &amp; Integration</a>).</p>
+
+    <h2 id="states">2.3 Page / Screen States</h2>
+    <p>
+      The closest analogue to UI states for this library is the
+      <strong>readiness</strong> reported by <code>/healthz</code> and
+      <code>/readyz</code>. Both endpoints render a <code>HealthReport</code>
+      built by the service; the library only enforces the response shape.
+    </p>
+    <table>
+      <thead>
+        <tr><th>State</th><th>HTTP</th><th>Trigger</th><th>Operator action</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>ok</code></td><td>200</td><td>All component checks pass.</td><td>None.</td></tr>
+        <tr><td><code>degraded</code></td><td>200</td><td>Service decides via custom <code>HealthReport</code> — partial loss of optional infra.</td><td>Investigate logs; service still serves.</td></tr>
+        <tr><td><code>unhealthy</code></td><td>503</td><td><code>HealthReport.Healthy()</code> returns false (e.g. primary DB gone).</td><td>Page on call; GAE/k8s removes pod from rotation.</td></tr>
+        <tr><td>Boot failure</td><td>—</td><td>Any <code>NewApp</code> step returns an error.</td><td>Process exits non-zero; cleanup hooks run; check structured log lines tagged <code>kind=startup</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="validations">2.4 Form Validations</h2>
+    <p>
+      The library validates incoming config (env) and incoming HTTP payloads
+      (struct tags). There are no end-user forms.
+    </p>
+
+    <h3>Env validation — fail-fast at boot</h3>
+    <p>Performed by <code>validateCommonConfig</code> in <code>infra/env.go</code> /
+       <code>infra/app.go</code>. Any failure returns a non-zero exit.</p>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Rule</th><th>Error message</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>APP_ENV</code></td><td>must be <code>local</code>, <code>dev</code>, <code>prod</code> or <code>test</code></td><td><code>invalid APP_ENV: %q (allowed: local, dev, prod, test)</code></td></tr>
+        <tr><td><code>APP_ID</code></td><td>non-empty after trim</td><td><code>invalid APP_ID</code></td></tr>
+        <tr><td><code>HTTP_ADDRESS</code></td><td>non-empty (defaults to <code>:8080</code>)</td><td><code>invalid HTTP_ADDRESS</code></td></tr>
+        <tr><td><code>HTTP_DEBUG_AUTH_TOKEN</code></td><td>≥ 16 chars when set</td><td><code>invalid HTTP_DEBUG_AUTH_TOKEN: must be at least 16 characters</code></td></tr>
+        <tr><td><code>DB_*</code> / <code>DB2_*</code></td><td>required only when <code>DB_NAME</code>/<code>DB2_NAME</code> is set; driver in <code>{mysql, postgres}</code>; pool sizes &gt; 0</td><td><code>invalid DB_DRIVER</code>, <code>invalid DB_HOST</code>, etc.</td></tr>
+        <tr><td><code>REDIS_ADDR</code></td><td>non-empty when <code>REDIS_ENABLED=true</code></td><td><code>invalid REDIS_ADDR</code></td></tr>
+        <tr><td><code>JWT_SECRET</code></td><td>always required (BR-3)</td><td><code>invalid JWT_SECRET</code></td></tr>
+        <tr><td><code>JWT_BLACKLIST_ENABLED</code></td><td>requires <code>MONGO_MIDDLEWARE_ENABLED</code> or <code>REDIS_ENABLED</code> (BR-5)</td><td><code>JWT_BLACKLIST_ENABLED requires MONGO_MIDDLEWARE_ENABLED or REDIS_ENABLED</code></td></tr>
+        <tr><td><code>PUBSUB_PROJECT_ID</code></td><td>required when <code>PUBSUB_ENABLED=true</code></td><td><code>PUBSUB_PROJECT_ID is required when PUBSUB_ENABLED=true</code></td></tr>
+        <tr><td><code>STORAGE_BUCKET</code></td><td>required when <code>STORAGE_ENABLED=true</code></td><td><code>STORAGE_BUCKET is required when STORAGE_ENABLED=true</code></td></tr>
+        <tr><td><code>MAILGUN_DOMAIN</code> / <code>MAILGUN_API_KEY</code></td><td>both required when <code>MAIL_ENABLED=true</code></td><td><code>MAILGUN_DOMAIN is required when MAIL_ENABLED=true</code> / <code>MAILGUN_API_KEY is required when MAIL_ENABLED=true</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>HTTP payload validation</h3>
+    <p>
+      <code>NewFiberApp</code> wires <code>NewValidator()</code> as Fiber's
+      <code>StructValidator</code>. Handlers call <code>c.Bind().Body(&amp;dto)</code>
+      and the validator runs <code>go-playground/validator/v10</code> tags
+      automatically; failures bubble up as <code>*fiber.Error</code> and the
+      global <code>AppErrorHandler</code> converts them to a
+      <code>400 request_error</code> envelope.
+    </p>
+
+    <h2 id="edge-cases">2.5 Edge Cases</h2>
+    <ul class="checklist">
+      <li><strong>Boot without a database.</strong> Empty <code>DB_NAME</code> skips migration runner and <code>OpenDB</code>; <code>infra.Database</code> stays nil and any legacy helper that touches it returns <code>infra.Database not initialized</code>.</li>
+      <li><strong>Boot without Redis.</strong> Rate limiter falls back to <code>InMemoryRateLimitStore</code> (per-pod counters, no cross-instance fairness). Blacklist init fails if it was the only configured store and <code>JWT_BLACKLIST_ENABLED=true</code>.</li>
+      <li><strong>Mongo permission missing for <code>createIndex</code>.</strong> <code>ensureAuthStoreIndexes</code> runs in a goroutine with a 30 s deadline; failures are logged with <code>component=auth, operation=ensure_indexes</code> and the service continues without the index optimisation.</li>
+      <li><strong>Blacklist lookup error.</strong> Auth V2 is <strong>fail-open</strong> on store errors — a transient Mongo blip does not lock everyone out. The lookup error is captured in the request log; switch to fail-closed only for endpoints where revocation must be authoritative.</li>
+      <li><strong>Refresh token replay.</strong> The presented token is revoked <em>before</em> the new pair is issued (UF-3 step 4 before step 5). A second use of the same refresh token returns <code>ErrRevokedToken</code>.</li>
+      <li><strong>Sentry / OTel exporter unreachable.</strong> Setup either succeeds and registers a shutdown hook, or returns an error and aborts boot. There is no degraded-observability mode — by design, ops should know.</li>
+      <li><strong>Worker panics.</strong> Returned errors from a worker are logged with <code>operation=worker_run</code>; <code>context.Canceled</code> on shutdown is treated as the normal stop signal.</li>
+      <li><strong>Cleanup hook hangs.</strong> Each phase has its own budget (10 s for Fiber, 5 s for hooks). Past the budget the process exits anyway; an "X shutdown timeout" warning lands in the log.</li>
+      <li><strong>GAE version drift.</strong> If <code>WAKE_UP_MINUTE</code> is set and <code>/wake-up</code> reports a newer version than the running binary, the watcher logs and the instance restarts on the next request cycle.</li>
+    </ul>
+
+    <footer>middleware · last updated 2026-05-24</footer>
+  </div>
+</body>
+</html>

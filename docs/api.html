@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API &amp; Integration — middleware</title>
+  <link rel="stylesheet" href="https://pakkad.fourwd.me/docs/style.css">
+</head>
+<body>
+  <nav class="top">
+    <div class="inner">
+      <span class="brand">middleware</span>
+      <a href="index.html">Overview</a>
+      <a href="ui-flow.html">UI &amp; Flow</a>
+      <a href="database.html">Database</a>
+      <a href="api.html" class="active">API &amp; Integration</a>
+      <a href="deployment.html">Config &amp; Deployment</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <h1>API &amp; Integration</h1>
+    <p class="lead">
+      The library mounts a fixed set of operator/lifecycle routes on every
+      Fiber app it builds, defines the on-the-wire response envelope, and
+      bundles clients for the third-party services every Pakkad backend
+      shares (Firebase, Pub/Sub, Cloud Storage, Mailgun, Sentry, OTel). All
+      business endpoints belong to the consuming service and are mounted by
+      its <code>RouteRegistrar</code>.
+    </p>
+    <p class="docmeta">
+      <span class="badge">v1</span>
+      Owned by: <code>@puarns</code> · Last reviewed: 2026-05-24
+    </p>
+
+    <h2 id="endpoints">4.1 Endpoints / Commands</h2>
+
+    <h3>Routes mounted automatically by <code>NewApp</code></h3>
+    <p>
+      Mounted in <code>registerDefaultRoutes</code>. Both are unauthenticated;
+      Auth V2 auto-exempts them (<a href="index.html#br-8">BR-8</a>).
+    </p>
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Path</th><th>Purpose</th><th>Response</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>GET</td>
+          <td><code>/_ah/warmup</code></td>
+          <td>App Engine warmup hook. Always 200 so the instance is marked ready before traffic is routed.</td>
+          <td><code>{"status":1,"code":"0000","message":"warm-up request succeeded"}</code></td>
+        </tr>
+        <tr>
+          <td>GET</td>
+          <td><code>/wake-up</code></td>
+          <td>Returns running build identity. Consumed by the GAE version watcher and any external "is this the version I expected?" check.</td>
+          <td><code>{"status":1,"message":"success","data":{"app_id":"…","app_version":"…","env":"…"}}</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Routes mounted by <code>RegisterStandardRoutes</code></h3>
+    <p>
+      Opt-in: call from the registrar with a <code>HealthReport</code> provider.
+      <code>/livez</code>, <code>/healthz</code>, <code>/readyz</code> and
+      <code>/metrics</code> are also auto-exempt from Auth V2.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Path</th><th>Purpose</th><th>Auth</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>GET</td><td><code>/livez</code></td><td>Process is alive (no dependency checks).</td><td>none</td></tr>
+        <tr><td>GET</td><td><code>/healthz</code></td><td>Health report; 503 when <code>HealthReport.Healthy()</code> is false.</td><td>none</td></tr>
+        <tr><td>GET</td><td><code>/readyz</code></td><td>Same payload/semantics as <code>/healthz</code>; separated so k8s/GAE can distinguish liveness from readiness.</td><td>none</td></tr>
+        <tr><td>GET</td><td><code>/metrics</code></td><td>Prometheus exposition format. Includes HTTP histograms, in-flight gauge, DB pool collector, custom metrics registered on the default registry.</td><td>none</td></tr>
+        <tr><td>GET</td><td><code>/debug/background-jobs/heartbeat/circuit-state</code></td><td>Heartbeat scheduler debug payload. <strong>Disabled when <code>APP_ENV=prod</code></strong>; on dev/local requires header <code>X-Debug-Auth: &lt;HTTP_DEBUG_AUTH_TOKEN&gt;</code>.</td><td>token</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Helpers exposed for service-mounted routes</h3>
+    <table>
+      <thead>
+        <tr><th>Symbol</th><th>Use</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>infra.NewApp(registrar)</code></td><td>Bootstrap entry point. Returns <code>*App</code>; call <code>.Run()</code> to start.</td></tr>
+        <tr><td><code>infra.RouteRegistrar</code></td><td>Function type the service implements: <code>func(*fiber.App, infra.AppDeps) error</code>.</td></tr>
+        <tr><td><code>infra.AuthenticationMiddlewareV2(cfg)</code></td><td>Bearer-token gate. Reads from <code>TokenManager</code>; optional <code>BlacklistStore</code>; auto-exempts library built-ins.</td></tr>
+        <tr><td><code>infra.AdminOnly(role, handler)</code></td><td>Per-handler role gate that runs after Auth V2. Returns 403 <code>FORBIDDEN</code> on mismatch.</td></tr>
+        <tr><td><code>infra.WriteSuccess(c, status, data)</code></td><td>Emit a success envelope.</td></tr>
+        <tr><td><code>infra.WriteErrorEnvelope(c, status, code, message)</code></td><td>Emit a typed error envelope.</td></tr>
+        <tr><td><code>infra.WriteError(c, status, err)</code></td><td>Inspect <code>*AppError</code> if wrapped, else fall back to a sanitised envelope.</td></tr>
+        <tr><td><code>infra.ErrBadRequest / ErrNotFound / ErrConflict</code></td><td>Constructors for <code>*AppError</code> with the appropriate HTTP status.</td></tr>
+        <tr><td><code>infra.AuthSessionFrom(ctx)</code></td><td>Read the verified <code>AuthSession</code> Auth V2 attached to <code>fiber.Ctx</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Response envelope</h3>
+    <p>
+      Every JSON response — whether from <code>WriteSuccess</code> /
+      <code>WriteErrorEnvelope</code>, from <code>AppErrorHandler</code> (Fiber's
+      global error path), or from <code>/healthz</code> — uses the same shape
+      (<a href="index.html#br-9">BR-9</a>):
+    </p>
+    <pre><code>// success
+{
+  "success": true,
+  "data": { … }
+}
+
+// error
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_TOKEN",
+    "message": "invalid or expired session"
+  }
+}</code></pre>
+
+    <div class="note">
+      <strong>Note —</strong> setting <code>HTTP_ENVELOPE_ENABLED=true</code> turns
+      on a fallback middleware that wraps raw JSON responses (handlers that
+      called <code>c.JSON(…)</code> directly instead of <code>WriteSuccess</code>).
+      New code should prefer the explicit helpers — the wrapper is a
+      compatibility shim for handlers migrating off the legacy format.
+    </div>
+
+    <h2 id="third-party">4.2 3rd-Party Services</h2>
+    <p>
+      Each integration is opt-in via env. When the enable flag is
+      <code>false</code> (or the credentials file is empty) the client is not
+      constructed and the corresponding <code>deps.*</code> field stays nil — the
+      service is responsible for nil-checking before use.
+    </p>
+
+    <h3>Firebase (Firestore + Auth + FCM)</h3>
+    <ul>
+      <li><strong>Auth</strong> — service-account JSON at <code>FIREBASE_CREDENTIALS</code>; client built once via <code>firebase.NewApp</code>.</li>
+      <li><strong>Modules</strong> — <code>firebase.App.Firestore()</code> for Firestore, <code>firebase.App.Auth()</code> for ID-token verification, <code>FIREBASE_NOTIFICATION_CREDENTIALS</code> for the FCM messaging client (can be the same file).</li>
+      <li><strong>Failure</strong> — startup error if credentials are present but invalid; if both env vars are empty the client is simply not built.</li>
+    </ul>
+
+    <h3>Google Cloud Pub/Sub (v2)</h3>
+    <ul>
+      <li><strong>Auth</strong> — <code>PUBSUB_CREDENTIALS_FILE</code> (or ADC on GAE/GCE).</li>
+      <li><strong>Boot guard</strong> — <code>PUBSUB_ENABLED=true</code> requires <code>PUBSUB_PROJECT_ID</code>; missing project ID fails fast.</li>
+      <li><strong>Client</strong> — <code>NewPubSubClient</code> wraps <code>cloud.google.com/go/pubsub/v2</code>; registered as <code>deps.Cloud.PubSub</code>; close hook runs at shutdown.</li>
+    </ul>
+
+    <h3>Google Cloud Storage</h3>
+    <ul>
+      <li><strong>Auth</strong> — <code>STORAGE_CREDENTIALS_FILE</code> (or ADC).</li>
+      <li><strong>Boot guard</strong> — <code>STORAGE_ENABLED=true</code> requires <code>STORAGE_BUCKET</code>.</li>
+      <li><strong>Client</strong> — <code>deps.Cloud.Storage</code> exposes the wrapped <code>*storage.Client</code> with the bucket pre-bound.</li>
+    </ul>
+
+    <h3>Mailgun</h3>
+    <ul>
+      <li><strong>Auth</strong> — <code>MAILGUN_DOMAIN</code> + <code>MAILGUN_API_KEY</code>.</li>
+      <li><strong>Boot guard</strong> — both env vars required when <code>MAIL_ENABLED=true</code>.</li>
+      <li><strong>Client</strong> — <code>deps.Integrations.Mail</code>.</li>
+    </ul>
+
+    <h3>Sentry &amp; OpenTelemetry</h3>
+    <ul>
+      <li><strong>Sentry</strong> — configured via <code>SENTRY_DSN</code> / <code>SENTRY_ENV</code>; <code>SetupSentry</code> registers the transport and a flush hook for shutdown. The Fiber middleware reports panics.</li>
+      <li><strong>OTel</strong> — configured via the standard <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> family. <code>SetupOTel</code> builds the OTLP HTTP exporter, a tracer provider, and a meter provider; the GORM plugin and Fiber middleware emit spans automatically. Shutdown flushes pending spans within the bounded shutdown budget.</li>
+    </ul>
+
+    <h3>Optional business integrations bundled in <code>common/</code></h3>
+    <p>
+      These are legacy helpers retained for compatibility with older services;
+      new services should call the third-party API directly from their own
+      package rather than reach through <code>middleware/common</code>.
+    </p>
+    <ul>
+      <li><strong>2C2P payment</strong> — <code>common/payment_2c2p*.go</code>; configured via <code>PAYMENT_2C2P_*</code> env vars (request, inquiry, refund URLs + merchant ID + secret).</li>
+      <li><strong>OTP / SMS</strong> — <code>common/otp.go</code>; configured via <code>OTP_URL_REQUEST</code>, <code>OTP_URL_VERIFY</code>, <code>OTP_SMS_KEY</code>, <code>OTP_SMS_SECRET</code>.</li>
+      <li><strong>Upload service</strong> — <code>common/upload*.go</code>; configured via <code>UPLOAD_SERVICE_URL</code>, <code>UPLOAD_TOKEN</code>.</li>
+      <li><strong>Discord</strong> — <code>common/discord.go</code>; webhook notifications.</li>
+    </ul>
+
+    <h2 id="auth-security">4.3 Auth &amp; Security</h2>
+
+    <h3>JWT lifecycle</h3>
+    <p>
+      Tokens are HS256-signed via <code>JWT_SECRET</code>; refresh tokens are
+      tracked in a <code>RefreshTokenStore</code> (see
+      <a href="database.html#schema">3.2.3</a>) and rotated one-shot.
+      <code>JWT_ISSUER</code> always equals <code>APP_ID</code>
+      (<a href="index.html#br-1">BR-1</a>); cross-service token reuse is
+      impossible because the issuer is part of the refresh-token unique
+      index.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Operation</th><th>Method</th><th>Persisted</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Issue pair</td><td><code>TokenManager.GeneratePair(ctx, user)</code></td><td>Refresh <code>jti</code> stored with TTL.</td></tr>
+        <tr><td>Validate access</td><td><code>TokenManager.ParseAccessToken(s)</code></td><td>Checks signature, exp, <code>token_type == "access"</code>.</td></tr>
+        <tr><td>Rotate refresh</td><td><code>TokenManager.Refresh(ctx, s)</code></td><td>Revokes presented <code>jti</code>; issues new pair; stores new <code>jti</code>.</td></tr>
+        <tr><td>Revoke refresh</td><td><code>TokenManager.RevokeRefreshToken(ctx, s)</code></td><td>Deletes the <code>jti</code> from the store.</td></tr>
+        <tr><td>Blacklist access</td><td><code>BlacklistStore.Add(ctx, token, expiresAt)</code></td><td>Stored with TTL matching the token's remaining lifetime; Auth V2 consults on every request.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Auth V2 middleware</h3>
+    <p>
+      <code>AuthenticationMiddlewareV2</code> requires <code>Authorization:
+      Bearer &lt;jwt&gt;</code> on every request that is not in the exempt set.
+      The exempt set is the union of three lists:
+    </p>
+    <ol>
+      <li>Library built-ins: <code>/_ah/warmup</code>, <code>/wake-up</code>, <code>/livez</code>, <code>/readyz</code>, <code>/healthz</code>, <code>/metrics</code>.</li>
+      <li><code>HTTP_PUBLIC_PATHS</code> env (CSV, exact-match).</li>
+      <li><code>AuthMiddlewareV2Config.ExemptPaths</code> from the registrar.</li>
+    </ol>
+    <p>
+      <code>OPTIONS</code> requests skip the gate so CORS preflight is never
+      blocked. Matching is exact — no prefixes, no regex
+      (<a href="index.html#br-8">BR-8</a>). The validated identity is exposed
+      to handlers via <code>AuthSessionFrom(ctx)</code> as
+      <code>{ UserID, Email, Role, ExpiresAt }</code>.
+    </p>
+
+    <div class="warn">
+      <strong>Warn —</strong> the blacklist check is <strong>fail-open</strong>
+      on store errors. A transient Mongo blip never locks every authenticated
+      user out — the cryptographic verification still passed. Switch to
+      fail-closed only for endpoints where revocation must be authoritative
+      (e.g. by wrapping the handler with an explicit blacklist check).
+    </div>
+
+    <h3>Role gates</h3>
+    <p>
+      <code>AdminOnly(role, handler)</code> wraps a handler so it runs only when
+      <code>AuthSession.Role == role</code>. No session in context returns
+      <code>401 MISSING_TOKEN</code>; wrong role returns
+      <code>403 FORBIDDEN</code>. Mount at registration time:
+    </p>
+    <pre><code>v1.Delete("/users/:id", infra.AdminOnly("Admin", deps.Handlers.Users.Delete))</code></pre>
+
+    <h3>Rate limit</h3>
+    <p>
+      Three tiers, selected at route registration. The Redis-backed
+      <code>RateLimitStore</code> uses an atomic Lua script
+      (<code>INCR</code> + conditional <code>EXPIRE</code>); when Redis is
+      disabled the in-memory store takes over (per-pod, swept every 30 s).
+    </p>
+    <table>
+      <thead>
+        <tr><th>Tier</th><th>Window</th><th>Default limit</th><th>Use for</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Strict</td><td>per minute</td><td><code>RATE_LIMIT_STRICT_PER_MINUTE</code> (10)</td><td>login, register, password reset, OTP verify.</td></tr>
+        <tr><td>Default</td><td>per second</td><td><code>RATE_LIMIT_DEFAULT_PER_SECOND</code> (100)</td><td>regular authenticated API surface.</td></tr>
+        <tr><td>Skip</td><td>—</td><td>no middleware attached</td><td>health, metrics, GAE lifecycle.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Security headers &amp; CORS</h3>
+    <ul>
+      <li><strong>CORS</strong> — <code>HTTP_ALLOW_ORIGINS</code> (CSV; <code>*</code> by default). Mounted by <code>RegisterStack</code>.</li>
+      <li><strong>Security headers</strong> — <code>X-Frame-Options: DENY</code>, <code>X-Content-Type-Options: nosniff</code>, and friends are applied by <code>infra/security_headers.go</code>.</li>
+      <li><strong>Proxy header</strong> — <code>HTTP_PROXY_HEADER</code> (e.g. <code>X-Forwarded-For</code>) makes Fiber trust the upstream IP so request logs and rate-limit subjects are accurate behind a load balancer.</li>
+    </ul>
+
+    <h3>Secrets management</h3>
+    <p>
+      Secrets are loaded only from environment variables — <code>.env.{APP_ENV}</code>
+      files locally, Secret Manager / GAE env at runtime. The library never
+      reads or writes config from a network source. <code>HTTP_DEBUG_AUTH_TOKEN</code>
+      must be ≥ 16 chars when set; debug routes are wholly disabled when
+      <code>APP_ENV=prod</code>.
+    </p>
+
+    <h3>Database grants</h3>
+    <p>
+      The library opens connections with whatever credentials the service
+      provides — it does not assume or grant privileges. The two Mongo
+      collections it owns need <code>find</code> + <code>insert</code> +
+      <code>delete</code> + <code>createIndex</code>. Lack of
+      <code>createIndex</code> is non-fatal: <code>EnsureIndexes</code> logs a
+      warning and the operator can create the indexes out of band.
+    </p>
+
+    <h2 id="error-model">4.4 Error Model</h2>
+
+    <h3>Error codes emitted directly by the library</h3>
+    <p>
+      These leave the service even when the registrar contributes no code of
+      its own. All follow the envelope shape from §4.1.
+    </p>
+    <table>
+      <thead>
+        <tr><th>HTTP</th><th><code>code</code></th><th>Where</th><th>Cause</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>400</td><td><code>request_error</code></td><td><code>AppErrorHandler</code></td><td>Fiber-level error (JSON bind failure, router 404 wrapped as <code>*fiber.Error</code>).</td></tr>
+        <tr><td>401</td><td><code>MISSING_TOKEN</code></td><td>Auth V2 / <code>AdminOnly</code></td><td>No <code>Authorization</code> header or empty bearer.</td></tr>
+        <tr><td>401</td><td><code>INVALID_TOKEN</code></td><td>Auth V2</td><td>Signature mismatch, expired, malformed, wrong algorithm.</td></tr>
+        <tr><td>401</td><td><code>WRONG_TOKEN_TYPE</code></td><td>Auth V2</td><td>Refresh token presented where an access token was required (and vice versa).</td></tr>
+        <tr><td>401</td><td><code>TOKEN_REVOKED</code></td><td>Auth V2</td><td>Token matched a row in <code>blacklist_tokens</code> / Redis blacklist.</td></tr>
+        <tr><td>401</td><td><code>AUTH_NOT_CONFIGURED</code></td><td>Auth V2</td><td>Middleware mounted without a <code>TokenManager</code>.</td></tr>
+        <tr><td>401</td><td><code>unauthorized</code></td><td>Debug route</td><td>Wrong <code>X-Debug-Auth</code> on the heartbeat debug endpoint.</td></tr>
+        <tr><td>403</td><td><code>FORBIDDEN</code></td><td><code>AdminOnly</code></td><td>Session role does not match the required role.</td></tr>
+        <tr><td>404 / 4xx</td><td><code>bad_request</code></td><td><code>WriteError</code></td><td>Fallback when an un-typed 4xx error reaches <code>WriteError</code>.</td></tr>
+        <tr><td>500</td><td><code>internal_error</code></td><td><code>WriteError</code> / <code>AppErrorHandler</code></td><td>Untyped 5xx; client-facing message is generic ("an unexpected error occurred") so internals never leak.</td></tr>
+        <tr><td>503</td><td>—</td><td><code>/healthz</code>, <code>/readyz</code></td><td><code>HealthReport.Healthy()</code> returned false.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Service-defined errors</h3>
+    <p>
+      Handlers should return <code>*infra.AppError</code> (or wrap with
+      <code>ErrBadRequestWrap</code>) so <code>AppErrorHandler</code> translates them
+      to envelopes automatically. The service picks the <code>code</code>
+      string; convention is uppercase snake-case, scoped to the domain (e.g.
+      <code>USER_NOT_FOUND</code>, <code>VEHICLE_LOCKED</code>).
+    </p>
+    <pre><code>if err := repo.Find(id); err != nil {
+    return infra.ErrNotFound("USER_NOT_FOUND", "user does not exist")
+}</code></pre>
+
+    <h3>Sentinel errors exported by the library</h3>
+    <ul>
+      <li><code>infra.ErrInvalidToken</code> — generic JWT validation failure.</li>
+      <li><code>infra.ErrInvalidTokenType</code> — access/refresh mismatch.</li>
+      <li><code>infra.ErrRevokedToken</code> — refresh token already used or revoked.</li>
+      <li><code>infra.ErrMissingAuthorization</code> — empty <code>Authorization</code> header (<code>ParseBearerToken</code>).</li>
+      <li><code>infra.ErrInvalidAuthorization</code> — header not in <code>Bearer ...</code> form.</li>
+    </ul>
+
+    <footer>middleware · last updated 2026-05-24</footer>
+  </div>
+</body>
+</html>
