@@ -19,16 +19,23 @@ func Upload(payload model.UploadPayload) (model.UploadResult, error) {
 		return result, errUpload
 	}
 
-	logFile := new(orm.File)
-	logFile.ID = result.ID
-	logFile.BucketName = payload.BucketName
-	logFile.Cdn = result.Cdn
-	logFile.FileName = result.FileName
-	logFile.Extension = result.Extension
-	logFile.Path = result.Path
-	logFile.FullPath = result.FullPath
+	logFile := orm.File{
+		ID:         result.ID,
+		BucketName: payload.BucketName,
+		Cdn:        result.Cdn,
+		FileName:   result.FileName,
+		Extension:  result.Extension,
+		Path:       result.Path,
+		FullPath:   result.FullPath,
+	}
 	if err := Database.Save(&logFile).Error; err != nil {
-		LogError("UPLOAD_SAVE_ERROR", map[string]interface{}{"error": err.Error(), "table": "file"}, "")
+		infra.AppLog.EventError(err, "UPLOAD_SAVE_FAILURE", map[string]any{
+			"file_id": result.ID,
+		}, "",
+			infra.WithComponent(infra.ComponentDB),
+			infra.WithOperation("create"),
+			infra.WithLogKind(infra.LogKindError),
+			infra.WithField("table", "files"))
 		return result, err
 	}
 	return result, nil
@@ -44,51 +51,75 @@ func uploadFileToServer(p model.UploadPayload, appID string, token string) (mode
 
 	p.BucketName = getBucketName(appID)
 
-	result := new(model.UploadResult)
-	p.FileBase64 = strings.Replace(p.FileBase64, "data:image/png;base64,", "", -1)
-	p.FileBase64 = strings.Replace(p.FileBase64, "data:image/jpeg;base64,", "", -1)
-	p.FileBase64 = strings.Replace(p.FileBase64, "data:image/jpg;base64,", "", -1)
+	var result model.UploadResult
+	p.FileBase64 = stripBase64DataURIPrefix(p.FileBase64)
 
 	jsonData, err := json.Marshal(p)
 	if err != nil {
-		LogError("UPLOAD_MARSHAL_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		return *result, err
+		infra.AppLog.EventError(err, "UPLOAD_MARSHAL_FAILURE", nil, "",
+			infra.WithComponent(infra.ComponentUpload),
+			infra.WithOperation("marshal_request"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, err
 	}
 
-	uploadUrl := infra.GetEnv("UPLOAD_SERVICE_URL", "")
-	if uploadUrl == "" {
-		uploadUrl = "https://fourwd.as.r.appspot.com/api/v1/upload/"
+	uploadURL := infra.GetEnv("UPLOAD_SERVICE_URL", "")
+	if uploadURL == "" {
+		uploadURL = "https://fourwd.as.r.appspot.com/api/v1/upload/"
 	}
 
-	req, err := http.NewRequest("POST", uploadUrl, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest(http.MethodPost, uploadURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		LogError("UPLOAD_REQUEST_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		return *result, err
+		infra.AppLog.EventError(err, "UPLOAD_REQUEST_BUILD_FAILURE", nil, "",
+			infra.WithComponent(infra.ComponentUpload),
+			infra.WithOperation("build_request"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, err
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	response, err := kit.NewHttpClient(30).Do(req)
 	if err != nil {
-		LogError("UPLOAD_EXECUTE_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		return *result, err
+		infra.AppLog.EventError(err, "UPLOAD_EXECUTE_FAILURE", map[string]any{
+			"url": uploadURL,
+		}, "",
+			infra.WithComponent(infra.ComponentUpload),
+			infra.WithOperation("post"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, err
 	}
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		LogError("UPLOAD_READ_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		return *result, err
+		infra.AppLog.EventError(err, "UPLOAD_READ_FAILURE", nil, "",
+			infra.WithComponent(infra.ComponentUpload),
+			infra.WithOperation("read_response"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, err
 	}
 
 	var resp ApiResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		LogError("UPLOAD_UNMARSHAL_ERROR", map[string]interface{}{"error": err.Error()}, "")
-		return *result, err
+		infra.AppLog.EventError(err, "UPLOAD_UNMARSHAL_FAILURE", nil, "",
+			infra.WithComponent(infra.ComponentUpload),
+			infra.WithOperation("unmarshal_response"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, err
 	}
-	result = &resp.Data
+	return resp.Data, nil
+}
 
-	return *result, nil
+func stripBase64DataURIPrefix(s string) string {
+	for _, prefix := range []string{
+		"data:image/png;base64,",
+		"data:image/jpeg;base64,",
+		"data:image/jpg;base64,",
+	} {
+		s = strings.TrimPrefix(s, prefix)
+	}
+	return s
 }
 
 func getBucketName(appID string) string {

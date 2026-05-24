@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
@@ -22,41 +24,60 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-// AuthenticationMiddleware validates a Bearer JWT on the Authorization header
-// and stores the parsed claims under c.Locals("user"). Routes matching
-// HTTP_PUBLIC_PATHS (or the hardcoded /_ah/warmup, /wake-up, /metrics) skip
-// the check. NewApp registers this automatically.
-func AuthenticationMiddleware(c fiber.Ctx) error {
-	if isPublicPath(c) {
-		return c.Next()
-	}
-	return checkAuth(c)
+var baselinePublicPaths = []string{"/_ah/warmup", "/wake-up", "/metrics"}
+
+// publicPathMatcher classifies an incoming path against HTTP_PUBLIC_PATHS +
+// the baseline list. Exact strings hit an O(1) map; regex-looking patterns
+// are compiled once and walked sequentially.
+type publicPathMatcher struct {
+	exact   map[string]struct{}
+	regexes []*regexp.Regexp
 }
 
-func isPublicPath(c fiber.Ctx) bool {
-	publicPaths := SplitCSV(GetEnv("HTTP_PUBLIC_PATHS", ""))
-	hardcodePaths := []string{"/_ah/warmup", "/wake-up", "/metrics"}
-	publicPaths = append(publicPaths, hardcodePaths...)
-	for _, pattern := range publicPaths {
-		if matchesPublicPathPattern(pattern, c.Path()) {
+func (m *publicPathMatcher) matches(path string) bool {
+	if _, ok := m.exact[path]; ok {
+		return true
+	}
+	for _, re := range m.regexes {
+		if re.MatchString(path) {
 			return true
 		}
 	}
 	return false
 }
 
-func matchesPublicPathPattern(pattern string, path string) bool {
-	pattern = strings.TrimSpace(pattern)
-	if pattern == "" {
-		return false
+var publicPaths = sync.OnceValue(func() *publicPathMatcher {
+	patterns := append(SplitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")), baselinePublicPaths...)
+	m := &publicPathMatcher{exact: map[string]struct{}{}}
+	for _, raw := range patterns {
+		p := strings.TrimSpace(raw)
+		if p == "" {
+			continue
+		}
+		if !looksLikeRegexPattern(p) {
+			m.exact[p] = struct{}{}
+			continue
+		}
+		if re, err := regexp.Compile(p); err == nil {
+			m.regexes = append(m.regexes, re)
+		}
 	}
+	return m
+})
 
-	if !looksLikeRegexPattern(pattern) {
-		return pattern == path
+var jwtSecret = sync.OnceValue(func() []byte {
+	return []byte(GetEnv("JWT_SECRET", ""))
+})
+
+// AuthenticationMiddleware validates a Bearer JWT on the Authorization header
+// and stores the parsed claims under c.Locals("user"). Routes matching
+// HTTP_PUBLIC_PATHS (or the hardcoded /_ah/warmup, /wake-up, /metrics) skip
+// the check. NewApp registers this automatically.
+func AuthenticationMiddleware(c fiber.Ctx) error {
+	if publicPaths().matches(c.Path()) {
+		return c.Next()
 	}
-
-	matched, err := regexp.MatchString(pattern, path)
-	return err == nil && matched
+	return checkAuth(c)
 }
 
 func looksLikeRegexPattern(pattern string) bool {
@@ -83,7 +104,7 @@ func checkAuth(c fiber.Ctx) error {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(GetEnv("JWT_SECRET", "")), nil
+		return jwtSecret(), nil
 	})
 
 	if err != nil {
@@ -107,15 +128,25 @@ func checkAuth(c fiber.Ctx) error {
 // IsJwtValid returns false if the token is in the blacklist stored on the
 // dedicated middleware Mongo cluster (MongoMiddleware).
 // Returns true when MongoMiddleware is not initialized (blacklist disabled).
+// Fails closed: returns false on lookup error (treats token as invalid) —
+// safer default than letting potentially-revoked tokens through when Mongo
+// is unreachable.
 func IsJwtValid(token string) bool {
 	if MongoMiddleware == nil {
 		return true
 	}
-	collection := MongoMiddleware.Database().Collection("blacklist_tokens")
-	filter := bson.M{"token": token}
 
-	count, err := collection.CountDocuments(context.TODO(), filter)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	collection := MongoMiddleware.Database().Collection("blacklist_tokens")
+	count, err := collection.CountDocuments(ctx, bson.M{"token_hash": hashBlacklistToken(token)})
 	if err != nil {
+		// NOTE: token value intentionally NOT logged (PII deny-list).
+		AppLog.EventError(err, "JWT_BLACKLIST_LOOKUP_FAILURE", nil, "",
+			WithComponent(ComponentAuth),
+			WithOperation("blacklist_check"),
+			WithLogKind(LogKindError))
 		return false
 	}
 	return count == 0

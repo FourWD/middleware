@@ -139,14 +139,16 @@ func registerMetrics(app *fiber.App, cfg StackConfig) {
 	requests, err := meter.Int64Counter("http.server.requests")
 	if err != nil {
 		if logger != nil {
-			logger.Error(err, M("failed to create http.server.requests counter"), WithComponent("metrics"), WithOperation("create_request_counter"), WithLogKind("infrastructure"))
+			logger.LifecycleError(err, "METRICS_CREATE_REQUESTS_COUNTER_FAILURE", nil,
+				WithComponent("metrics"), WithOperation("create_request_counter"))
 		}
 		requests = noop.Int64Counter{}
 	}
 	duration, err := meter.Float64Histogram("http.server.duration.ms")
 	if err != nil {
 		if logger != nil {
-			logger.Error(err, M("failed to create http.server.duration.ms histogram"), WithComponent("metrics"), WithOperation("create_duration_histogram"), WithLogKind("infrastructure"))
+			logger.LifecycleError(err, "METRICS_CREATE_DURATION_HISTOGRAM_FAILURE", nil,
+				WithComponent("metrics"), WithOperation("create_duration_histogram"))
 		}
 		duration = noop.Float64Histogram{}
 	}

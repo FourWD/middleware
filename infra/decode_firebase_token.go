@@ -47,7 +47,10 @@ func DecodeFirebaseToken(tokenString string) (*JWTClaimsDeCode, error) {
 	// VerifyIDToken validates the signature, expiration, issuer, and audience
 	token, err := FirebaseAuthClient.VerifyIDToken(ctx, tokenString)
 	if err != nil {
-		AppLog.EventError(err, "FIREBASE_TOKEN_VERIFY_ERROR", nil, "")
+		AppLog.EventError(err, "FIREBASE_TOKEN_VERIFY_FAILURE", nil, "",
+			WithComponent(ComponentFirebase),
+			WithOperation("verify_id_token"),
+			WithLogKind(LogKindSecurity))
 		return nil, err
 	}
 
@@ -100,7 +103,10 @@ func VerifyFirebaseToken(tokenString string) (*auth.Token, error) {
 
 	token, err := FirebaseAuthClient.VerifyIDToken(ctx, tokenString)
 	if err != nil {
-		AppLog.EventError(err, "FIREBASE_TOKEN_VERIFY_ERROR", nil, "")
+		AppLog.EventError(err, "FIREBASE_TOKEN_VERIFY_FAILURE", nil, "",
+			WithComponent(ComponentFirebase),
+			WithOperation("verify_id_token"),
+			WithLogKind(LogKindSecurity))
 		return nil, err
 	}
 

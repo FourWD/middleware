@@ -63,36 +63,36 @@ type AuthConfig struct {
 
 // CommonConfig holds infrastructure configuration loaded from environment variables.
 type CommonConfig struct {
-	AppID              string
-	AppVersion         string
-	AppEnv             string
-	LogLevel           string
-	Timezone           string
-	HTTPAddress        string
-	ProxyHeader        string
-	DebugAuthToken     string
-	PublicPaths        []string
-	HTTPBodyLimitMB    int
+	AppID           string
+	AppVersion      string
+	AppEnv          string
+	LogLevel        string
+	Timezone        string
+	HTTPAddress     string
+	ProxyHeader     string
+	DebugAuthToken  string
+	PublicPaths     []string
+	HTTPBodyLimitMB int
 
 	// Rate limit (3-tier: strict / default / skip)
 	RateLimitEnabled          bool
 	RateLimitStrictPerMinute  int
 	RateLimitDefaultPerSecond int
 
-	Database           DatabaseConfig
-	SecondaryDatabase  DatabaseConfig
-	Redis              RedisConfig
-	RedisEnabled       bool
+	Database               DatabaseConfig
+	SecondaryDatabase      DatabaseConfig
+	Redis                  RedisConfig
+	RedisEnabled           bool
 	Mongo                  MongoConfig
 	MongoEnabled           bool
 	MongoMiddleware        MongoConfig
 	MongoMiddlewareEnabled bool
-	Firebase           FirebaseConfig
-	PubSub             PubSubConfig
-	Storage            StorageConfig
-	Mail               MailConfig
-	Migration          MigrationConfig
-	Auth               AuthConfig
+	Firebase               FirebaseConfig
+	PubSub                 PubSubConfig
+	Storage                StorageConfig
+	Mail                   MailConfig
+	Migration              MigrationConfig
+	Auth                   AuthConfig
 }
 
 // LoadCommonConfig reads all infrastructure configuration from environment variables.
@@ -103,25 +103,25 @@ func LoadCommonConfig() CommonConfig {
 	}
 
 	return CommonConfig{
-		AppID:              appID,
-		AppVersion:         strings.TrimSpace(GetEnv("APP_VERSION", "")),
-		AppEnv:             strings.ToLower(strings.TrimSpace(GetEnv("APP_ENV", "local"))),
-		LogLevel:           strings.ToLower(strings.TrimSpace(GetEnv("LOG_LEVEL", "info"))),
-		Timezone:           strings.TrimSpace(GetEnv("APP_TIMEZONE", "Asia/Bangkok")),
-		HTTPAddress:        resolveHTTPAddress(),
-		ProxyHeader:        resolveProxyHeader(),
-		DebugAuthToken:     strings.TrimSpace(GetEnv("HTTP_DEBUG_AUTH_TOKEN", "")),
-		PublicPaths:        splitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")),
-		HTTPBodyLimitMB:    GetEnvInt("HTTP_BODY_LIMIT_MB", 0),
+		AppID:           appID,
+		AppVersion:      strings.TrimSpace(GetEnv("APP_VERSION", "")),
+		AppEnv:          strings.ToLower(strings.TrimSpace(GetEnv("APP_ENV", "local"))),
+		LogLevel:        strings.ToLower(strings.TrimSpace(GetEnv("LOG_LEVEL", "info"))),
+		Timezone:        strings.TrimSpace(GetEnv("APP_TIMEZONE", "Asia/Bangkok")),
+		HTTPAddress:     resolveHTTPAddress(),
+		ProxyHeader:     resolveProxyHeader(),
+		DebugAuthToken:  strings.TrimSpace(GetEnv("HTTP_DEBUG_AUTH_TOKEN", "")),
+		PublicPaths:     SplitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")),
+		HTTPBodyLimitMB: GetEnvInt("HTTP_BODY_LIMIT_MB", 0),
 
 		RateLimitEnabled:          GetEnvBool("RATE_LIMIT_ENABLED", false),
 		RateLimitStrictPerMinute:  GetEnvInt("RATE_LIMIT_STRICT_PER_MINUTE", 10),
 		RateLimitDefaultPerSecond: GetEnvInt("RATE_LIMIT_DEFAULT_PER_SECOND", 100),
 
-		Database:          LoadDatabaseConfig(),
-		SecondaryDatabase: LoadSecondaryDatabaseConfig(),
-		Redis:              LoadRedisConfig(),
-		RedisEnabled:       GetEnvBool("REDIS_ENABLED", false),
+		Database:               LoadDatabaseConfig(),
+		SecondaryDatabase:      LoadSecondaryDatabaseConfig(),
+		Redis:                  LoadRedisConfig(),
+		RedisEnabled:           GetEnvBool("REDIS_ENABLED", false),
 		Mongo:                  LoadMongoConfig(),
 		MongoEnabled:           GetEnvBool("MONGO_ENABLED", false),
 		MongoMiddleware:        LoadMongoMiddlewareConfig(),
@@ -199,12 +199,9 @@ type AppDataDeps struct {
 
 type AppSecurityDeps struct {
 	BlacklistStore BlacklistStore
-	// RefreshTokens is auto-wired by NewApp when MongoMiddleware or Redis
-	// is enabled. Plug it into TokenManager via NewTokenManager(cfg, store)
-	// to get one-shot refresh-token rotation backed by the same Mongo (or
-	// Redis) that holds the blacklist. Field stays nil when no compatible
-	// backend is configured — TokenManager construction is the caller's
-	// responsibility, so projects can opt in at their own pace.
+	// RefreshTokens is auto-wired when MongoMiddleware or Redis is enabled.
+	// Plug it into TokenManager via NewTokenManager(cfg, store) for one-shot
+	// refresh-token rotation. nil when no compatible backend is configured.
 	RefreshTokens RefreshTokenStore
 }
 
@@ -228,8 +225,6 @@ type AppDeps struct {
 }
 
 // RouteRegistrar registers middleware and routes on the fiber app.
-// It receives all initialized infrastructure dependencies.
-// Implement this in your project's internal/app package.
 type RouteRegistrar func(web *fiber.App, deps AppDeps) error
 
 // App is the running application.
@@ -241,27 +236,16 @@ type App struct {
 	workers       []Worker
 }
 
-// NewApp initializes all infrastructure and calls registrar to wire project-specific routes.
-// It loads configuration from environment variables automatically and registers the
-// default middleware stack (RequestID → CORS → Sentry → Recover → OTel → Metrics →
-// RequestLog, plus Envelope when HTTP_ENVELOPE_ENABLED=true) before invoking registrar.
-// Do NOT call RegisterStack again inside your registrar — it is already wired.
+// NewApp initializes all infrastructure and calls registrar to wire
+// project-specific routes. Registers the default middleware stack
+// (RequestID → CORS → Sentry → Recover → OTel → Metrics → RequestLog,
+// plus Envelope when HTTP_ENVELOPE_ENABLED=true) before invoking registrar.
+// Do NOT call RegisterStack again — it is already wired.
 //
-// AuthenticationMiddleware and MigrateInfra are NOT registered automatically. Call
-// them yourself from registrar when needed:
-//
-//	func Register(app *fiber.App, deps infra.AppDeps) error {
-//	    if err := infra.MigrateInfra(deps); err != nil {
-//	        return err
-//	    }
-//	    app.Use(infra.AuthenticationMiddleware)
-//	    router.SetupRoutes(app)
-//	    return nil
-//	}
-//
-// For WebSocket/SSE projects that need realtime routes registered between base and
-// HTTP stack, construct the fiber app manually using RegisterBaseStack +
-// RegisterHTTPStack instead of using NewApp.
+// AuthenticationMiddleware and MigrateInfra are NOT registered automatically.
+// For WebSocket/SSE projects that need realtime routes between base and HTTP
+// stack, construct fiber manually using RegisterBaseStack + RegisterHTTPStack
+// instead of NewApp.
 func NewApp(registrar RouteRegistrar) (*App, error) {
 	if err := LoadEnvFiles(); err != nil {
 		return nil, err
@@ -285,57 +269,107 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 		runShutdownHooks(ctx, shutdownHooks, appLogger)
 	}
 
-	sentryShutdown, err := SetupSentry(LoadSentryConfig())
-	if err != nil {
-		appLogger.Error(err, M("setup sentry failed"), WithComponent("app"), WithOperation("setup_sentry"), WithLogKind("startup"))
+	if err := setupObservability(appLogger, &shutdownHooks); err != nil {
 		cleanup()
 		return nil, err
 	}
-	shutdownHooks = append(shutdownHooks, sentryShutdown)
-
-	otelShutdown, err := SetupOTel(context.Background(), LoadOTelConfig())
-	if err != nil {
-		appLogger.Error(err, M("setup otel failed"), WithComponent("app"), WithOperation("setup_otel"), WithLogKind("startup"))
-		cleanup()
-		return nil, err
-	}
-	shutdownHooks = append(shutdownHooks, otelShutdown)
 
 	clients, err := initInfrastructure(cfg, appLogger, &shutdownHooks)
 	if err != nil {
-		appLogger.Error(err, M("init infrastructure failed"), WithComponent("app"), WithOperation("init_infrastructure"), WithLogKind("startup"))
+		appLogger.LifecycleError(err, "APP_INIT_INFRASTRUCTURE_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation("init_infrastructure"))
 		cleanup()
 		return nil, err
 	}
 
-	if err := bindDatabaseGlobal(clients.Databases.Primary); err != nil {
-		appLogger.Error(err, M("bind database global failed"), WithComponent("app"), WithOperation("bind_database"), WithLogKind("startup"))
+	if err := bindAllGlobals(clients, appLogger); err != nil {
 		cleanup()
 		return nil, err
+	}
+
+	// Best-effort: ensure Mongo auth-store indexes exist. Runs in a goroutine
+	// with its own timeout so a slow Mongo (or missing createIndex permission)
+	// never blocks boot. Idempotent.
+	ensureAuthStoreIndexes(clients, appLogger)
+
+	rateLimiter := buildRateLimiter(cfg, clients.Redis, &shutdownHooks)
+	registerDBMetrics(clients.Databases, appLogger)
+	registerGAEVersionCheck(appLogger, &shutdownHooks)
+
+	heartbeatScheduler, err := NewHeartbeatScheduler(LoadHeartbeatConfig(), appLogger)
+	if err != nil {
+		appLogger.LifecycleError(err, "APP_INIT_HEARTBEAT_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation("init_heartbeat"))
+		cleanup()
+		return nil, err
+	}
+
+	web := buildFiberApp(cfg, appLogger)
+
+	var workers []Worker
+	deps := buildAppDeps(cfg, appLogger, &shutdownHooks, clients, rateLimiter, heartbeatScheduler, &workers)
+
+	if err := registrar(web, deps); err != nil {
+		appLogger.LifecycleError(err, "APP_REGISTER_ROUTES_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation("register_routes"))
+		cleanup()
+		return nil, err
+	}
+
+	if heartbeatScheduler != nil {
+		heartbeatScheduler.Start()
+		shutdownHooks = append(shutdownHooks, heartbeatScheduler.Shutdown)
+	}
+
+	return &App{
+		cfg:           cfg,
+		fiber:         web,
+		logger:        appLogger,
+		shutdownHooks: shutdownHooks,
+		workers:       workers,
+	}, nil
+}
+
+// setupObservability initializes Sentry + OTel and appends their shutdown
+// functions to hooks. Either failure aborts boot.
+func setupObservability(logger *Logger, hooks *[]func(context.Context) error) error {
+	sentryShutdown, err := SetupSentry(LoadSentryConfig())
+	if err != nil {
+		logger.LifecycleError(err, "APP_SETUP_SENTRY_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation("setup_sentry"))
+		return err
+	}
+	*hooks = append(*hooks, sentryShutdown)
+
+	otelShutdown, err := SetupOTel(context.Background(), LoadOTelConfig())
+	if err != nil {
+		logger.LifecycleError(err, "APP_SETUP_OTEL_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation("setup_otel"))
+		return err
+	}
+	*hooks = append(*hooks, otelShutdown)
+
+	return nil
+}
+
+// bindAllGlobals wires the initialized clients into the package-level globals
+// that legacy callers read from (common.Database, infra.FirestoreClient, etc.).
+// Only the primary Database binding can fail; the rest are best-effort.
+func bindAllGlobals(clients InfraClients, logger *Logger) error {
+	if err := bindDatabaseGlobal(clients.Databases.Primary); err != nil {
+		logger.LifecycleError(err, "APP_BIND_DATABASE_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation("bind_database"))
+		return err
 	}
 	bindFirebaseGlobals(clients.Firebase)
 	bindMongoGlobal(clients.Mongo, clients.MongoMiddleware)
 	bindPubSubGlobal(clients.PubSub)
+	return nil
+}
 
-	// Best-effort: ensure Mongo auth-store indexes exist. Fired in a
-	// goroutine with its own timeout so a slow Mongo (or one whose user
-	// lacks createIndex permission) never blocks boot. Failures land in
-	// the structured log so operators can reconcile manually; the service
-	// itself stays up. Idempotent — re-running on every boot is fine.
-	ensureAuthStoreIndexes(clients, appLogger)
-
-	rateLimiter := buildRateLimiter(cfg, clients.Redis, &shutdownHooks)
-
-	registerDBMetrics(clients.Databases, appLogger)
-	registerGAEVersionCheck(cfg, appLogger, &shutdownHooks)
-
-	heartbeatScheduler, err := NewHeartbeatScheduler(LoadHeartbeatConfig(), appLogger)
-	if err != nil {
-		appLogger.Error(err, M("init heartbeat failed"), WithComponent("app"), WithOperation("init_heartbeat"), WithLogKind("startup"))
-		cleanup()
-		return nil, err
-	}
-
+// buildFiberApp constructs the fiber app, registers the default middleware
+// stack, mounts request-meta middleware, and registers default routes.
+func buildFiberApp(cfg CommonConfig, logger *Logger) *fiber.App {
 	web := NewFiberApp(FiberConfig{
 		AppID:       cfg.AppID,
 		ProxyHeader: cfg.ProxyHeader,
@@ -343,34 +377,43 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 	})
 
 	stackCfg := LoadStackConfig()
-	stackCfg.Logger = appLogger
+	stackCfg.Logger = logger
 	RegisterStack(web, stackCfg)
 
-	// Stamp client IP + User-Agent onto every request's ctx so use-case
-	// layers (audit log writers, etc.) can read network identity without
-	// threading fiber.Ctx through every signature. Installed *after*
-	// RegisterStack so it sits at the same scope as user middleware but
-	// before any custom auth gate the registrar adds.
+	// Stamp client IP + User-Agent onto ctx so use-case layers can read
+	// network identity without threading fiber.Ctx through every signature.
+	// Installed after RegisterStack so it sits at the user-middleware scope.
 	web.Use(NewRequestMetaMiddleware())
 
 	registerDefaultRoutes(web, cfg)
+	return web
+}
 
-	var workers []Worker
-
-	deps := AppDeps{
+// buildAppDeps assembles the AppDeps struct passed to the registrar.
+// workers is a pointer so RegisterWorker can append after this returns.
+func buildAppDeps(
+	cfg CommonConfig,
+	logger *Logger,
+	hooks *[]func(context.Context) error,
+	clients InfraClients,
+	rateLimiter *RateLimiter,
+	heartbeat *HeartbeatScheduler,
+	workers *[]Worker,
+) AppDeps {
+	return AppDeps{
 		Runtime: AppRuntimeDeps{
 			Config:        cfg,
-			Logger:        appLogger,
-			ShutdownHooks: &shutdownHooks,
-			RateLimit: rateLimiter,
+			Logger:        logger,
+			ShutdownHooks: hooks,
+			RateLimit:     rateLimiter,
 			HeartbeatDebugStatus: func() any {
-				if heartbeatScheduler == nil {
+				if heartbeat == nil {
 					return HeartbeatDebugStatus{Enabled: false}
 				}
-				return heartbeatScheduler.DebugStatus()
+				return heartbeat.DebugStatus()
 			},
 			RegisterWorker: func(w Worker) {
-				workers = append(workers, w)
+				*workers = append(*workers, w)
 			},
 		},
 		Data: AppDataDeps{
@@ -392,29 +435,11 @@ func NewApp(registrar RouteRegistrar) (*App, error) {
 			Mail: clients.Mail,
 		},
 	}
-
-	if err := registrar(web, deps); err != nil {
-		appLogger.Error(err, M("register routes failed"), WithComponent("app"), WithOperation("register_routes"), WithLogKind("startup"))
-		cleanup()
-		return nil, err
-	}
-
-	if heartbeatScheduler != nil {
-		heartbeatScheduler.Start()
-		shutdownHooks = append(shutdownHooks, heartbeatScheduler.Shutdown)
-	}
-
-	return &App{
-		cfg:           cfg,
-		fiber:         web,
-		logger:        appLogger,
-		shutdownHooks: shutdownHooks,
-		workers:       workers,
-	}, nil
 }
 
-// Run starts workers + the HTTP server and blocks until a shutdown signal is received.
-// On shutdown: cancel workers → wait bounded → shutdown fiber → run cleanup hooks.
+// Run starts workers + the HTTP server and blocks until a shutdown signal
+// is received. On shutdown: cancel workers → wait bounded → shutdown fiber
+// → run cleanup hooks.
 func (a *App) Run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -422,52 +447,69 @@ func (a *App) Run() error {
 	engineCtx, engineCancel := context.WithCancel(context.Background())
 	defer engineCancel()
 
+	wg := a.startWorkers(engineCtx)
+	serverErr := a.startHTTPServer()
+
+	select {
+	case err := <-serverErr:
+		a.logger.LifecycleError(err, "APP_HTTP_SERVER_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation("http_server_run"))
+		engineCancel()
+		a.waitWorkers(wg)
+		return err
+	case <-ctx.Done():
+		a.logger.LifecycleEvent("APP_SHUTDOWN_SIGNAL", nil,
+			WithComponent(ComponentApp), WithOperation("shutdown_signal"))
+	}
+
+	engineCancel()
+	a.waitWorkers(wg)
+	return a.gracefulShutdown()
+}
+
+func (a *App) startWorkers(ctx context.Context) *sync.WaitGroup {
 	var wg sync.WaitGroup
 	for _, w := range a.workers {
 		wg.Add(1)
 		go func(worker Worker) {
 			defer wg.Done()
-			a.logger.Info(M("worker started"),
+			a.logger.LifecycleEvent("APP_WORKER_STARTED", nil,
 				WithField("worker", worker.Name),
-				WithComponent("app"), WithOperation("worker_start"), WithLogKind("lifecycle"))
-			if err := worker.Run(engineCtx); err != nil && !errors.Is(err, context.Canceled) {
-				a.logger.Error(err, M("worker stopped with error"),
+				WithComponent(ComponentApp), WithOperation("worker_start"))
+			if err := worker.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				a.logger.LifecycleError(err, "APP_WORKER_STOPPED_WITH_ERROR", nil,
 					WithField("worker", worker.Name),
-					WithComponent("app"), WithOperation("worker_run"), WithLogKind("lifecycle"))
+					WithComponent(ComponentApp), WithOperation("worker_run"))
 				return
 			}
-			a.logger.Info(M("worker stopped"),
+			a.logger.LifecycleEvent("APP_WORKER_STOPPED", nil,
 				WithField("worker", worker.Name),
-				WithComponent("app"), WithOperation("worker_stop"), WithLogKind("lifecycle"))
+				WithComponent(ComponentApp), WithOperation("worker_stop"))
 		}(w)
 	}
+	return &wg
+}
 
+func (a *App) startHTTPServer() <-chan error {
 	errCh := make(chan error, 1)
 	go func() {
-		a.logger.Info(M("starting http server"), WithField("address", a.cfg.HTTPAddress), WithComponent("app"), WithOperation("http_server_start"), WithLogKind("lifecycle"))
+		a.logger.LifecycleEvent("APP_HTTP_SERVER_START", map[string]any{
+			"address": a.cfg.HTTPAddress,
+		}, WithComponent(ComponentApp), WithOperation("http_server_start"))
 		errCh <- a.fiber.Listen(a.cfg.HTTPAddress, fiber.ListenConfig{
 			DisableStartupMessage: a.cfg.AppEnv != "local",
 		})
 	}()
+	return errCh
+}
 
-	select {
-	case err := <-errCh:
-		a.logger.Error(err, M("http server failed"), WithComponent("app"), WithOperation("http_server_run"), WithLogKind("lifecycle"))
-		engineCancel()
-		a.waitWorkers(&wg)
-		return err
-	case <-ctx.Done():
-		a.logger.Info(M("shutdown signal received"), WithComponent("app"), WithOperation("shutdown_signal"), WithLogKind("lifecycle"))
-	}
-
-	engineCancel()
-	a.waitWorkers(&wg)
-
+func (a *App) gracefulShutdown() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := a.fiber.ShutdownWithContext(shutdownCtx); err != nil {
-		a.logger.Error(err, M("shutdown fiber app failed"), WithComponent("app"), WithOperation("http_server_shutdown"), WithLogKind("lifecycle"))
+		a.logger.LifecycleError(err, "APP_HTTP_SHUTDOWN_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation("http_server_shutdown"))
 		return fmt.Errorf("shutdown fiber app: %w", err)
 	}
 
@@ -484,26 +526,24 @@ func (a *App) waitWorkers(wg *sync.WaitGroup) {
 	select {
 	case <-done:
 	case <-time.After(shutdownTimeout):
-		a.logger.Warn(M("workers shutdown timeout"),
-			WithComponent("app"), WithOperation("workers_shutdown"), WithLogKind("lifecycle"))
+		a.logger.LifecycleWarn("APP_WORKERS_SHUTDOWN_TIMEOUT", nil,
+			WithComponent(ComponentApp), WithOperation("workers_shutdown"))
 	}
 }
 
 func runShutdownHooks(ctx context.Context, hooks []func(context.Context) error, appLogger *Logger) {
 	for i := len(hooks) - 1; i >= 0; i-- {
 		if err := hooks[i](ctx); err != nil {
-			appLogger.Error(err, M("cleanup hook failed"), WithComponent("app"), WithOperation("cleanup_hook"), WithLogKind("lifecycle"))
+			appLogger.LifecycleError(err, "APP_CLEANUP_HOOK_FAILURE", nil,
+				WithComponent(ComponentApp), WithOperation("cleanup_hook"))
 		}
 	}
 }
 
 // ensureAuthStoreIndexes asks the Mongo-backed auth stores to create their
 // lookup + TTL indexes. Wrapped in a goroutine with its own deadline so
-// startup never blocks on Mongo; non-Mongo backends (Redis, nil) and
-// permission errors are silently skipped (with a warning log) — the
-// service still boots and serves traffic, just without the index
-// optimisation. Operators reading the structured log can reconcile
-// manually if needed.
+// startup never blocks on Mongo; permission errors are logged and the
+// service still boots. Idempotent — safe to re-run.
 func ensureAuthStoreIndexes(clients InfraClients, logger *Logger) {
 	mbs, mbsOK := clients.Blacklist.(*MongoBlacklistStore)
 	mrs, mrsOK := clients.RefreshTokens.(*MongoRefreshTokenStore)
@@ -515,16 +555,16 @@ func ensureAuthStoreIndexes(clients InfraClients, logger *Logger) {
 		defer cancel()
 		if mbsOK {
 			if err := mbs.EnsureIndexes(ctx); err != nil {
-				logger.Warn(M("blacklist EnsureIndexes failed — create indexes manually"),
-					WithComponent("auth"), WithOperation("ensure_indexes"),
-					WithLogKind("startup"), WithField("error", err.Error()))
+				logger.LifecycleError(err, "AUTH_BLACKLIST_ENSURE_INDEXES_FAILURE", nil,
+					WithComponent(ComponentAuth), WithOperation("ensure_indexes"),
+					WithField("store", "blacklist"))
 			}
 		}
 		if mrsOK {
 			if err := mrs.EnsureIndexes(ctx); err != nil {
-				logger.Warn(M("refresh-token EnsureIndexes failed — create indexes manually"),
-					WithComponent("auth"), WithOperation("ensure_indexes"),
-					WithLogKind("startup"), WithField("error", err.Error()))
+				logger.LifecycleError(err, "AUTH_REFRESH_ENSURE_INDEXES_FAILURE", nil,
+					WithComponent(ComponentAuth), WithOperation("ensure_indexes"),
+					WithField("store", "refresh_tokens"))
 			}
 		}
 	}()
@@ -550,9 +590,8 @@ func validateCommonConfig(cfg CommonConfig) error {
 	if cfg.DebugAuthToken != "" && len(cfg.DebugAuthToken) < 16 {
 		return fmt.Errorf("invalid HTTP_DEBUG_AUTH_TOKEN: must be at least 16 characters")
 	}
-	// Primary database is opt-out via empty DB_NAME — services that don't need
-	// a database (gateways, webhook relays, pure stateless aggregators) can
-	// leave DB_NAME blank and skip all DB_* validation.
+	// Primary database is opt-out via empty DB_NAME — services that don't
+	// need a database (gateways, webhook relays) can leave DB_NAME blank.
 	if strings.TrimSpace(cfg.Database.Name) != "" {
 		if err := validateDatabaseConfig("DB", cfg.Database); err != nil {
 			return err
@@ -574,7 +613,6 @@ func validateCommonConfig(cfg CommonConfig) error {
 	if cfg.Migration.Enabled && strings.TrimSpace(cfg.Migration.Path) == "" {
 		return fmt.Errorf("invalid MIGRATIONS_PATH")
 	}
-
 	if strings.TrimSpace(cfg.Auth.JWTSecret) == "" {
 		return fmt.Errorf("invalid JWT_SECRET")
 	}
@@ -595,7 +633,6 @@ func validateCommonConfig(cfg CommonConfig) error {
 			return fmt.Errorf("MAILGUN_API_KEY is required when MAIL_ENABLED=true")
 		}
 	}
-
 	return nil
 }
 
@@ -606,30 +643,23 @@ func validateDatabaseConfig(prefix string, cfg DatabaseConfig) error {
 		return fmt.Errorf("invalid %s_DRIVER", prefix)
 	}
 
+	// MySQL via Cloud SQL Unix socket skips host/port validation.
 	if cfg.Driver == DBDriverMySQL && strings.TrimSpace(cfg.Instance) != "" {
-		if strings.TrimSpace(cfg.User) == "" {
-			return fmt.Errorf("invalid %s_USER", prefix)
-		}
-		if strings.TrimSpace(cfg.Name) == "" {
-			return fmt.Errorf("invalid %s_NAME", prefix)
-		}
-		if cfg.MaxIdleConns <= 0 {
-			return fmt.Errorf("invalid %s_MAX_IDLE_CONNS", prefix)
-		}
-		if cfg.MaxOpenConns <= 0 {
-			return fmt.Errorf("invalid %s_MAX_OPEN_CONNS", prefix)
-		}
-		if cfg.MaxLifetime <= 0 {
-			return fmt.Errorf("invalid %s_MAX_LIFETIME_MINUTES", prefix)
-		}
-		return nil
+		return validateDatabaseFields(prefix, cfg, false)
 	}
+	return validateDatabaseFields(prefix, cfg, true)
+}
 
-	if strings.TrimSpace(cfg.Host) == "" {
-		return fmt.Errorf("invalid %s_HOST", prefix)
-	}
-	if cfg.Port <= 0 {
-		return fmt.Errorf("invalid %s_PORT", prefix)
+// validateDatabaseFields validates a DatabaseConfig. requireHostPort=false
+// skips host/port (used by Cloud SQL Unix-socket connections).
+func validateDatabaseFields(prefix string, cfg DatabaseConfig, requireHostPort bool) error {
+	if requireHostPort {
+		if strings.TrimSpace(cfg.Host) == "" {
+			return fmt.Errorf("invalid %s_HOST", prefix)
+		}
+		if cfg.Port <= 0 {
+			return fmt.Errorf("invalid %s_PORT", prefix)
+		}
 	}
 	if strings.TrimSpace(cfg.User) == "" {
 		return fmt.Errorf("invalid %s_USER", prefix)

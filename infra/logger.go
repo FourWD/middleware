@@ -2,15 +2,23 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strings"
 
 	"go.opentelemetry.io/otel/trace"
 )
+
+// maxDataPayloadBytes caps the size of the structured `data` field per log
+// entry. Beyond this, the payload is replaced with a truncation marker so a
+// single rogue log line never blows Cloud Logging quota.
+const maxDataPayloadBytes = 4096
 
 const (
 	UserIDKey = "user_id"
@@ -67,6 +75,9 @@ type Message struct {
 	args   []any
 }
 
+// Logger wraps slog.Logger with project-specific options and an optional
+// bound context. ctx/hasCtx are set together by WithContext and consumed by
+// log() so EventCtx/ErrorCtx variants can stamp request-scoped fields.
 type Logger struct {
 	logger   *slog.Logger
 	rootPath string
@@ -189,10 +200,9 @@ func WithContext(ctx context.Context) LoggerOption {
 	}
 }
 
+// Deprecated: use WithoutSource — same behavior, clearer intent.
 func WithHookDisabled() LoggerOption {
-	return func(o *LoggerOptions) {
-		o.disableHook = true
-	}
+	return WithoutSource()
 }
 
 // WithoutSource omits the "source" field (caller file:line) from the log entry.
@@ -218,6 +228,27 @@ func GetCorrelationID(ctx context.Context) (string, bool) {
 	value := ctx.Value(correlationIDContextKey)
 	correlationID, ok := value.(string)
 	return correlationID, ok
+}
+
+type loggerCtxKey struct{}
+
+// WithLogger attaches a scoped logger to ctx. LoggerFromContext returns it
+// in preference to the global AppLog. Useful for tests and request-scoped
+// overrides where mutating the global is undesirable.
+func WithLogger(parent context.Context, logger *Logger) context.Context {
+	return context.WithValue(parent, loggerCtxKey{}, logger)
+}
+
+// LoggerFromContext returns the logger attached to ctx via WithLogger, or
+// the package-level AppLog if none is attached. Callers should treat a nil
+// return as a no-op (defensive — AppLog is nil before NewApp completes).
+func LoggerFromContext(ctx context.Context) *Logger {
+	if ctx != nil {
+		if l, ok := ctx.Value(loggerCtxKey{}).(*Logger); ok && l != nil {
+			return l
+		}
+	}
+	return AppLog
 }
 
 func NewLoggerWith(cfg CommonConfig) *Logger {
@@ -279,6 +310,9 @@ func NewSlogAPILogger(w io.Writer, cfg SlogAPILoggerConfig) *Logger {
 	}
 }
 
+// Deprecated: Slog exposes the underlying slog.Logger for callers that need
+// to integrate with libraries expecting *slog.Logger. No internal callers;
+// kept for backward compatibility.
 func (l *Logger) Slog() *slog.Logger {
 	return l.logger
 }
@@ -296,24 +330,64 @@ func (l *Logger) Debug(msg Message, opts ...LoggerOption) {
 	l.log(slog.LevelDebug, nil, msg, opts...)
 }
 
-func (l *Logger) Info(msg Message, opts ...LoggerOption) {
-	l.log(slog.LevelInfo, nil, msg, opts...)
+// LifecycleEvent logs an info-level lifecycle event (boot, shutdown, worker
+// start/stop). Stamps WithLogKind(LogKindLifecycle) as a default; the
+// caller can override it by passing their own WithLogKind in opts (later
+// options overwrite earlier ones for the same key).
+func (l *Logger) LifecycleEvent(label string, data map[string]any, opts ...LoggerOption) {
+	all := buildEventOpts(data, "", prependDefault(WithLogKind(LogKindLifecycle), opts))
+	l.log(slog.LevelInfo, nil, M(label), all...)
 }
 
-func (l *Logger) Warn(msg Message, opts ...LoggerOption) {
-	l.log(slog.LevelWarn, nil, msg, opts...)
+// LifecycleWarn logs a warn-level lifecycle event (degraded boot, slow
+// shutdown, optional infra missing).
+func (l *Logger) LifecycleWarn(label string, data map[string]any, opts ...LoggerOption) {
+	all := buildEventOpts(data, "", prependDefault(WithLogKind(LogKindLifecycle), opts))
+	l.log(slog.LevelWarn, nil, M(label), all...)
 }
 
-func (l *Logger) Error(err error, msg Message, opts ...LoggerOption) {
-	l.log(slog.LevelError, err, msg, opts...)
+// LifecycleError logs an error-level lifecycle event (boot failure, hook
+// failure, etc.). Pass err to capture the stack trace.
+func (l *Logger) LifecycleError(err error, label string, data map[string]any, opts ...LoggerOption) {
+	all := buildEventOpts(data, "", prependDefault(WithLogKind(LogKindLifecycle), opts))
+	l.log(slog.LevelError, err, M(label), all...)
 }
 
-func (l *Logger) CriticalWarning(msg Message, opts ...LoggerOption) {
-	l.log(LevelCritical, nil, msg, opts...)
+// prependDefault places a default option at the front of opts so any
+// caller-provided option for the same key (e.g. WithLogKind) wins under
+// the "later overwrites earlier" merge rule.
+func prependDefault(defaultOpt LoggerOption, opts []LoggerOption) []LoggerOption {
+	out := make([]LoggerOption, 0, len(opts)+1)
+	out = append(out, defaultOpt)
+	out = append(out, opts...)
+	return out
 }
 
-func (l *Logger) CriticalError(err error, msg Message, opts ...LoggerOption) {
-	l.log(LevelCritical, err, msg, opts...)
+// ErrorWithCode is satisfied by error types that carry a machine-readable
+// code. Custom domain errors in service repos can implement this to get
+// the `error_code` log attribute without depending on infra.AppError.
+// The existing infra.CodedError struct already satisfies this interface
+// via its Code() method.
+type ErrorWithCode interface {
+	error
+	Code() string
+}
+
+// appendErrorCode attaches error_code (and error_status, when available)
+// log attributes. *AppError is the canonical case; ErrorWithCode covers
+// service-defined domain error types.
+func appendErrorCode(attrs []slog.Attr, err error) []slog.Attr {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		return append(attrs,
+			slog.String("error_code", appErr.Code),
+			slog.Int("error_status", appErr.Status))
+	}
+	var coded ErrorWithCode
+	if errors.As(err, &coded) {
+		return append(attrs, slog.String("error_code", coded.Code()))
+	}
+	return attrs
 }
 
 // Event logs an info-level business event without a context.
@@ -387,6 +461,8 @@ func (l *Logger) log(level slog.Level, err error, msg Message, opts ...LoggerOpt
 	logCtx := context.Background()
 	if l.hasCtx {
 		logCtx = l.ctx
+		// Prepend so caller-supplied WithContext (rare) still wins via the
+		// later-overwrites-earlier merge rule.
 		opts = append([]LoggerOption{WithContext(l.ctx)}, opts...)
 	}
 
@@ -398,10 +474,9 @@ func (l *Logger) log(level slog.Level, err error, msg Message, opts ...LoggerOpt
 	attrs := toAttrs(options)
 	if err != nil {
 		attrs = append(attrs, slog.String("error", err.Error()))
+		attrs = appendErrorCode(attrs, err)
 		if level >= slog.LevelError {
-			buf := make([]byte, 4096)
-			n := runtime.Stack(buf, false)
-			attrs = append(attrs, slog.String("stack_trace", string(buf[:n])))
+			attrs = append(attrs, slog.String("stack_trace", string(debug.Stack())))
 		}
 	}
 
@@ -434,18 +509,68 @@ func toAttrs(options LoggerOptions) []slog.Attr {
 	}
 
 	if len(dataFields) > 0 {
-		attrs = append(attrs, slog.Any("data", dataFields))
+		attrs = append(attrs, slog.Any("data", capDataPayload(dataFields)))
 	}
 
 	return attrs
 }
+
+// capDataPayloadSkipThreshold is the entry count below which the size guard
+// is skipped entirely. A map of primitive values typically serialises to
+// well under maxDataPayloadBytes when it has fewer than this many keys, so
+// we avoid the per-log marshal cost on the common path.
+const capDataPayloadSkipThreshold = 20
+
+// capDataPayload guards against a single log entry blowing the log quota
+// with a huge embedded struct. If the JSON serialisation exceeds
+// maxDataPayloadBytes, the payload is replaced with a marker map carrying
+// the size and a short summary of which keys were present (PII key names
+// redacted).
+//
+// To stay off the hot path, small maps skip the marshal check entirely —
+// they are mathematically incapable of exceeding the cap with primitive
+// values. Maps with nested structs still trigger the full check via the
+// key-count threshold.
+func capDataPayload(data map[string]any) map[string]any {
+	if len(data) < capDataPayloadSkipThreshold {
+		return data
+	}
+	encoded, err := json.Marshal(data)
+	if err != nil || len(encoded) <= maxDataPayloadBytes {
+		return data
+	}
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		if _, sensitive := sensitiveFieldNames[strings.ToLower(k)]; sensitive {
+			// Don't leak sensitive field names via the truncation marker.
+			keys = append(keys, "<redacted>")
+			continue
+		}
+		keys = append(keys, k)
+	}
+	return map[string]any{
+		"_truncated":  true,
+		"_size_bytes": len(encoded),
+		"_max_bytes":  maxDataPayloadBytes,
+		"_keys":       keys,
+	}
+}
+
+// runtimeCallerBaseSkip is the number of frames between runtime.Caller and
+// the original caller of Logger.Event/Error/etc:
+//
+//	[0] addSource → [1] Logger.log → [2] Event/EventCtx/etc → [3] user code
+//
+// Helpers that add another frame (Log*Error helpers in log_helpers.go) pass
+// WithCallerSkip(1) to bump this further.
+const runtimeCallerBaseSkip = 3
 
 func addSource(options *LoggerOptions, rootPath string, skip int) {
 	if options.additionalFields == nil {
 		options.additionalFields = make(map[string]any)
 	}
 
-	_, file, line, ok := runtime.Caller(3 + skip)
+	_, file, line, ok := runtime.Caller(runtimeCallerBaseSkip + skip)
 	if !ok {
 		return
 	}

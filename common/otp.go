@@ -2,13 +2,14 @@ package common
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/FourWD/middleware/infra"
+	"github.com/FourWD/middleware/kit"
 	"github.com/FourWD/middleware/model"
 	"github.com/google/uuid"
 )
@@ -18,139 +19,110 @@ var otpHTTPClient = &http.Client{
 }
 
 func OtpRequest(mobile string) (model.OtpResult, error) {
-	result, errUpload := otpRequestToServer(mobile)
-	if errUpload != nil {
-		return result, errUpload
-	}
-
-	return result, nil
+	return otpRequestToServer(mobile)
 }
 
 func otpRequestToServer(mobile string) (model.OtpResult, error) {
-	result := new(model.OtpResult)
+	var result model.OtpResult
+	app := getOtpApp()
 
-	type Params struct {
-		Key    string `json:"key"`
-		Secret string `json:"secret"`
-		Mobile string `json:"mobile"`
-	}
-
-	app, err := getOtpApp()
+	payload := "key=" + app.AppKey + "&secret=" + app.AppSecret + "&msisdn=" + mobile
+	body, err := postOtpForm(infra.GetEnv("OTP_URL_REQUEST", ""), payload)
 	if err != nil {
-		LogError("OTP_APP_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		infra.AppLog.EventError(err, "OTP_REQUEST_FAILURE", map[string]any{
+			"mobile_last_4": kit.MaskMobile(mobile),
+		}, "",
+			infra.WithComponent(infra.ComponentOTP),
+			infra.WithOperation("request"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, err
 	}
 
-	params := new(Params)
-	params.Key = app.AppKey
-	params.Secret = app.AppSecret
-	params.Mobile = mobile
-
-	payloadString := "key=" + params.Key + "&secret=" + params.Secret + "&msisdn=" + params.Mobile
-	req, _ := http.NewRequest("POST", infra.GetEnv("OTP_URL_REQUEST", ""), strings.NewReader(payloadString))
-
-	req.Header.Add("accept", "application/json")
-	req.Header.Add("content-type", "application/x-www-form-urlencoded")
-
-	res, err := otpHTTPClient.Do(req)
-	if err != nil {
-		return *result, errors.New(err.Error())
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return *result, errors.New("failed to read response body: " + err.Error())
+	if err := json.Unmarshal(body, &result); err != nil {
+		infra.AppLog.EventError(err, "OTP_REQUEST_UNMARSHAL_FAILURE", map[string]any{
+			"mobile_last_4": kit.MaskMobile(mobile),
+		}, "",
+			infra.WithComponent(infra.ComponentOTP),
+			infra.WithOperation("request"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, fmt.Errorf("unmarshal otp response: %w", err)
 	}
 
-	jsonBody := strings.ReplaceAll(string(body), "/", "")
-
-	otpUnmar := new(model.OtpResult)
-	errUnmar := json.Unmarshal(body, &otpUnmar)
-	if errUnmar != nil {
-		LogError("OTP_UNMARSHAL_ERROR", map[string]interface{}{"error": errUnmar.Error()}, "")
-	}
-
-	result.Refno = otpUnmar.Refno
-	result.Status = otpUnmar.Status
-	result.Token = otpUnmar.Token
-
-	log := new(model.LogOtpRequest)
-	log.ID = uuid.NewString()
-	log.CreatedAt = time.Now()
-	log.Mobile = params.Mobile
-	log.AppID = infra.GetEnv("APP_ID", "")
-	log.Response = jsonBody
-	Database.Save(log)
-
-	return *result, nil
-}
-
-func OtpVerify(payload model.OtpVerifyPayload) (model.OtpVeriyResult, error) {
-	result, errVerify := otpVerifyServer(payload)
-	if errVerify != nil {
-		return result, errVerify
-	}
+	Database.Save(&model.LogOtpRequest{
+		ID:        uuid.NewString(),
+		CreatedAt: time.Now(),
+		Mobile:    mobile,
+		AppID:     app.ID,
+		Response:  strings.ReplaceAll(string(body), "/", ""),
+	})
 
 	return result, nil
 }
 
-func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, error) {
-	result := new(model.OtpVeriyResult)
+func OtpVerify(payload model.OtpVerifyPayload) (model.OtpVeriyResult, error) {
+	return otpVerifyServer(payload)
+}
 
-	app, err := getOtpApp()
+func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, error) {
+	var result model.OtpVeriyResult
+	app := getOtpApp()
+
+	form := "key=" + app.AppKey + "&secret=" + app.AppSecret + "&token=" + payload.Token + "&pin=" + payload.Pin
+	body, err := postOtpForm(infra.GetEnv("OTP_URL_VERIFY", ""), form)
 	if err != nil {
-		LogError("OTP_APP_ERROR", map[string]interface{}{"error": err.Error()}, "")
+		infra.AppLog.EventError(err, "OTP_VERIFY_FAILURE", nil, "",
+			infra.WithComponent(infra.ComponentOTP),
+			infra.WithOperation("verify"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, err
 	}
 
-	payloadString := "key=" + app.AppKey + "&secret=" + app.AppSecret + "&token=" + payload.Token + "&pin=" + payload.Pin
+	if err := json.Unmarshal(body, &result); err != nil {
+		infra.AppLog.EventError(err, "OTP_VERIFY_UNMARSHAL_FAILURE", nil, "",
+			infra.WithComponent(infra.ComponentOTP),
+			infra.WithOperation("verify"),
+			infra.WithLogKind(infra.LogKindError))
+		return result, fmt.Errorf("unmarshal otp verify response: %w", err)
+	}
 
-	req, _ := http.NewRequest("POST", infra.GetEnv("OTP_URL_VERIFY", ""), strings.NewReader(payloadString))
+	saveLog(app, strings.ReplaceAll(string(body), "/", ""))
+	return result, nil
+}
 
-	req.Header.Add("accept", "application/json")
-	req.Header.Add("content-type", "application/x-www-form-urlencoded")
+func postOtpForm(url, body string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("new request: %w", err)
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("content-type", "application/x-www-form-urlencoded")
 
 	res, err := otpHTTPClient.Do(req)
 	if err != nil {
-		return *result, errors.New(err.Error())
+		return nil, fmt.Errorf("do request: %w", err)
 	}
 	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
+	raw, err := io.ReadAll(res.Body)
 	if err != nil {
-		return *result, errors.New("failed to read response body: " + err.Error())
+		return nil, fmt.Errorf("read body: %w", err)
 	}
-
-	jsonBody := strings.ReplaceAll(string(body), "/", "")
-
-	otpUnmar := new(model.OtpVeriyResult)
-	errUnmar := json.Unmarshal(body, &otpUnmar)
-	if errUnmar != nil {
-		LogError("OTP_VERIFY_UNMARSHAL_ERROR", map[string]interface{}{"error": errUnmar.Error()}, "")
-	}
-
-	result.Status = otpUnmar.Status
-	result.Message = otpUnmar.Message
-
-	result.Code = otpUnmar.Code
-	result.Errors = otpUnmar.Errors
-
-	saveLog(app, jsonBody)
-	return *result, nil
+	return raw, nil
 }
 
-func getOtpApp() (model.AppOtp, error) {
-	app := new(model.AppOtp)
-	app.ID = infra.GetEnv("APP_ID", "")
-	app.AppKey = infra.GetEnv("OTP_SMS_KEY", "")
-	app.AppSecret = infra.GetEnv("OTP_SMS_SECRET", "")
-	return *app, nil
+func getOtpApp() model.AppOtp {
+	return model.AppOtp{
+		ID:        infra.GetEnv("APP_ID", ""),
+		AppKey:    infra.GetEnv("OTP_SMS_KEY", ""),
+		AppSecret: infra.GetEnv("OTP_SMS_SECRET", ""),
+	}
 }
 
 func saveLog(app model.AppOtp, response string) {
-	log := new(model.LogOtpVerify)
-	log.ID = uuid.NewString()
-	log.CreatedAt = time.Now()
-	log.AppID = app.ID
-	log.Response = response
-	Database.Save(log)
+	Database.Save(&model.LogOtpVerify{
+		ID:        uuid.NewString(),
+		CreatedAt: time.Now(),
+		AppID:     app.ID,
+		Response:  response,
+	})
 }

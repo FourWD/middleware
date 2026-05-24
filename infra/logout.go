@@ -5,6 +5,5 @@ import (
 )
 
 func Logout(c fiber.Ctx) error {
-	jwtToken := c.Get("Authorization")
-	return BlacklistJwtToken(jwtToken)
+	return BlacklistJwtToken(c.Context(), c.Get("Authorization"))
 }

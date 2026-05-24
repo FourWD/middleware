@@ -1,18 +1,13 @@
 package kit
 
-import (
-	"encoding/json"
-	"strings"
-)
+import "encoding/json"
 
 func StructToString(data interface{}) string {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return ""
 	}
-	jsonString := string(jsonData)
-	jsonString = strings.Replace(jsonString, `\"`, `"`, -1)
-	return jsonString
+	return string(jsonData)
 }
 
 func StructToJson(data interface{}) (string, error) {
@@ -21,11 +16,8 @@ func StructToJson(data interface{}) (string, error) {
 		return "", err
 	}
 	jsonString := string(jsonData)
-	jsonString = strings.Replace(jsonString, `\"`, `"`, -1)
-
 	if jsonString == "null" {
-		jsonString = ""
+		return "", nil
 	}
-
 	return jsonString, nil
 }

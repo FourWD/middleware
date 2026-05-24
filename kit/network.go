@@ -12,8 +12,11 @@ func LocalIP() (string, error) {
 	}
 	defer conn.Close()
 
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	return localAddr.IP.To4().String(), nil
+	addr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return "", errors.New("unexpected local address type")
+	}
+	return addr.IP.To4().String(), nil
 }
 
 func LocalMACAddress() (string, error) {

@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"log/slog"
 	stdlog "log"
 	"strings"
 )
@@ -16,7 +17,9 @@ func (w *stdlibLogWriter) Write(p []byte) (int, error) {
 	if msg == "" {
 		return len(p), nil
 	}
-	w.logger.Info(M(msg),
+	// Use the unexported log() directly: stdlib `log` produces free-form
+	// strings with no event label, so the Lifecycle/Event APIs do not fit.
+	w.logger.log(slog.LevelInfo, nil, M(msg),
 		WithComponent("stdlib_log"),
 		WithOperation("write"),
 		WithLogKind("fallback"),

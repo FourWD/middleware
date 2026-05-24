@@ -106,12 +106,11 @@ func RegisterHTTPStack(app *fiber.App, cfg StackConfig) {
 	cfg = cfg.normalized()
 
 	if cfg.AllowOrigins == "*" && GetEnv("APP_ENV", "local") == "prod" && cfg.Logger != nil {
-		cfg.Logger.Warn(
-			M("CORS AllowOrigins is wildcard (*) in production — set HTTP_ALLOW_ORIGINS explicitly"),
+		cfg.Logger.LifecycleWarn("CORS_WILDCARD_IN_PROD", map[string]any{
+			"hint": "set HTTP_ALLOW_ORIGINS explicitly",
+		},
 			WithComponent("middleware"),
-			WithOperation("cors_check"),
-			WithLogKind("security"),
-		)
+			WithOperation("cors_check"))
 	}
 
 	if cfg.EnvelopeEnabled {
@@ -133,15 +132,11 @@ func RegisterHTTPStack(app *fiber.App, cfg StackConfig) {
 
 func registerCORS(app *fiber.App, cfg StackConfig) {
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:  splitCSV(cfg.AllowOrigins),
+		AllowOrigins:  SplitCSV(cfg.AllowOrigins),
 		AllowMethods:  []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", RequestIDHeader},
 		ExposeHeaders: []string{RequestIDHeader},
 	}))
-}
-
-func splitCSV(value string) []string {
-	return SplitCSV(value)
 }
 
 // SplitCSV splits a comma-separated string, trims each element, and drops empties.

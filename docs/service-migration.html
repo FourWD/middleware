@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Migration Runbook — middleware</title>
+  <link rel="stylesheet" href="https://pakkad.fourwd.me/docs/style.css">
+</head>
+<body>
+  <nav class="top">
+    <div class="inner">
+      <span class="brand">middleware</span>
+      <a href="index.html">Overview</a>
+      <a href="ui-flow.html">UI &amp; Flow</a>
+      <a href="database.html">Database</a>
+      <a href="api.html">API &amp; Integration</a>
+      <a href="deployment.html">Config &amp; Deployment</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <h1>Service Migration Runbook</h1>
+    <p class="lead">
+      Step-by-step guide for service repos upgrading to the new logging
+      standard introduced by middleware. Covers two soft-breaking areas:
+      deprecated <code>common.Log/LogError/LogWarning</code> bridges and
+      deprecated Level methods on <code>*Logger</code>.
+    </p>
+    <p class="docmeta">
+      <span class="badge">v1</span>
+      Owned by: <code>@puarns</code> · Last reviewed: 2026-05-24
+    </p>
+
+    <h2 id="compatibility">1. Compatibility Posture</h2>
+    <p>
+      The middleware library makes deprecations soft — old call sites
+      compile and run, but emit <code>// Deprecated:</code> warnings in
+      IDE / <code>staticcheck</code> / <code>golangci-lint</code>.
+      Service repos can migrate at their own pace; nothing breaks on
+      version bump.
+    </p>
+    <div class="note">
+      <strong>Note —</strong> <code>infra.AppLog</code> remains a plain
+      package var. Existing <code>infra.AppLog.X(...)</code> call sites
+      continue to work; the deprecation only flags the legacy bridge in
+      <code>common/log.go</code> and the Level methods on <code>*Logger</code>.
+    </div>
+
+    <h2 id="phase-1">2. Phase 1 — Replace <code>common.Log*</code> bridges</h2>
+    <p>
+      Goal: remove all <code>common.Log</code> / <code>common.LogError</code>
+      / <code>common.LogWarning</code> calls.
+    </p>
+    <h3>Mapping</h3>
+    <table>
+      <thead>
+        <tr><th>Old call</th><th>New call</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>common.Log("LABEL", data, requestID)</code></td>
+          <td><code>infra.AppLog.Event("LABEL", data, requestID, infra.WithComponent("…"), infra.WithOperation("…"), infra.WithLogKind(infra.LogKindBusiness))</code></td>
+        </tr>
+        <tr>
+          <td><code>common.LogWarning("LABEL", data, requestID)</code></td>
+          <td><code>infra.AppLog.EventWarn(...)</code></td>
+        </tr>
+        <tr>
+          <td><code>common.LogError("LABEL", data, requestID, err)</code></td>
+          <td><code>infra.AppLog.EventError(err, "LABEL", data, requestID, opts...)</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <h3>Pattern: prefer <code>EventCtx</code> when a request context is in scope</h3>
+    <pre><code>// before
+common.LogError("USER_CREATE_FAILED", map[string]interface{}{
+    "userID": id,
+    "error":  err.Error(),
+}, requestID, err)
+
+// after
+infra.AppLog.ErrorCtx(c.Context(), err, "USER_CREATE_FAILURE", nil,
+    infra.WithComponent(infra.ComponentHandler),
+    infra.WithOperation("create_user"),
+    infra.WithLogKind(infra.LogKindError),
+    infra.WithField("user_id", id))</code></pre>
+    <p>
+      Notes:
+    </p>
+    <ul>
+      <li><strong>Label format</strong>: UPPER_SNAKE, shape <code>&lt;DOMAIN&gt;_&lt;OPERATION&gt;_&lt;OUTCOME&gt;</code>. Old camelCase / lower-snake labels should be renamed for grep-ability.</li>
+      <li><strong>Error duplication</strong>: do NOT pack the error string into both the positional <code>err</code> arg and a <code>data["error"]</code> field — the logger emits a top-level <code>error</code> attribute automatically.</li>
+      <li><strong>PII</strong>: never log raw tokens, mobile numbers, email locals, passwords. Use <code>kit.MaskMobile</code> / <code>kit.MaskEmail</code> for safe forms.</li>
+    </ul>
+
+    <h2 id="phase-2">3. Phase 2 — Migrate deprecated Level methods</h2>
+    <p>
+      Goal: stop calling <code>logger.Info/Warn/Error/CriticalWarning/CriticalError</code>
+      outside lifecycle code. They remain on the type for backwards
+      compatibility and request-log severity routing, but the recommended
+      replacements are:
+    </p>
+    <table>
+      <thead>
+        <tr><th>Old</th><th>New</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>logger.Info(M("worker started"), …)</code></td>
+          <td><code>logger.LifecycleEvent("WORKER_STARTED", nil, opts...)</code></td>
+        </tr>
+        <tr>
+          <td><code>logger.Warn(M("…"), …)</code> (lifecycle)</td>
+          <td><code>logger.LifecycleWarn(label, data, opts...)</code></td>
+        </tr>
+        <tr>
+          <td><code>logger.Error(err, M("…"), …)</code> (lifecycle)</td>
+          <td><code>logger.LifecycleError(err, label, data, opts...)</code></td>
+        </tr>
+        <tr>
+          <td><code>logger.Info(M("…"), …)</code> (business event)</td>
+          <td><code>logger.EventCtx(ctx, label, data, opts...)</code></td>
+        </tr>
+        <tr>
+          <td><code>logger.Error(err, M("…"), …)</code> (request handler)</td>
+          <td><code>logger.ErrorCtx(ctx, err, label, data, opts...)</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      The Lifecycle helpers auto-stamp <code>WithLogKind(LogKindLifecycle)</code>
+      as a default; if the caller passes their own <code>WithLogKind</code>
+      it wins.
+    </p>
+
+    <h2 id="phase-3">4. Phase 3 — Adopt helpers for common patterns</h2>
+    <p>
+      Optional but recommended: collapse boilerplate using the helpers in
+      <code>infra/log_helpers.go</code>.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Pattern</th><th>Helper</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>DB op failed</td>
+          <td><code>infra.LogDBError(ctx, err, "create", "users", id)</code></td>
+        </tr>
+        <tr>
+          <td>Outbound HTTP failed</td>
+          <td><code>infra.LogHTTPClientError(ctx, err, "POST", url, status)</code></td>
+        </tr>
+        <tr>
+          <td>Domain event (audit)</td>
+          <td><code>infra.LogBusinessEvent(ctx, "USER_CREATED", "handler", "create_user", data)</code></td>
+        </tr>
+        <tr>
+          <td>Boot/shutdown event</td>
+          <td><code>infra.LogLifecycle("WORKER_STARTED", "app", "worker_start", data)</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="phase-4">5. Phase 4 — Adopt custom error codes (optional)</h2>
+    <p>
+      Domain errors that satisfy <code>infra.ErrorWithCode</code>
+      (<code>Code() string</code> method) automatically contribute an
+      <code>error_code</code> attribute. No dependency on
+      <code>infra.AppError</code> required.
+    </p>
+    <pre><code>// internal/domain/errors.go
+type UserNotFound struct{ ID string }
+
+func (e UserNotFound) Error() string { return "user not found: " + e.ID }
+func (e UserNotFound) Code() string  { return "USER_NOT_FOUND" }
+
+// usage — code automatically tagged onto the log entry
+return infra.AppLog.ErrorCtx(ctx, UserNotFound{ID: id}, "LOOKUP", nil, opts...)</code></pre>
+
+    <h2 id="verify">6. Verification</h2>
+    <ul class="checklist">
+      <li>Run <code>go vet ./...</code> in the service repo — should be clean.</li>
+      <li>Run <code>go build ./...</code> — should be clean.</li>
+      <li>Run <code>staticcheck ./...</code> (or <code>golangci-lint run</code>) — deprecation warnings on remaining <code>common.Log*</code> / Level-method call sites highlight what still needs to migrate.</li>
+      <li>Spot-check Cloud Logging for the service in a dev environment: every log line should carry <code>component</code>, <code>operation</code>, <code>log_kind</code>, and a UPPER_SNAKE label.</li>
+    </ul>
+
+    <h2 id="rollback">7. Rollback</h2>
+    <p>
+      Every step is reversible:
+    </p>
+    <ul>
+      <li><strong>Phase 1</strong>: <code>common.Log/LogError/LogWarning</code> still exist as deprecated shims — reverting one file at a time is safe.</li>
+      <li><strong>Phase 2</strong>: Level methods still exist on <code>*Logger</code>; reverting to <code>logger.Info(M("…"), …)</code> compiles.</li>
+    </ul>
+
+    <h2 id="timeline">8. Timeline expectations</h2>
+    <p>
+      Per service:
+    </p>
+    <ul>
+      <li><strong>Phase 1 (common.Log)</strong>: 30–60 minutes depending on call-site count.</li>
+      <li><strong>Phase 2 (Level → Lifecycle/Event)</strong>: 1–2 hours; mechanical but requires judgement on label naming.</li>
+      <li><strong>Phase 3 (helpers)</strong>: optional, do opportunistically.</li>
+      <li><strong>Phase 4 (custom error codes)</strong>: optional, do when introducing new domain error types.</li>
+    </ul>
+    <p>
+      All required phases for a typical service: <strong>~2–3 hours of focused work</strong>.
+    </p>
+
+    <footer>middleware · last updated 2026-05-24</footer>
+  </div>
+</body>
+</html>

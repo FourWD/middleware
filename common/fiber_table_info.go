@@ -11,86 +11,90 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+type columnInfo struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+type tableInfo struct {
+	TableName   string       `json:"table_name"`
+	IsView      bool         `json:"is_view"`
+	TotalColumn int          `json:"total_column"`
+	ColumnList  []columnInfo `json:"column_list"`
+	Md5         string       `json:"md5"`
+}
+
+// FiberTableInfo registers GET /api/table — dev-only schema introspection.
+// Returns each table's columns with a stable MD5 so clients can detect drift.
 func FiberTableInfo(app *fiber.App) {
-	type ColumnInfo struct {
-		Name string `json:"name"`
-		Type string `json:"type"`
-	}
-
-	type TableInfo struct {
-		TableName   string       `json:"table_name"`
-		IsView      bool         `json:"is_view"`
-		TotalColumn int          `json:"total_column"`
-		ColumnList  []ColumnInfo `json:"column_list"`
-		Md5         string       `json:"md5"`
-	}
-
 	app.Get("/api/table", func(c fiber.Ctx) error {
 		if infra.AppInfo.Env == "prod" {
-			return FiberError(c, "1003", "not allowed in production environment")
+			return infra.FiberError(c, "1003", "not allowed in production environment")
 		}
 
-		DBName := infra.GetEnv("DB_NAME", "")
-		rows, err := DatabaseSql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, 
-		CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? 
-		ORDER BY TABLE_NAME, COLUMN_NAME`, DBName)
+		rows, err := DatabaseSql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE,
+		CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ?
+		ORDER BY TABLE_NAME, COLUMN_NAME`, infra.GetEnv("DB_NAME", ""))
 		if err != nil {
 			return c.Status(http.StatusInternalServerError).SendString("Error executing query")
 		}
 		defer rows.Close()
 
-		// Parse query result and structure JSON response
-		var tables []TableInfo
-		var currentTable string
-		var tableInfo TableInfo
+		var (
+			tables    []tableInfo
+			current   tableInfo
+			currentID string
+		)
 		for rows.Next() {
 			var tableName, columnName, dataType string
 			var length sql.NullInt64
-			err := rows.Scan(&tableName, &columnName, &dataType, &length)
-			if err != nil {
-				LogError("TABLE_INFO_SCAN_ERROR", map[string]interface{}{"error": err.Error()}, "")
+			if err := rows.Scan(&tableName, &columnName, &dataType, &length); err != nil {
+				infra.AppLog.EventError(err, "TABLE_INFO_SCAN_FAILURE", nil, "",
+					infra.WithComponent(infra.ComponentDB),
+					infra.WithOperation("scan_row"),
+					infra.WithLogKind(infra.LogKindError),
+					infra.WithField("table", "information_schema.columns"))
 				continue
 			}
-			if tableName != currentTable {
-				if currentTable != "" {
-					tableInfo.TotalColumn = len(tableInfo.ColumnList)
-					md5Byte, _ := json.Marshal(tableInfo)
-					tableInfo.Md5 = kit.MD5(string(md5Byte))
-					tables = append(tables, tableInfo)
+
+			if tableName != currentID {
+				if currentID != "" {
+					tables = append(tables, finalizeTable(current))
 				}
-				tableInfo = TableInfo{
-					TableName:  tableName,
-					ColumnList: make([]ColumnInfo, 0),
-				}
-				currentTable = tableName
+				current = tableInfo{TableName: tableName, ColumnList: []columnInfo{}}
+				currentID = tableName
 			}
 
-			var fullDataType string
-			if length.Valid {
-				fullDataType = fmt.Sprintf("%s (%d)", dataType, length.Int64)
-			} else {
-				fullDataType = dataType
-			}
-
-			tableInfo.ColumnList = append(tableInfo.ColumnList, ColumnInfo{
+			current.ColumnList = append(current.ColumnList, columnInfo{
 				Name: columnName,
-				Type: fullDataType,
+				Type: formatDataType(dataType, length),
 			})
 		}
-		if currentTable != "" {
-			tableInfo.TotalColumn = len(tableInfo.ColumnList)
-			md5Byte, _ := json.Marshal(tableInfo)
-			tableInfo.Md5 = kit.MD5(string(md5Byte))
-			tables = append(tables, tableInfo)
+		if currentID != "" {
+			tables = append(tables, finalizeTable(current))
 		}
 
-		// Marshal tables slice to JSON
 		jsonData, err := json.Marshal(tables)
 		if err != nil {
 			return c.Status(http.StatusInternalServerError).SendString("Error encoding JSON")
 		}
-
-		// Return JSON response
 		return c.Status(http.StatusOK).Send(jsonData)
 	})
+}
+
+// finalizeTable fills in TotalColumn and computes the MD5 of the table
+// snapshot — used at both the "row transitions to new table" point and at
+// end-of-rows.
+func finalizeTable(t tableInfo) tableInfo {
+	t.TotalColumn = len(t.ColumnList)
+	snapshot, _ := json.Marshal(t)
+	t.Md5 = kit.MD5(string(snapshot))
+	return t
+}
+
+func formatDataType(dataType string, length sql.NullInt64) string {
+	if length.Valid {
+		return fmt.Sprintf("%s (%d)", dataType, length.Int64)
+	}
+	return dataType
 }

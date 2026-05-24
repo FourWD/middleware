@@ -4,12 +4,13 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/FourWD/middleware/infra"
 	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v3"
 )
 
 func CheckRolePermission(c fiber.Ctx, path string, action string) error {
-	userID := GetSessionUserID(c)
+	userID := infra.GetSessionUserID(c)
 
 	if !kit.StringExistsInList(action, []string{"READ", "CREATE", "UPDATE", "DELETE"}) {
 		return errors.New("Unauthorized")

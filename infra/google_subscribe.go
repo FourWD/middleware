@@ -17,47 +17,64 @@ import (
 // caller control ack/nack + retry policy.
 func GoogleSubscribe(topicName string, process func(message *pubsub.Message)) {
 	if PubSub == nil {
-		AppLog.EventWarn("PUBSUB_CLIENT_NOT_INITIALIZED", map[string]interface{}{
+		AppLog.EventWarn("PUBSUB_CLIENT_NOT_INITIALIZED", map[string]any{
 			"topic": topicName,
-		}, "")
+		}, "",
+			WithComponent(ComponentPubSub),
+			WithOperation("subscribe"),
+			WithLogKind(LogKindError))
 		return
 	}
 
 	subscriptionID := "SUB-" + topicName
 
-	AppLog.Event("PUBSUB_SUBSCRIBE_START", map[string]interface{}{
+	AppLog.Event("PUBSUB_SUBSCRIBE_START", map[string]any{
 		"topic":        topicName,
 		"subscription": subscriptionID,
-	}, "")
+	}, "",
+		WithComponent(ComponentPubSub),
+		WithOperation("subscribe"),
+		WithLogKind(LogKindBusiness))
 
 	ctx := context.Background()
 	if err := PubSub.EnsureSubscription(ctx, topicName, subscriptionID); err != nil {
-		AppLog.EventError(err, "PUBSUB_SUBSCRIPTION_ENSURE_ERROR", map[string]interface{}{
+		AppLog.EventError(err, "PUBSUB_SUBSCRIPTION_ENSURE_FAILURE", map[string]any{
 			"topic":        topicName,
 			"subscription": subscriptionID,
-		}, "")
+		}, "",
+			WithComponent(ComponentPubSub),
+			WithOperation("ensure_subscription"),
+			WithLogKind(LogKindError))
 		return
 	}
 
 	for {
-		AppLog.Event("PUBSUB_LISTENING", map[string]interface{}{"topic": topicName}, "")
+		AppLog.Event("PUBSUB_LISTENING", map[string]any{"topic": topicName}, "",
+			WithComponent(ComponentPubSub),
+			WithOperation("listen"),
+			WithLogKind(LogKindLifecycle))
+
 		err := PubSub.Subscribe(ctx, subscriptionID, func(ctx context.Context, msg *pubsub.Message) {
-			AppLog.Event("PUBSUB_MESSAGE_RECEIVED", map[string]interface{}{
+			AppLog.Event("PUBSUB_MESSAGE_RECEIVED", map[string]any{
 				"topic": topicName,
-				"data":  string(msg.Data),
-			}, "")
+			}, "",
+				WithComponent(ComponentPubSub),
+				WithOperation("receive"),
+				WithLogKind(LogKindBusiness))
 			process(msg)
 			msg.Ack()
 		})
 
 		if err != nil {
-			AppLog.EventError(err, "PUBSUB_RECEIVE_ERROR", map[string]interface{}{"topic": topicName}, "")
-			AppLog.EventWarn("PUBSUB_RETRYING", map[string]interface{}{"topic": topicName}, "")
+			LogPubSubError(ctx, err, "receive", topicName)
 			time.Sleep(2 * time.Second)
 		}
 
 		if ctx.Err() != nil {
-			AppLog.Event("PUBSUB_CONTEXT_CANCELLED", map[string]interface{}{"topic": topicName}, "")
+			AppLog.Event("PUBSUB_CONTEXT_CANCELLED", map[string]any{"topic": topicName}, "",
+				WithComponent(ComponentPubSub),
+				WithOperation("subscribe"),
+				WithLogKind(LogKindLifecycle))
 			return
 		}
 	}

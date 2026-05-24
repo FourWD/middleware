@@ -232,8 +232,16 @@ func (c *StdHTTPClient) request(ctx context.Context, method, url string, params 
 
 // --- Legacy HTTP helpers migrated from common ---
 
+// DefaultHTTPTimeout is the default timeout for the legacy shared HTTP client.
+const DefaultHTTPTimeout = 30 * time.Second
+
+// legacyHTTPClient is a shared HTTP client with timeout configured.
+var legacyHTTPClient = &http.Client{
+	Timeout: DefaultHTTPTimeout,
+}
+
 func CallUrl(url string) string {
-	response, err := http.Get(url)
+	response, err := legacyHTTPClient.Get(url)
 	if err != nil {
 		return ""
 	}
@@ -243,16 +251,7 @@ func CallUrl(url string) string {
 	if err != nil {
 		return ""
 	}
-
 	return string(body)
-}
-
-// DefaultHTTPTimeout is the default timeout for the legacy shared HTTP client.
-const DefaultHTTPTimeout = 30 * time.Second
-
-// legacyHTTPClient is a shared HTTP client with timeout configured.
-var legacyHTTPClient = &http.Client{
-	Timeout: DefaultHTTPTimeout,
 }
 
 func HttpRequest(url string, method string, token string, jsonString string) (string, error) {

@@ -13,7 +13,10 @@ func initFirebaseApp(credentialsFile string) (*firebase.App, error) {
 
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
-		AppLog.EventError(err, "FIREBASE_APP_ERROR", nil, "")
+		AppLog.EventError(err, "FIREBASE_APP_INIT_FAILURE", nil, "",
+			WithComponent(ComponentFirebase),
+			WithOperation("init_app"),
+			WithLogKind(LogKindError))
 		return nil, err
 	}
 

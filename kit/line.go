@@ -47,7 +47,10 @@ func SendLineNotify(ctx context.Context, client *http.Client, channelToken, to, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
-		raw, _ := io.ReadAll(resp.Body)
+		raw, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return fmt.Errorf("LINE push failed: %s (read body: %w)", resp.Status, readErr)
+		}
 		return fmt.Errorf("LINE push failed: %s, body=%s", resp.Status, string(raw))
 	}
 

@@ -50,7 +50,9 @@ func ConnectMongo(ctx context.Context, cfg MongoConfig) (*MongoClient, error) {
 	}
 
 	if err := client.Ping(ctx, nil); err != nil {
-		_ = client.Disconnect(ctx)
+		if dErr := client.Disconnect(ctx); dErr != nil {
+			return nil, fmt.Errorf("mongo ping: %w (disconnect failed: %v)", err, dErr)
+		}
 		return nil, fmt.Errorf("mongo ping: %w", err)
 	}
 

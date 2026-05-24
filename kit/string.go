@@ -6,9 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -60,28 +60,49 @@ func TitleCase(text string) string {
 }
 
 func StringExistsInList(target string, strList []string) bool {
-	for _, str := range strList {
-		if str == target {
-			return true
-		}
+	return slices.Contains(strList, target)
+}
+
+// MaskMobile returns a log-safe representation of a mobile number: the last
+// four digits prefixed with "XXX-XXX-". Inputs shorter than 4 chars become
+// "XXXX" so callers never accidentally log a full number.
+func MaskMobile(mobile string) string {
+	if len(mobile) < 4 {
+		return "XXXX"
 	}
-	return false
+	return "XXX-XXX-" + mobile[len(mobile)-4:]
+}
+
+// MaskEmail returns just the domain portion ("@example.com" → "example.com");
+// the local part is replaced with "***" to stay PII-safe. Inputs without
+// "@" return "***".
+func MaskEmail(email string) string {
+	at := strings.IndexByte(email, '@')
+	if at < 0 || at == len(email)-1 {
+		return "***"
+	}
+	return "***@" + email[at+1:]
 }
 
 func DateString() string {
-	currentTime := time.Now()
-	dateString := fmt.Sprintf("%d", currentTime.UnixNano())
-	randomDigits := generateRandomDigits(10)
-	return dateString + randomDigits
+	var b strings.Builder
+	b.Grow(19 + 10)
+	b.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+	appendRandomDigits(&b, 10)
+	return b.String()
 }
 
 func generateRandomDigits(count int) string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	result := ""
+	var b strings.Builder
+	b.Grow(count)
+	appendRandomDigits(&b, count)
+	return b.String()
+}
+
+func appendRandomDigits(b *strings.Builder, count int) {
 	for i := 0; i < count; i++ {
-		result += fmt.Sprintf("%d", r.Intn(10))
+		b.WriteByte('0' + byte(rand.IntN(10)))
 	}
-	return result
 }
 
 func DateToString(t time.Time) string {

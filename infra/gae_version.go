@@ -13,17 +13,29 @@ import (
 	"time"
 )
 
-const maxWakeUpMinute = 10
+const (
+	maxWakeUpMinute     = 10
+	defaultWakeUpMinute = 5
 
-// wakeUpInterval reads WAKE_UP_MINUTE and returns the loop interval.
-// Empty/invalid/<=0 means disabled (0). Values > 10 are clamped to 10.
+	gaeVersionCheckOp = "gae_version_check"
+)
+
+// wakeUpHTTPClient is shared across polling ticks to avoid allocating a new
+// Transport per request.
+var wakeUpHTTPClient = &http.Client{Timeout: 10 * time.Second}
+
+// wakeUpInterval reads WAKE_UP_MINUTE.
+// Empty/invalid → 5 min. "0" → disabled. Capped at 10.
 func wakeUpInterval() time.Duration {
 	raw := strings.TrimSpace(os.Getenv("WAKE_UP_MINUTE"))
 	if raw == "" {
-		return 0
+		return defaultWakeUpMinute * time.Minute
 	}
 	n, err := strconv.Atoi(raw)
-	if err != nil || n <= 0 {
+	if err != nil {
+		return defaultWakeUpMinute * time.Minute
+	}
+	if n <= 0 {
 		return 0
 	}
 	if n > maxWakeUpMinute {
@@ -39,36 +51,17 @@ type wakeUpResponse struct {
 	} `json:"data"`
 }
 
-// registerGAEVersionCheck polls the GAE service's /wake-up endpoint every minute
-// and sends SIGTERM to the current process when the live app_version differs from
-// this instance's SERVICE_VERSION, letting App.Run() drain traffic gracefully while
-// GAE routes to the fresh instance.
-//
-// No-op outside Google App Engine (detected via GAE_SERVICE env).
-func registerGAEVersionCheck(cfg CommonConfig, logger *Logger, hooks *[]func(context.Context) error) {
+// registerGAEVersionCheck polls /wake-up on the GAE service and SIGTERMs this
+// process when the live app_version differs from ours, letting GAE route
+// traffic to the new instance. No-op outside GAE.
+func registerGAEVersionCheck(logger *Logger, hooks *[]func(context.Context) error) {
 	service := GAEService()
 	if service == "" {
 		return
 	}
 
-	project := strings.TrimSpace(os.Getenv("GOOGLE_CLOUD_PROJECT"))
-	if project == "" {
-		logger.Warn(M("gae version check disabled: GOOGLE_CLOUD_PROJECT not set"),
-			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("startup"))
-		return
-	}
-
-	currentVersion := AppInfo.Version
-	if currentVersion == "" {
-		logger.Warn(M("gae version check disabled: APP_VERSION empty"),
-			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("startup"))
-		return
-	}
-
-	interval := wakeUpInterval()
-	if interval == 0 {
-		logger.Info(M("gae version check disabled: WAKE_UP_MINUTE not set or 0"),
-			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("startup"))
+	project, version, interval, ok := resolveGAECheckParams(logger)
+	if !ok {
 		return
 	}
 
@@ -80,14 +73,41 @@ func registerGAEVersionCheck(cfg CommonConfig, logger *Logger, hooks *[]func(con
 		return nil
 	})
 
-	go runWakeUpLoop(ctx, logger, wakeUpURL, currentVersion, interval)
+	go runWakeUpLoop(ctx, logger, wakeUpURL, version, interval)
 
-	logger.Info(M("gae version check enabled"),
-		WithField("gae_service", service),
-		WithField("wake_up_url", wakeUpURL),
-		WithField("current_version", currentVersion),
-		WithField("interval", interval.String()),
-		WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("startup"))
+	logger.LifecycleEvent("GAE_VERSION_CHECK_ENABLED", map[string]any{
+		"gae_service":     service,
+		"wake_up_url":     wakeUpURL,
+		"current_version": version,
+		"interval":        interval.String(),
+	}, WithComponent(ComponentApp), WithOperation(gaeVersionCheckOp))
+}
+
+// resolveGAECheckParams returns (project, version, interval, ok). Logs the
+// reason and returns ok=false when any prerequisite is missing.
+func resolveGAECheckParams(logger *Logger) (project, version string, interval time.Duration, ok bool) {
+	project = strings.TrimSpace(os.Getenv("GOOGLE_CLOUD_PROJECT"))
+	if project == "" {
+		logCheckDisabled(logger, "GOOGLE_CLOUD_PROJECT not set")
+		return "", "", 0, false
+	}
+	version = AppInfo.Version
+	if version == "" {
+		logCheckDisabled(logger, "APP_VERSION empty")
+		return "", "", 0, false
+	}
+	interval = wakeUpInterval()
+	if interval == 0 {
+		logCheckDisabled(logger, "WAKE_UP_MINUTE explicitly set to 0")
+		return "", "", 0, false
+	}
+	return project, version, interval, true
+}
+
+func logCheckDisabled(logger *Logger, reason string) {
+	logger.LifecycleEvent("GAE_VERSION_CHECK_DISABLED", map[string]any{
+		"reason": reason,
+	}, WithComponent(ComponentApp), WithOperation(gaeVersionCheckOp))
 }
 
 func runWakeUpLoop(ctx context.Context, logger *Logger, wakeUpURL, currentVersion string, interval time.Duration) {
@@ -107,38 +127,28 @@ func runWakeUpLoop(ctx context.Context, logger *Logger, wakeUpURL, currentVersio
 }
 
 func checkGAEVersion(ctx context.Context, logger *Logger, wakeUpURL, currentVersion string) {
-	client := &http.Client{Timeout: 10 * time.Second}
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, wakeUpURL, nil)
 	if err != nil {
-		logger.Warn(M("gae version check: build request failed"),
-			WithField("error", err.Error()),
-			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("runtime"))
+		logCheckFailure(logger, err, "GAE_VERSION_CHECK_BUILD_REQUEST_FAILURE")
 		return
 	}
 
-	resp, err := client.Do(req)
+	resp, err := wakeUpHTTPClient.Do(req)
 	if err != nil {
-		logger.Warn(M("gae version check: request failed"),
-			WithField("error", err.Error()),
-			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("runtime"))
+		logCheckFailure(logger, err, "GAE_VERSION_CHECK_REQUEST_FAILURE")
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 16*1024))
 	if err != nil {
-		logger.Warn(M("gae version check: read body failed"),
-			WithField("error", err.Error()),
-			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("runtime"))
+		logCheckFailure(logger, err, "GAE_VERSION_CHECK_READ_BODY_FAILURE")
 		return
 	}
 
 	var wr wakeUpResponse
 	if err := json.Unmarshal(body, &wr); err != nil {
-		logger.Warn(M("gae version check: parse body failed"),
-			WithField("error", err.Error()),
-			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("runtime"))
+		logCheckFailure(logger, err, "GAE_VERSION_CHECK_PARSE_FAILURE")
 		return
 	}
 
@@ -151,15 +161,22 @@ func checkGAEVersion(ctx context.Context, logger *Logger, wakeUpURL, currentVers
 		return
 	}
 
-	logger.Info(M("gae version mismatch, triggering shutdown"),
-		WithField("live_version", live),
-		WithField("current_version", currentVersion),
-		WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("lifecycle"))
+	logger.LifecycleEvent("GAE_VERSION_MISMATCH_SHUTDOWN", map[string]any{
+		"live_version":    live,
+		"current_version": currentVersion,
+	}, WithComponent(ComponentApp), WithOperation(gaeVersionCheckOp))
 
 	if err := triggerShutdown(); err != nil {
-		logger.Error(err, M("trigger shutdown failed"),
-			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("lifecycle"))
+		logger.LifecycleError(err, "GAE_SHUTDOWN_TRIGGER_FAILURE", nil,
+			WithComponent(ComponentApp), WithOperation(gaeVersionCheckOp))
 	}
+}
+
+// logCheckFailure uses LifecycleError so err is captured as a positional
+// field (per CLAUDE.md — no duplicate err.Error() into the data map).
+func logCheckFailure(logger *Logger, err error, label string) {
+	logger.LifecycleError(err, label, nil,
+		WithComponent(ComponentApp), WithOperation(gaeVersionCheckOp))
 }
 
 func triggerShutdown() error {

@@ -10,7 +10,7 @@ func SliceContains[T comparable](slice []T, value T) bool {
 }
 
 func SliceFilter[T any](slice []T, predicate func(T) bool) []T {
-	result := make([]T, 0)
+	result := make([]T, 0, len(slice))
 	for _, current := range slice {
 		if predicate(current) {
 			result = append(result, current)
@@ -56,7 +56,7 @@ func SliceChunk[T any](slice []T, size int) [][]T {
 		return [][]T{}
 	}
 
-	result := make([][]T, 0)
+	result := make([][]T, 0, (len(slice)+size-1)/size)
 	for start := 0; start < len(slice); start += size {
 		end := start + size
 		if end > len(slice) {

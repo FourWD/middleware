@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,21 +9,21 @@ import (
 	"time"
 )
 
-// DBCreate inserts a model via the primary GORM DB and logs the outcome.
+// DBCreate inserts a model via the primary GORM DB. Success is implied by a
+// successful HTTP response — only failures are logged.
 func DBCreate(requestID string, model interface{}) error {
 	if Database == nil {
 		return errors.New("infra.Database not initialized")
 	}
-
-	data, _ := toDBMap(model)
-	logData := map[string]interface{}{"data": data}
-
 	if err := Database.Create(model).Error; err != nil {
-		AppLog.EventError(err, "DBCreate", logData, requestID)
+		AppLog.EventError(err, "DB_CREATE_FAILURE", map[string]any{
+			"data": modelSnapshot(model, requestID),
+		}, requestID,
+			WithComponent(ComponentDB),
+			WithOperation("create"),
+			WithLogKind(LogKindError))
 		return err
 	}
-	logData["status"] = "success"
-	AppLog.Event("DBCreate", logData, requestID)
 	return nil
 }
 
@@ -31,16 +32,15 @@ func DBUpdate(requestID string, model interface{}) error {
 	if Database == nil {
 		return errors.New("infra.Database not initialized")
 	}
-
-	data, _ := toDBMap(model)
-	logData := map[string]interface{}{"data": data}
-
 	if err := Database.Updates(model).Error; err != nil {
-		AppLog.EventError(err, "DBUpdate", logData, requestID)
+		AppLog.EventError(err, "DB_UPDATE_FAILURE", map[string]any{
+			"data": modelSnapshot(model, requestID),
+		}, requestID,
+			WithComponent(ComponentDB),
+			WithOperation("update"),
+			WithLogKind(LogKindError))
 		return err
 	}
-	logData["status"] = "success"
-	AppLog.Event("DBUpdate", logData, requestID)
 	return nil
 }
 
@@ -58,14 +58,16 @@ func DBUpdateField(requestID string, model any, id string, updateData map[string
 		}
 	}
 
-	logData := map[string]interface{}{"data": updateData}
-
 	if err := Database.Model(model).Where("id = ?", id).Updates(updateData).Error; err != nil {
-		AppLog.EventError(err, "DBUpdateField", logData, requestID)
+		AppLog.EventError(err, "DB_UPDATE_FIELD_FAILURE", map[string]any{
+			"record_id": id,
+			"data":      updateData,
+		}, requestID,
+			WithComponent(ComponentDB),
+			WithOperation("update_field"),
+			WithLogKind(LogKindError))
 		return err
 	}
-	logData["status"] = "success"
-	AppLog.Event("DBUpdateField", logData, requestID)
 	return nil
 }
 
@@ -75,6 +77,27 @@ func DBDelete(requestID string, model any, id string, deletedBy string) error {
 		"deleted_at": time.Now(),
 		"deleted_by": deletedBy,
 	})
+}
+
+// LogDBErrorCtx is a thin wrapper around LogDBError so callers in this file
+// can stay on the request-id path.
+func logDBSnapshotFailure(ctx context.Context, err error, requestID string) {
+	AppLog.EventError(err, "DB_LOG_SNAPSHOT_FAILURE", nil, requestID,
+		WithComponent(ComponentDB),
+		WithOperation("log_snapshot"),
+		WithLogKind(LogKindDiagnostic))
+	_ = ctx
+}
+
+// modelSnapshot is a best-effort JSON round-trip used only for log payloads.
+// A marshal failure is recorded but never blocks the surrounding DB call.
+func modelSnapshot(model interface{}, requestID string) map[string]interface{} {
+	data, err := toDBMap(model)
+	if err != nil {
+		logDBSnapshotFailure(context.Background(), err, requestID)
+		return nil
+	}
+	return data
 }
 
 func toDBMap(v interface{}) (map[string]interface{}, error) {

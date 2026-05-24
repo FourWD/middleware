@@ -16,10 +16,12 @@ func GooglePublicMessage(topicName, message string) (string, error) {
 		return "", errors.New("pubsub client not initialized; set PUBSUB_ENABLED=true")
 	}
 
-	AppLog.Event("GooglePublicMessage", map[string]interface{}{
-		"topic_name": topicName,
-		"message":    message,
-	}, "")
+	AppLog.Event("PUBSUB_PUBLISH_START", map[string]any{
+		"topic": topicName,
+	}, "",
+		WithComponent(ComponentPubSub),
+		WithOperation("publish"),
+		WithLogKind(LogKindBusiness))
 
 	ctx := context.Background()
 	return PubSub.PublishMessage(ctx, topicName, []byte(message))

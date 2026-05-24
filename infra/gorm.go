@@ -115,15 +115,14 @@ func OpenDB(cfg DatabaseConfig, appLogger *Logger) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.MaxLifetime) * time.Minute)
 
-	appLogger.Info(
-		M("database connected"),
-		WithComponent("database"),
+	appLogger.LifecycleEvent("DB_CONNECT_SUCCESS", map[string]any{
+		"driver":   cfg.Driver,
+		"host":     cfg.Host,
+		"instance": cfg.Instance,
+		"database": cfg.Name,
+	},
+		WithComponent(ComponentDB),
 		WithOperation("connect"),
-		WithLogKind("infrastructure"),
-		WithField("driver", cfg.Driver),
-		WithField("host", cfg.Host),
-		WithField("instance", cfg.Instance),
-		WithField("database", cfg.Name),
 	)
 
 	return db, nil

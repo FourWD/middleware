@@ -1,12 +1,12 @@
 package common
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/FourWD/middleware/infra"
@@ -14,70 +14,70 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// paymentHTTPClient is a dedicated HTTP client for payment requests with timeout
-var paymentHTTPClient = &http.Client{
-	Timeout: 60 * time.Second, // Longer timeout for payment operations
-}
+// paymentHTTPClient is a dedicated client with a longer timeout — payment
+// gateways take longer than typical API calls.
+var paymentHTTPClient = &http.Client{Timeout: 60 * time.Second}
 
-// payment2C2PPayloadResponse is the standard response structure from 2C2P API
 type payment2C2PPayloadResponse struct {
 	Payload string `json:"payload"`
 }
 
-// signJWTPayload creates a signed JWT token from claims using 2C2P secret key
+// signJWTPayload signs claims with the 2C2P merchant secret (HS256).
 func signJWTPayload(claims jwt.MapClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(infra.GetEnv("PAYMENT_2C2P_SECRET", "")))
+	return token.SignedString(payment2C2PSecret())
 }
 
-// send2C2PRequest sends a POST request to 2C2P API and returns the response payload
+// send2C2PRequest POSTs a JWT-wrapped payload to the given 2C2P endpoint
+// and returns the JWT string from the response body.
 func send2C2PRequest(url string, jwtPayload string) (string, error) {
-	body := strings.NewReader(`{"payload":"` + jwtPayload + `"}`)
-
-	req, err := http.NewRequest("POST", url, body)
+	body, err := json.Marshal(map[string]string{"payload": jwtPayload})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("marshal payload: %w", err)
 	}
-	req.Header.Add("accept", "application/json")
-	req.Header.Add("content-type", "application/*+json")
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("new request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/*+json")
 
 	res, err := paymentHTTPClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("do request: %w", err)
 	}
 	defer res.Body.Close()
 
 	responseBody, err := io.ReadAll(res.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read body: %w", err)
 	}
 
 	var response payment2C2PPayloadResponse
 	if err := json.Unmarshal(responseBody, &response); err != nil {
-		return "", err
+		return "", fmt.Errorf("unmarshal body: %w", err)
 	}
-
 	return response.Payload, nil
 }
 
-// parse2C2PJWTResponse parses and validates a JWT response from 2C2P
+// parse2C2PJWTResponse verifies an HS256 JWT signed with the 2C2P secret
+// and returns the claims.
 func parse2C2PJWTResponse(jwtString string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(jwtString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+	token, err := jwt.Parse(jwtString, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
-		return []byte(infra.GetEnv("PAYMENT_2C2P_SECRET", "")), nil
+		return payment2C2PSecret(), nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return claims, nil
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid token claims")
 	}
-
-	return nil, errors.New("invalid token claims")
+	return claims, nil
 }
 
 func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
@@ -99,8 +99,7 @@ func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 		return reqResponse, err
 	}
 
-	url := infra.GetEnv("PAYMENT_2C2P_REQUEST_URL", "")
-	responsePayload, err := send2C2PRequest(url, tokenString)
+	responsePayload, err := send2C2PRequest(infra.GetEnv("PAYMENT_2C2P_REQUEST_URL", ""), tokenString)
 	if err != nil {
 		return reqResponse, err
 	}
@@ -118,44 +117,37 @@ func Payment2C2P(request model.Payment2C2P) (model.Payment2C2PResponse, error) {
 	return reqResponse, nil
 }
 
-func decodePaymentResponse(requestResponseJwt string) (model.Payment2C2PResponse, error) {
-	var customClaims model.Payment2C2PResponse
-
-	token, err := jwt.Parse(requestResponseJwt, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(infra.GetEnv("PAYMENT_2C2P_SECRET", "")), nil
-	})
-
+// decodePaymentResponse parses the JWT response from a Payment2C2P request
+// and extracts the URL/token/code/desc claims.
+func decodePaymentResponse(jwtString string) (model.Payment2C2PResponse, error) {
+	var resp model.Payment2C2PResponse
+	claims, err := parse2C2PJWTResponse(jwtString)
 	if err != nil {
-		return customClaims, err
+		return resp, err
 	}
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		customClaims.WebPaymentUrl = getStringClaim(claims, "webPaymentUrl")
-		customClaims.PaymentToken = getStringClaim(claims, "paymentToken")
-		customClaims.RespCode = getStringClaim(claims, "respCode")
-		customClaims.RespDesc = getStringClaim(claims, "respDesc")
-		return customClaims, nil
-	}
-	return customClaims, err
+	resp.WebPaymentUrl = getStringClaim(claims, "webPaymentUrl")
+	resp.PaymentToken = getStringClaim(claims, "paymentToken")
+	resp.RespCode = getStringClaim(claims, "respCode")
+	resp.RespDesc = getStringClaim(claims, "respDesc")
+	return resp, nil
 }
 
 func getStringClaim(claims jwt.MapClaims, key string) string {
-	if val, exists := claims[key]; exists {
-		if str, ok := val.(string); ok {
-			return str
-		}
+	if v, ok := claims[key].(string); ok {
+		return v
 	}
 	return ""
 }
 
 func getFloat64Claim(claims jwt.MapClaims, key string) float64 {
-	if val, exists := claims[key]; exists {
-		if num, ok := val.(float64); ok {
-			return num
-		}
+	if v, ok := claims[key].(float64); ok {
+		return v
 	}
 	return 0
+}
+
+// payment2C2PSecret reads the merchant secret per call so an env rotation
+// takes effect without a restart.
+func payment2C2PSecret() []byte {
+	return []byte(infra.GetEnv("PAYMENT_2C2P_SECRET", ""))
 }

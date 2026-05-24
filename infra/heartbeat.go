@@ -12,8 +12,10 @@ import (
 	"github.com/go-co-op/gocron/v2"
 )
 
-// HeartbeatScheduler runs a periodic heartbeat job with retry and circuit breaker.
-// Configure via environment variables (see LoadHeartbeatConfig).
+const heartbeatComponent = "background_job"
+
+// HeartbeatScheduler runs a periodic heartbeat job with retry and circuit
+// breaker. Configure via env vars (see LoadHeartbeatConfig).
 type HeartbeatScheduler struct {
 	scheduler gocron.Scheduler
 	breaker   *CircuitBreaker
@@ -26,7 +28,6 @@ type HeartbeatScheduler struct {
 }
 
 // HeartbeatConfig holds heartbeat scheduler configuration.
-// Use LoadHeartbeatConfig() to populate from environment variables.
 type HeartbeatConfig struct {
 	Enabled                    bool
 	Cron                       string
@@ -60,8 +61,8 @@ func LoadHeartbeatConfig() HeartbeatConfig {
 	}
 }
 
-// NewHeartbeatScheduler creates a heartbeat scheduler.
-// Returns nil if cfg.Enabled is false.
+// NewHeartbeatScheduler creates a heartbeat scheduler. Returns nil when
+// cfg.Enabled is false.
 func NewHeartbeatScheduler(cfg HeartbeatConfig, appLogger *Logger) (*HeartbeatScheduler, error) {
 	if !cfg.Enabled {
 		return nil, nil
@@ -70,19 +71,43 @@ func NewHeartbeatScheduler(cfg HeartbeatConfig, appLogger *Logger) (*HeartbeatSc
 		return nil, err
 	}
 
-	s, err := gocron.NewScheduler(gocron.WithLocation(time.Local))
+	scheduler, err := gocron.NewScheduler(gocron.WithLocation(time.Local))
 	if err != nil {
 		return nil, fmt.Errorf("create scheduler: %w", err)
 	}
 
-	breaker := NewCircuitBreaker(CircuitBreakerConfig{
+	var runCount atomic.Uint64
+	h := &HeartbeatScheduler{
+		scheduler: scheduler,
+		breaker:   buildHeartbeatBreaker(cfg),
+		runCount:  &runCount,
+	}
+
+	retryConfig := buildHeartbeatRetryConfig(cfg, appLogger)
+
+	_, err = scheduler.NewJob(
+		gocron.CronJob(cfg.Cron, false),
+		gocron.NewTask(func() { h.tick(cfg, appLogger, retryConfig) }),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("register heartbeat job: %w", err)
+	}
+
+	return h, nil
+}
+
+func buildHeartbeatBreaker(cfg HeartbeatConfig) *CircuitBreaker {
+	return NewCircuitBreaker(CircuitBreakerConfig{
 		FailureThreshold:   cfg.CircuitFailureThreshold,
 		OpenTimeout:        time.Duration(cfg.CircuitOpenTimeoutSeconds) * time.Second,
 		HalfOpenMaxRequest: cfg.CircuitHalfOpenMaxRequests,
 		HalfOpenSuccesses:  cfg.CircuitHalfOpenSuccesses,
 	})
+}
 
-	retryConfig := RetryConfig{
+func buildHeartbeatRetryConfig(cfg HeartbeatConfig, appLogger *Logger) RetryConfig {
+	return RetryConfig{
 		MaxAttempts: cfg.RetryMaxAttempts,
 		Backoff: BackoffConfig{
 			BaseDelay: time.Duration(cfg.RetryBaseDelayMS) * time.Millisecond,
@@ -91,77 +116,75 @@ func NewHeartbeatScheduler(cfg HeartbeatConfig, appLogger *Logger) (*HeartbeatSc
 		},
 		OnRetry: func(attempt int, err error, nextDelay time.Duration) {
 			incrementHeartbeatRetryMetric()
-			appLogger.Warn(
-				M("background heartbeat retrying"),
-				WithComponent("background_job"),
+			appLogger.EventWarn("HEARTBEAT_RETRY", map[string]any{
+				"attempt":       attempt,
+				"error":         err.Error(),
+				"next_delay_ms": nextDelay.Milliseconds(),
+			}, "",
+				WithComponent(heartbeatComponent),
 				WithOperation("heartbeat_retry"),
-				WithLogKind("background"),
-				WithField("attempt", attempt),
-				WithField("error", err),
-				WithField("next_delay_ms", nextDelay.Milliseconds()),
-			)
+				WithLogKind(LogKindDiagnostic))
 		},
 	}
+}
 
-	var runCount atomic.Uint64
-	h := &HeartbeatScheduler{
-		scheduler: s,
-		breaker:   breaker,
-		runCount:  &runCount,
-	}
+// tick runs one heartbeat invocation: panic-safe, bounded by timeout,
+// gated by circuit breaker, with retries.
+func (h *HeartbeatScheduler) tick(cfg HeartbeatConfig, appLogger *Logger, retryConfig RetryConfig) {
+	defer h.recoverFromPanic(appLogger)
 
-	_, err = s.NewJob(
-		gocron.CronJob(cfg.Cron, false),
-		gocron.NewTask(func() {
-			defer func() {
-				if recovered := recover(); recovered != nil {
-					err := fmt.Errorf("panic recovered in heartbeat job: %v", recovered)
-					appLogger.Error(err, M("background heartbeat panic"), WithComponent("background_job"), WithOperation("heartbeat_panic"), WithLogKind("background"))
-					h.recordRunFailure(err)
-				}
-			}()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.TimeoutSeconds)*time.Second)
+	defer cancel()
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.TimeoutSeconds)*time.Second)
-			defer cancel()
+	currentRun := h.runCount.Add(1)
+	shouldFail := cfg.SimulateFailEvery > 0 && currentRun%uint64(cfg.SimulateFailEvery) == 0
 
-			currentRun := runCount.Add(1)
-			shouldFail := cfg.SimulateFailEvery > 0 && currentRun%uint64(cfg.SimulateFailEvery) == 0
-
-			err := breaker.Execute(ctx, func(ctx context.Context) error {
-				return DoWithRetry(ctx, retryConfig, func(context.Context) error {
-					if shouldFail {
-						return errors.New("simulated transient heartbeat failure")
-					}
-					appLogger.Info(M("background heartbeat tick"), WithComponent("background_job"), WithOperation("heartbeat_tick"), WithLogKind("background"))
-					return nil
-				})
-			})
-			if err != nil {
-				incrementHeartbeatRunMetric("failure")
-				if breaker.Snapshot().State == CircuitOpen {
-					incrementBackgroundCircuitBreakerOpenMetric()
-				}
-				appLogger.Error(
-					err,
-					M("background heartbeat failed"),
-					WithComponent("background_job"),
-					WithOperation("heartbeat_run"),
-					WithLogKind("background"),
-					WithField("circuit_state", breaker.Snapshot().State),
-				)
-				h.recordRunFailure(err)
-				return
+	err := h.breaker.Execute(ctx, func(ctx context.Context) error {
+		return DoWithRetry(ctx, retryConfig, func(context.Context) error {
+			if shouldFail {
+				return errors.New("simulated transient heartbeat failure")
 			}
-			incrementHeartbeatRunMetric("success")
-			h.recordRunSuccess()
-		}),
-		gocron.WithSingletonMode(gocron.LimitModeReschedule),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("register heartbeat job: %w", err)
-	}
+			appLogger.Event("HEARTBEAT_TICK", nil, "",
+				WithComponent(heartbeatComponent),
+				WithOperation("heartbeat_tick"),
+				WithLogKind(LogKindDiagnostic))
+			return nil
+		})
+	})
 
-	return h, nil
+	if err != nil {
+		h.handleTickFailure(appLogger, err)
+		return
+	}
+	incrementHeartbeatRunMetric("success")
+	h.recordRunSuccess()
+}
+
+func (h *HeartbeatScheduler) recoverFromPanic(appLogger *Logger) {
+	r := recover()
+	if r == nil {
+		return
+	}
+	err := fmt.Errorf("panic recovered in heartbeat job: %v", r)
+	appLogger.EventError(err, "HEARTBEAT_PANIC", nil, "",
+		WithComponent(heartbeatComponent),
+		WithOperation("heartbeat_panic"),
+		WithLogKind(LogKindError))
+	h.recordRunFailure(err)
+}
+
+func (h *HeartbeatScheduler) handleTickFailure(appLogger *Logger, err error) {
+	incrementHeartbeatRunMetric("failure")
+	if h.breaker.Snapshot().State == CircuitOpen {
+		incrementBackgroundCircuitBreakerOpenMetric()
+	}
+	appLogger.EventError(err, "HEARTBEAT_FAILURE", map[string]any{
+		"circuit_state": h.breaker.Snapshot().State,
+	}, "",
+		WithComponent(heartbeatComponent),
+		WithOperation("heartbeat_run"),
+		WithLogKind(LogKindError))
+	h.recordRunFailure(err)
 }
 
 func validateHeartbeatConfig(cfg HeartbeatConfig) error {
@@ -181,7 +204,7 @@ func validateHeartbeatConfig(cfg HeartbeatConfig) error {
 		return fmt.Errorf("invalid BACKGROUND_RETRY_MAX_DELAY_MS")
 	}
 	if cfg.RetryMaxDelayMS < cfg.RetryBaseDelayMS {
-		return fmt.Errorf("BACKGROUND_RETRY_MAX_DELAY_MS must be greater than or equal to BACKGROUND_RETRY_BASE_DELAY_MS")
+		return fmt.Errorf("BACKGROUND_RETRY_MAX_DELAY_MS must be >= BACKGROUND_RETRY_BASE_DELAY_MS")
 	}
 	if cfg.RetryJitter < 0 || cfg.RetryJitter > 1 {
 		return fmt.Errorf("invalid BACKGROUND_RETRY_JITTER")
@@ -201,7 +224,6 @@ func validateHeartbeatConfig(cfg HeartbeatConfig) error {
 	if cfg.SimulateFailEvery < 0 {
 		return fmt.Errorf("invalid BACKGROUND_HEARTBEAT_SIMULATE_FAIL_EVERY")
 	}
-
 	return nil
 }
 
@@ -261,10 +283,7 @@ type HeartbeatDebugStatus struct {
 
 func (h *HeartbeatScheduler) DebugStatus() HeartbeatDebugStatus {
 	if h == nil || h.breaker == nil || h.runCount == nil {
-		return HeartbeatDebugStatus{
-			Enabled: false,
-			State:   CircuitClosed,
-		}
+		return HeartbeatDebugStatus{Enabled: false, State: CircuitClosed}
 	}
 
 	snapshot := h.breaker.Snapshot()
@@ -284,17 +303,16 @@ func (h *HeartbeatScheduler) DebugStatus() HeartbeatDebugStatus {
 		LastError:    lastError,
 	}
 	if !snapshot.OpenedAt.IsZero() {
-		openedAt := snapshot.OpenedAt
-		status.OpenedAt = &openedAt
+		opened := snapshot.OpenedAt
+		status.OpenedAt = &opened
 	}
 	if !lastRunAt.IsZero() {
-		lastRun := lastRunAt
-		status.LastRunAt = &lastRun
+		lr := lastRunAt
+		status.LastRunAt = &lr
 	}
 	if lastSuccessAt != nil {
-		lastSuccess := *lastSuccessAt
-		status.LastSuccessAt = &lastSuccess
+		ls := *lastSuccessAt
+		status.LastSuccessAt = &ls
 	}
-
 	return status
 }

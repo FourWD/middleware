@@ -143,6 +143,12 @@
         <tr><td><code>expiresAt_ttl</code></td><td><code>{ expiresAt: 1 }</code></td><td><code>expireAfterSeconds: 0</code></td></tr>
       </tbody>
     </table>
+    <p>
+      <code>IsBlacklisted</code> uses <code>FindOne</code> with an
+      <code>_id</code>-only projection (short-circuit on first match) rather
+      than <code>CountDocuments</code>, so the lookup cost is one index seek
+      regardless of collection size.
+    </p>
 
     <h4>refresh_tokens</h4>
     <table>

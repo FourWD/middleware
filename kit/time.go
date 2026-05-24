@@ -1,8 +1,11 @@
 package kit
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
-var (
+const (
 	DateFormatNano   = "2006-01-02 15:04:05.99999"
 	DateFormatSecond = "2006-01-02 15:04:05"
 	DateFormatMinute = "2006-01-02 15:04"
@@ -10,6 +13,14 @@ var (
 )
 
 var nowFunc = time.Now
+
+var bangkokLocation = sync.OnceValue(func() *time.Location {
+	loc, err := time.LoadLocation("Asia/Bangkok")
+	if err != nil {
+		return time.FixedZone("Asia/Bangkok", 7*60*60)
+	}
+	return loc
+})
 
 func Now() time.Time {
 	return nowFunc()
@@ -58,6 +69,5 @@ func NilDate() time.Time {
 }
 
 func UTCToThailandTime(t time.Time) time.Time {
-	bangkokLocation, _ := time.LoadLocation("Asia/Bangkok")
-	return t.In(bangkokLocation)
+	return t.In(bangkokLocation())
 }

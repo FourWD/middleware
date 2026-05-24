@@ -14,9 +14,12 @@ func GoogleCreateTopic(topic string) error {
 		return errors.New("pubsub client not initialized; set PUBSUB_ENABLED=true")
 	}
 
-	AppLog.Event("GoogleCreateTopic", map[string]interface{}{
+	AppLog.Event("PUBSUB_TOPIC_ENSURE_START", map[string]any{
 		"topic": topic,
-	}, "")
+	}, "",
+		WithComponent(ComponentPubSub),
+		WithOperation("ensure_topic"),
+		WithLogKind(LogKindBusiness))
 
 	return PubSub.EnsureTopic(context.Background(), topic)
 }

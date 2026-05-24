@@ -2,159 +2,71 @@ package common
 
 import (
 	"database/sql"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/FourWD/middleware/infra"
-	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v3"
 )
 
+// Deprecated: use infra.FiberCustom directly.
 func FiberCustom(c fiber.Ctx, HTTPStatus int, data map[string]interface{}) error {
-	c.Set("Content-Type", "application/json")
-	data["request_id"] = infra.GetRequestID(c)
-	return c.Status(HTTPStatus).JSON(data)
+	return infra.FiberCustom(c, HTTPStatus, data)
 }
 
+// Deprecated: use infra.FiberOK directly.
 func FiberOK(c fiber.Ctx, status int, code string, message string) error {
-	response := map[string]interface{}{
-		"status":  status,
-		"code":    code,
-		"message": message,
-	}
-	return FiberCustom(c, fiber.StatusOK, response)
+	return infra.FiberOK(c, status, code, message)
 }
 
+// Deprecated: use infra.FiberSuccess directly.
 func FiberSuccess(c fiber.Ctx) error {
-	return FiberOK(c, 1, "0000", "success")
+	return infra.FiberSuccess(c)
 }
 
+// Deprecated: use infra.FiberError directly.
 func FiberError(c fiber.Ctx, code string, message string, err ...error) error {
-	data := map[string]any{"code": code, "message": message}
-	if len(err) > 0 && err[0] != nil {
-		infra.AppLog.ErrorCtx(c.Context(), err[0], "FIBER_ERROR", data)
-	} else {
-		infra.AppLog.WarnCtx(c.Context(), "FIBER_ERROR", data)
-	}
-
-	response := map[string]interface{}{
-		"status":  0,
-		"code":    code,
-		"message": message,
-	}
-
-	return FiberCustom(c, fiber.StatusInternalServerError, response)
+	return infra.FiberError(c, code, message, err...)
 }
 
+// Deprecated: use infra.FiberReviewPayload directly.
 func FiberReviewPayload(c fiber.Ctx) error {
-	return FiberError(c, "1002", "review your payload")
+	return infra.FiberReviewPayload(c)
 }
 
-func FiberQueryWithCustomDB(c fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
-	jsonBytes, sql, err := queryToJSON(db, sql, values...)
-	if err != nil {
-		return FiberError(c, "1001", "sql error", err)
-	}
-	return FiberSendData(c, string(jsonBytes), sql)
-}
-
-func FiberQuery(c fiber.Ctx, sql string, values ...interface{}) error {
-	return FiberQueryWithCustomDB(c, DatabaseSql, sql, values...)
-}
-
-func FiberQueryWithCustomDBLimit1(c fiber.Ctx, db *sql.DB, sql string, values ...interface{}) error {
-	jsonBytes, sql, err := queryToJSON(db, sql, values...)
-	if err != nil {
-		return FiberError(c, "1001", "sql error", err)
-	}
-
-	var result []map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &result); err != nil {
-		return FiberError(c, "1001", "sql error", err)
-	}
-
-	if len(result) == 1 {
-		firstRow := result[0]
-		if firstRowJSON, err := json.Marshal(firstRow); err == nil {
-			return FiberSendData(c, string(firstRowJSON), sql)
-		}
-	}
-
-	return FiberSendData(c, "", "")
-}
-
-func FiberQueryLimit1(c fiber.Ctx, sql string, values ...interface{}) error {
-	return FiberQueryWithCustomDBLimit1(c, DatabaseSql, sql, values...)
-}
-
+// Deprecated: use infra.FiberSendData directly.
 func FiberSendData(c fiber.Ctx, jsonData string, sql string) error {
-	response := map[string]interface{}{
-		"status":  1,
-		"message": "success",
-		"data":    json.RawMessage(jsonData), // Ensures `jsonData` is treated as raw JSON
-	}
-
-	if infra.AppInfo.Env != "prod" {
-		response["sql"] = sql
-	}
-
-	return FiberCustom(c, fiber.StatusOK, response)
+	return infra.FiberSendData(c, jsonData, sql)
 }
 
-func FiberDeleteByID(c fiber.Ctx, tableName string) error {
-	type Delete struct {
-		ID       string `json:"id"`
-		DeleteBy string `json:"delete_by"`
-	}
-
-	var payload Delete
-	err := c.Bind().Body(payload)
-	if err != nil {
-		return FiberReviewPayload(c)
-	}
-
-	if tableName == `` || payload.ID == `` || payload.DeleteBy == `` {
-		return FiberReviewPayload(c)
-	}
-
-	result := Database.Exec(`UPDATE ? SET deleted_at = now(), deleted_by = ? WHERE id = ?`, tableName, payload.DeleteBy, payload.ID)
-	if result.Error != nil {
-		return FiberError(c, "1001", "sql error", result.Error)
-	}
-
-	return FiberSuccess(c)
+// Deprecated: use infra.FiberQueryWithCustomDB directly.
+func FiberQueryWithCustomDB(c fiber.Ctx, db *sql.DB, sqlText string, values ...interface{}) error {
+	return infra.FiberQueryWithCustomDB(c, db, sqlText, values...)
 }
 
-func FiberDeletePermanentByID(c fiber.Ctx, tableName string) error {
-	type Delete struct {
-		ID       string `json:"id"`
-		DeleteBy string `json:"delete_by"`
-	}
-
-	var payload Delete
-	err := c.Bind().Body(payload)
-	if err != nil {
-		return FiberReviewPayload(c)
-	}
-
-	if tableName == `` || payload.ID == `` {
-		return FiberReviewPayload(c)
-	}
-
-	result := Database.Exec(`DELETE FROM ? WHERE id = ?`, tableName, payload.ID)
-	if result.Error != nil {
-		return FiberError(c, "1001", "sql error", result.Error)
-	}
-
-	return FiberSuccess(c)
+// Deprecated: use infra.FiberQueryWithCustomDBLimit1 directly.
+func FiberQueryWithCustomDBLimit1(c fiber.Ctx, db *sql.DB, sqlText string, values ...interface{}) error {
+	return infra.FiberQueryWithCustomDBLimit1(c, db, sqlText, values...)
 }
 
+// FiberQuery runs a read-only SQL against the default DatabaseSql connection.
+// Stays in common because DatabaseSql is a common-package global.
+func FiberQuery(c fiber.Ctx, sqlText string, values ...interface{}) error {
+	return infra.FiberQueryWithCustomDB(c, DatabaseSql, sqlText, values...)
+}
+
+// FiberQueryLimit1 runs a read-only SQL against DatabaseSql and returns only
+// the first row.
+func FiberQueryLimit1(c fiber.Ctx, sqlText string, values ...interface{}) error {
+	return infra.FiberQueryWithCustomDBLimit1(c, DatabaseSql, sqlText, values...)
+}
+
+// FiberSql registers a /sql endpoint (non-prod only) that executes the
+// request body as a raw SQL query against DatabaseSql.
 func FiberSql(app *fiber.App) {
 	app.Post("/sql", func(c fiber.Ctx) error {
 		if infra.AppInfo.Env == "prod" {
-			return FiberError(c, "1003", "not allowed in production environment")
+			return infra.FiberError(c, "1003", "not allowed in production environment")
 		}
 
 		type Payload struct {
@@ -163,14 +75,17 @@ func FiberSql(app *fiber.App) {
 
 		payload := new(Payload)
 		if err := c.Bind().Body(payload); err != nil {
-			return FiberReviewPayload(c)
+			return infra.FiberReviewPayload(c)
 		}
 		return FiberQuery(c, payload.Query)
 	})
 }
 
-func rawSql(sql string, values ...interface{}) string {
-	parts := strings.Split(sql, "?")
+// rawSql interpolates `?` placeholders for debug output. Kept in common
+// because FiberPaginatedQuery still uses it; will be removed when
+// FiberPaginatedQuery migrates.
+func rawSql(sqlText string, values ...interface{}) string {
+	parts := strings.Split(sqlText, "?")
 	if len(parts)-1 != len(values) {
 		return "SQL and values count mismatch"
 	}
@@ -183,75 +98,8 @@ func rawSql(sql string, values ...interface{}) string {
 		}
 	}
 
-	full := strings.ReplaceAll(fullSQL.String(), "\n", " ") // Remove newlines
-	full = strings.ReplaceAll(full, "\t", " ")              // Remove tabs
+	full := strings.ReplaceAll(fullSQL.String(), "\n", " ")
+	full = strings.ReplaceAll(full, "\t", " ")
 	full = strings.ReplaceAll(full, `\"`, "")
-	full = strings.TrimSpace(full)
-
-	return full
-}
-
-func queryToJSON(db *sql.DB, sql string, values ...interface{}) ([]byte, string, error) {
-	if !kit.IsReadOnlySQL(sql) {
-		return nil, "", errors.New("NOT ALLOW: only SELECT/WITH/SHOW/EXPLAIN/DESC statements are permitted")
-	}
-
-	rows, err := db.Query(sql, values...)
-	if err != nil {
-		return nil, "", err
-	}
-	defer rows.Close()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, "", err
-	}
-
-	result := make([]map[string]interface{}, 0)
-	for rows.Next() {
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
-		for i := range columns {
-			valuePtrs[i] = &values[i]
-		}
-
-		err := rows.Scan(valuePtrs...)
-		if err != nil {
-			return nil, "", err
-		}
-
-		m := make(map[string]interface{})
-		for i, col := range columns {
-			var v interface{}
-
-			val := values[i]
-			b, ok := val.([]byte)
-			if ok {
-				v = string(b)
-			} else {
-				if val != nil {
-					temp := fmt.Sprintf("%v", val)
-					temp = strings.Replace(temp, " +0700 +07", "", -1)
-					v = temp
-					if len(temp) >= 10 {
-						if temp[0:10] == "1900-01-01" {
-							v = nil
-						}
-					}
-				} else {
-					v = val
-				}
-			}
-			m[col] = v
-		}
-		result = append(result, m)
-	}
-
-	raw := ""
-	if infra.AppInfo.Env != "prod" {
-		raw = rawSql(sql, values...)
-	}
-	jByte, err := json.Marshal(result)
-
-	return jByte, raw, err
+	return strings.TrimSpace(full)
 }

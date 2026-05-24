@@ -75,18 +75,18 @@ func (c *dbStatsCollector) Collect(ch chan<- prometheus.Metric) {
 func registerDBMetrics(dbs Databases, logger *Logger) {
 	if dbs.Primary != nil {
 		if err := registerOne("primary", dbs.Primary, logger); err != nil && logger != nil {
-			logger.Warn(M("register db metrics failed"),
-				WithField("db_name", "primary"),
-				WithField("error", err.Error()),
-				WithComponent("metrics"), WithOperation("register_db_metrics"), WithLogKind("startup"))
+			logger.LifecycleWarn("DB_METRICS_REGISTER_FAILURE", map[string]any{
+				"db_name": "primary",
+				"error":   err.Error(),
+			}, WithComponent("metrics"), WithOperation("register_db_metrics"))
 		}
 	}
 	if dbs.Secondary != nil {
 		if err := registerOne("secondary", dbs.Secondary, logger); err != nil && logger != nil {
-			logger.Warn(M("register db metrics failed"),
-				WithField("db_name", "secondary"),
-				WithField("error", err.Error()),
-				WithComponent("metrics"), WithOperation("register_db_metrics"), WithLogKind("startup"))
+			logger.LifecycleWarn("DB_METRICS_REGISTER_FAILURE", map[string]any{
+				"db_name": "secondary",
+				"error":   err.Error(),
+			}, WithComponent("metrics"), WithOperation("register_db_metrics"))
 		}
 	}
 }

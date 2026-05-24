@@ -16,21 +16,17 @@ func setupTimezone(tz string, logger *Logger) {
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
 		if logger != nil {
-			logger.Error(err, M("load timezone failed"),
-				WithField("timezone", tz),
-				WithComponent("app"),
-				WithOperation("setup_timezone"),
-				WithLogKind("startup"))
+			logger.LifecycleError(err, "TIMEZONE_LOAD_FAILURE", map[string]any{
+				"timezone": tz,
+			}, WithComponent(ComponentApp), WithOperation("setup_timezone"))
 		}
 		return
 	}
 	time.Local = loc
 
 	if logger != nil {
-		logger.Info(M("timezone set"),
-			WithField("timezone", tz),
-			WithComponent("app"),
-			WithOperation("setup_timezone"),
-			WithLogKind("startup"))
+		logger.LifecycleEvent("TIMEZONE_SET", map[string]any{
+			"timezone": tz,
+		}, WithComponent(ComponentApp), WithOperation("setup_timezone"))
 	}
 }

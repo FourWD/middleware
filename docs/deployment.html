@@ -42,6 +42,17 @@
       <code>.env.example</code> at repo root.
     </p>
 
+    <div class="note">
+      <strong>Note —</strong> a handful of env vars are read once on first use
+      and cached in-process for the lifetime of the binary:
+      <code>JWT_SECRET</code> (V1 + legacy <code>common</code> JWT helpers),
+      <code>APP_ENCRYPT_KEY</code> (<code>common.Encrypt</code> /
+      <code>common.Decrypt</code>), and <code>HTTP_PUBLIC_PATHS</code> +
+      compiled regex (V1 auth middleware). Changing these at runtime
+      (<code>os.Setenv</code> after boot) has no effect — the process must be
+      restarted. <code>LoadCommonConfig</code> snapshot is also boot-time only.
+    </div>
+
     <h3>App identity</h3>
     <table>
       <thead>
@@ -178,7 +189,7 @@
       </thead>
       <tbody>
         <tr><td><code>GOOGLE_CLOUD_PROJECT</code></td><td>string</td><td>empty</td><td>Auto-set on GAE; used to build the version-check URL.</td></tr>
-        <tr><td><code>WAKE_UP_MINUTE</code></td><td>int (0–10)</td><td>empty</td><td>0 or empty disables the GAE wake-up loop; max 10 minutes.</td></tr>
+        <tr><td><code>WAKE_UP_MINUTE</code></td><td>int (0–10)</td><td>5</td><td>Empty or invalid falls back to 5 min. Set <code>0</code> explicitly to disable the GAE wake-up loop; values above 10 are clamped.</td></tr>
         <tr><td><code>PUBSUB_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — Pub/Sub client not built.</td></tr>
         <tr><td><code>PUBSUB_PROJECT_ID</code></td><td>string</td><td>empty</td><td>Required when Pub/Sub enabled.</td></tr>
         <tr><td><code>PUBSUB_CREDENTIALS_FILE</code></td><td>file path</td><td>empty</td><td>Falls back to ADC when empty.</td></tr>
@@ -262,7 +273,7 @@
         <tr><td><code>HTTP_BODY_LIMIT_MB</code></td><td>4 MB (Fiber default)</td><td>Raise for file-upload endpoints; pair with explicit per-route caps so a single endpoint doesn't open everything else.</td></tr>
         <tr><td><code>BootstrapTimeout</code> / <code>shutdownTimeout</code></td><td>5 s / 10 s</td><td>Compile-time constants in <code>infra/app.go</code>; raise only if a known slow client (e.g. cold Cloud SQL) needs a longer window. Past 30 s the GAE healthcheck will mark the instance dead.</td></tr>
         <tr><td>Request-log bodies</td><td>off</td><td>Flip <code>HTTP_REQUEST_LOG_OMIT_*</code> to <code>false</code> for short-lived debug sessions; keep off in prod (PII).</td></tr>
-        <tr><td><code>WAKE_UP_MINUTE</code></td><td>disabled</td><td>Set 1–10 to wake idle GAE instances and run the version-drift check. Don't enable below 1 — GAE charges per request.</td></tr>
+        <tr><td><code>WAKE_UP_MINUTE</code></td><td>5 min</td><td>Wakes idle GAE instances and runs the version-drift check at the configured cadence. Set <code>0</code> to disable entirely; 1–10 to override the default. GAE charges per request, so don't go below 1.</td></tr>
       </tbody>
     </table>
 

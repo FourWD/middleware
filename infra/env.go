@@ -3,6 +3,7 @@ package infra
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"strconv"
 
@@ -27,7 +28,7 @@ func LoadEnvFiles() error {
 	}
 
 	merged := map[string]string{}
-	mergeEnvMap(merged, base)
+	maps.Copy(merged, base)
 
 	envPath := ".env.local"
 	if appEnv != "" {
@@ -38,7 +39,7 @@ func LoadEnvFiles() error {
 	if err != nil {
 		return err
 	}
-	mergeEnvMap(merged, envByTarget)
+	maps.Copy(merged, envByTarget)
 
 	for key, value := range merged {
 		if _, exists := os.LookupEnv(key); exists {
@@ -67,12 +68,6 @@ func readEnvFile(path string) (map[string]string, error) {
 	}
 
 	return nil, fmt.Errorf("read %s: %w", path, err)
-}
-
-func mergeEnvMap(dst, src map[string]string) {
-	for key, value := range src {
-		dst[key] = value
-	}
 }
 
 // GetEnv returns the value of the environment variable or the fallback.

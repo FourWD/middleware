@@ -15,25 +15,34 @@ import (
 // Prefer PubSub.EnsureSubscription + PubSub.Subscribe in new code.
 func GoogleCreateSubscribe(topicName string) *pubsub.Subscriber {
 	if PubSub == nil {
-		AppLog.EventWarn("PUBSUB_CLIENT_NOT_INITIALIZED", map[string]interface{}{
+		AppLog.EventWarn("PUBSUB_CLIENT_NOT_INITIALIZED", map[string]any{
 			"topic": topicName,
-		}, "")
+		}, "",
+			WithComponent(ComponentPubSub),
+			WithOperation("subscribe"),
+			WithLogKind(LogKindError))
 		return nil
 	}
 
 	subscriptionID := "SUB-" + topicName
 
-	AppLog.Event("PUBSUB_CREATE_SUBSCRIBE", map[string]interface{}{
+	AppLog.Event("PUBSUB_SUBSCRIPTION_ENSURE_START", map[string]any{
 		"topic":        topicName,
 		"subscription": subscriptionID,
-	}, "")
+	}, "",
+		WithComponent(ComponentPubSub),
+		WithOperation("ensure_subscription"),
+		WithLogKind(LogKindBusiness))
 
 	ctx := context.Background()
 	if err := PubSub.EnsureSubscription(ctx, topicName, subscriptionID); err != nil {
-		AppLog.EventError(err, "PUBSUB_SUBSCRIPTION_ENSURE_ERROR", map[string]interface{}{
+		AppLog.EventError(err, "PUBSUB_SUBSCRIPTION_ENSURE_FAILURE", map[string]any{
 			"topic":        topicName,
 			"subscription": subscriptionID,
-		}, "")
+		}, "",
+			WithComponent(ComponentPubSub),
+			WithOperation("ensure_subscription"),
+			WithLogKind(LogKindError))
 		return nil
 	}
 

@@ -27,10 +27,7 @@ func FirebaseValueToInt(a interface{}) int {
 func FirebaseUpdate(client *firestore.Client, path string, updateData map[string]interface{}) error {
 	_, err := client.Doc(path).Set(context.Background(), updateData, firestore.MergeAll)
 	if err != nil {
-		AppLog.EventError(err, "FirebaseUpdate", map[string]interface{}{
-			"path": path,
-			"data": updateData,
-		}, "")
+		LogFirebaseError(context.Background(), err, "update", path)
 	}
 	return err
 }
@@ -104,7 +101,7 @@ func FirebaseCount(documents *firestore.DocumentIterator) int {
 			break
 		}
 		if err != nil {
-			AppLog.EventError(err, "FIREBASE_ITERATOR_ERROR", nil, "")
+			LogFirebaseError(context.Background(), err, "iterator", "")
 		}
 		count++
 	}
@@ -122,17 +119,23 @@ func FirebaseCountByField(documents *firestore.DocumentIterator, groupByField st
 			break
 		}
 		if err != nil {
-			AppLog.EventError(err, "FIREBASE_ITERATOR_ERROR", nil, "")
+			LogFirebaseError(context.Background(), err, "iterator", "")
 		}
 
 		fieldValue, ok := doc.Data()[groupByField]
 		if !ok {
-			AppLog.EventWarn("FIREBASE_FIELD_NOT_FOUND", map[string]interface{}{"field": groupByField}, "")
+			AppLog.EventWarn("FIREBASE_FIELD_NOT_FOUND", map[string]any{"field": groupByField}, "",
+				WithComponent(ComponentFirebase),
+				WithOperation("read_field"),
+				WithLogKind(LogKindDiagnostic))
 		}
 
 		fieldStr, ok := fieldValue.(string)
 		if !ok {
-			AppLog.EventWarn("FIREBASE_FIELD_CONVERT_ERROR", map[string]interface{}{"field": groupByField}, "")
+			AppLog.EventWarn("FIREBASE_FIELD_TYPE_MISMATCH", map[string]any{"field": groupByField}, "",
+				WithComponent(ComponentFirebase),
+				WithOperation("read_field"),
+				WithLogKind(LogKindDiagnostic))
 		}
 
 		if !kit.StringExistsInList(fieldStr, uniqueValues) {
