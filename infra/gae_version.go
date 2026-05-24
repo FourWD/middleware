@@ -7,12 +7,30 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 )
 
-const gaeVersionCheckInterval = 1 * time.Minute
+const maxWakeUpMinute = 10
+
+// wakeUpInterval reads WAKE_UP_MINUTE and returns the loop interval.
+// Empty/invalid/<=0 means disabled (0). Values > 10 are clamped to 10.
+func wakeUpInterval() time.Duration {
+	raw := strings.TrimSpace(os.Getenv("WAKE_UP_MINUTE"))
+	if raw == "" {
+		return 0
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return 0
+	}
+	if n > maxWakeUpMinute {
+		n = maxWakeUpMinute
+	}
+	return time.Duration(n) * time.Minute
+}
 
 type wakeUpResponse struct {
 	Status int `json:"status"`
@@ -47,6 +65,13 @@ func registerGAEVersionCheck(cfg CommonConfig, logger *Logger, hooks *[]func(con
 		return
 	}
 
+	interval := wakeUpInterval()
+	if interval == 0 {
+		logger.Info(M("gae version check disabled: WAKE_UP_MINUTE not set or 0"),
+			WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("startup"))
+		return
+	}
+
 	wakeUpURL := fmt.Sprintf("https://%s-dot-%s.appspot.com/wake-up", service, project)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -55,19 +80,20 @@ func registerGAEVersionCheck(cfg CommonConfig, logger *Logger, hooks *[]func(con
 		return nil
 	})
 
-	go runGAEVersionLoop(ctx, logger, wakeUpURL, currentVersion)
+	go runWakeUpLoop(ctx, logger, wakeUpURL, currentVersion, interval)
 
 	logger.Info(M("gae version check enabled"),
 		WithField("gae_service", service),
 		WithField("wake_up_url", wakeUpURL),
 		WithField("current_version", currentVersion),
+		WithField("interval", interval.String()),
 		WithComponent("app"), WithOperation("gae_version_check"), WithLogKind("startup"))
 }
 
-func runGAEVersionLoop(ctx context.Context, logger *Logger, wakeUpURL, currentVersion string) {
+func runWakeUpLoop(ctx context.Context, logger *Logger, wakeUpURL, currentVersion string, interval time.Duration) {
 	checkGAEVersion(ctx, logger, wakeUpURL, currentVersion)
 
-	ticker := time.NewTicker(gaeVersionCheckInterval)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
