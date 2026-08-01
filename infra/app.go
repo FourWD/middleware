@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/FourWD/middleware/kit"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -248,6 +249,13 @@ type App struct {
 // instead of NewApp.
 func NewApp(registrar RouteRegistrar) (*App, error) {
 	if err := LoadEnvFiles(); err != nil {
+		return nil, err
+	}
+
+	// Must run before any config is read: "sm://" values are references, and a
+	// service booting with one unresolved would dial MySQL with the reference
+	// string as its password.
+	if err := kit.ResolveSecretEnv(context.Background()); err != nil {
 		return nil, err
 	}
 
