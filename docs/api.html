@@ -87,7 +87,7 @@
       <tbody>
         <tr><td><code>infra.NewApp(registrar)</code></td><td>Bootstrap entry point. Returns <code>*App</code>; call <code>.Run()</code> to start.</td></tr>
         <tr><td><code>infra.RouteRegistrar</code></td><td>Function type the service implements: <code>func(*fiber.App, infra.AppDeps) error</code>.</td></tr>
-        <tr><td><code>infra.AuthenticationMiddlewareV2(cfg)</code></td><td>Bearer-token gate. Reads from <code>TokenManager</code>; optional <code>BlacklistStore</code>; auto-exempts library built-ins.</td></tr>
+        <tr><td><code>infra.AuthenticationMiddlewareV2(cfg)</code></td><td>Bearer-token gate. Reads from <code>TokenManager</code>; optional <code>BlacklistStore</code>; auto-exempts library built-ins. <code>cfg.CronPaths</code> + <code>CRON_PATHS</code> allow App Engine Cron through without a token (<a href="index.html#br-11">BR-11</a>).</td></tr>
         <tr><td><code>infra.AdminOnly(role, handler)</code></td><td>Per-handler role gate that runs after Auth V2. Returns 403 <code>FORBIDDEN</code> on mismatch.</td></tr>
         <tr><td><code>infra.WriteSuccess(c, status, data)</code></td><td>Emit a success envelope.</td></tr>
         <tr><td><code>infra.WriteErrorEnvelope(c, status, code, message)</code></td><td>Emit a typed error envelope.</td></tr>

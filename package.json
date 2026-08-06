@@ -1,0 +1,8 @@
+{
+  "name": "middleware",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "update": "go get -u ./... && go mod tidy"
+  }
+}

@@ -46,8 +46,9 @@ func (m *publicPathMatcher) matches(path string) bool {
 	return false
 }
 
-var publicPaths = sync.OnceValue(func() *publicPathMatcher {
-	patterns := append(SplitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")), baselinePublicPaths...)
+// newPathMatcher compiles a pattern list once. Invalid regexes are dropped
+// rather than failing boot — a bad pattern must not take the service down.
+func newPathMatcher(patterns []string) *publicPathMatcher {
 	m := &publicPathMatcher{exact: map[string]struct{}{}}
 	for _, raw := range patterns {
 		p := strings.TrimSpace(raw)
@@ -63,6 +64,10 @@ var publicPaths = sync.OnceValue(func() *publicPathMatcher {
 		}
 	}
 	return m
+}
+
+var publicPaths = sync.OnceValue(func() *publicPathMatcher {
+	return newPathMatcher(append(SplitCSV(GetEnv("HTTP_PUBLIC_PATHS", "")), baselinePublicPaths...))
 })
 
 var jwtSecret = sync.OnceValue(func() []byte {
@@ -72,9 +77,17 @@ var jwtSecret = sync.OnceValue(func() []byte {
 // AuthenticationMiddleware validates a Bearer JWT on the Authorization header
 // and stores the parsed claims under c.Locals("user"). Routes matching
 // HTTP_PUBLIC_PATHS (or the hardcoded /_ah/warmup, /wake-up, /metrics) skip
-// the check. NewApp registers this automatically.
+// the check. Routes matching CRON_PATHS skip it only for App Engine Cron
+// requests; every other caller still needs a token. NewApp registers this
+// automatically.
+//
+// Cron requests carry no claims — c.Locals("user") stays nil, so GetSession
+// returns nil on those handlers.
 func AuthenticationMiddleware(c fiber.Ctx) error {
 	if publicPaths().matches(c.Path()) {
+		return c.Next()
+	}
+	if isAppEngineCronRequest(c, cronPaths()) {
 		return c.Next()
 	}
 	return checkAuth(c)

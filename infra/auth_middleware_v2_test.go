@@ -77,6 +77,100 @@ func TestComposeExemptSet_DuplicatesCollapse(t *testing.T) {
 	}
 }
 
+// --- composeCronMatcher / cron bypass ---------------------------------------
+
+func TestComposeCronMatcher_MergesEnvAndCallerPaths(t *testing.T) {
+	t.Setenv("CRON_PATHS", "/from-env/cron")
+	got := composeCronMatcher(AuthMiddlewareV2Config{CronPaths: []string{"/from-caller/cron"}})
+
+	if !got.matches("/from-env/cron") {
+		t.Error("CRON_PATHS env entry missing")
+	}
+	if !got.matches("/from-caller/cron") {
+		t.Error("caller CronPaths entry missing")
+	}
+	if got.matches("/other") {
+		t.Error("unlisted path should not match")
+	}
+}
+
+func TestComposeCronMatcher_DisableAutoExemptsDropsEnv(t *testing.T) {
+	t.Setenv("CRON_PATHS", "/from-env/cron")
+	got := composeCronMatcher(AuthMiddlewareV2Config{
+		DisableAutoExempts: true,
+		CronPaths:          []string{"/from-caller/cron"},
+	})
+
+	if got.matches("/from-env/cron") {
+		t.Error("env path should be excluded when DisableAutoExempts=true")
+	}
+	if !got.matches("/from-caller/cron") {
+		t.Error("caller path missing")
+	}
+}
+
+// runV2 drives AuthenticationMiddlewareV2 with no TokenManager, so any request
+// that reaches the token check fails — status 200 proves the cron branch ran.
+func runV2(t *testing.T, cfg AuthMiddlewareV2Config, path string, headers map[string]string) int {
+	t.Helper()
+	app := fiber.New()
+	app.Use(AuthenticationMiddlewareV2(cfg))
+	app.Get("/*", func(c fiber.Ctx) error { return c.SendStatus(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	return resp.StatusCode
+}
+
+func TestAuthenticationMiddlewareV2_CronPathWithHeaderSkipsAuth(t *testing.T) {
+	t.Setenv("CRON_PATHS", "")
+	cfg := AuthMiddlewareV2Config{CronPaths: []string{"/api/v1/clean-service/clean-model/cron"}}
+
+	got := runV2(t, cfg, "/api/v1/clean-service/clean-model/cron", map[string]string{
+		appEngineCronHeader: "true",
+	})
+	if got != http.StatusOK {
+		t.Fatalf("got %d want 200", got)
+	}
+}
+
+func TestAuthenticationMiddlewareV2_CronPathWithoutHeaderRequiresToken(t *testing.T) {
+	t.Setenv("CRON_PATHS", "")
+	cfg := AuthMiddlewareV2Config{CronPaths: []string{"/api/v1/clean-service/clean-model/cron"}}
+
+	got := runV2(t, cfg, "/api/v1/clean-service/clean-model/cron", nil)
+	if got != http.StatusUnauthorized {
+		t.Fatalf("got %d want 401 — a listed path alone must not skip auth", got)
+	}
+}
+
+func TestAuthenticationMiddlewareV2_CronHeaderOnUnlistedPathRequiresToken(t *testing.T) {
+	t.Setenv("CRON_PATHS", "")
+	cfg := AuthMiddlewareV2Config{CronPaths: []string{"/api/v1/clean-service/clean-model/cron"}}
+
+	got := runV2(t, cfg, "/api/v1/users", map[string]string{appEngineCronHeader: "true"})
+	if got != http.StatusUnauthorized {
+		t.Fatalf("got %d want 401 — the header must not widen access beyond CronPaths", got)
+	}
+}
+
+func TestAuthenticationMiddlewareV2_NoCronPathsDisablesBypass(t *testing.T) {
+	t.Setenv("CRON_PATHS", "")
+
+	got := runV2(t, AuthMiddlewareV2Config{}, "/cron", map[string]string{
+		appEngineCronHeader: "true",
+	})
+	if got != http.StatusUnauthorized {
+		t.Fatalf("got %d want 401 — bypass must stay off when no cron paths are configured", got)
+	}
+}
+
 // --- AuthSession context plumbing -------------------------------------------
 
 func TestAuthSessionFrom_NoSessionReturnsFalse(t *testing.T) {

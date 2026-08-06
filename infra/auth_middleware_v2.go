@@ -54,7 +54,15 @@ type AuthMiddlewareV2Config struct {
 	// OPTIONS requests are always skipped for CORS preflight.
 	ExemptPaths []string
 
+	// CronPaths are routes an App Engine Cron job may call without a token.
+	// Auto-merged with the CRON_PATHS env (CSV). Unlike ExemptPaths these
+	// stay closed to everyone else — a request must also carry
+	// X-Appengine-Cron: true. Exact match, or regex when the pattern
+	// contains regex metacharacters.
+	CronPaths []string
+
 	// DisableAutoExempts turns off the baseline + env merge (rare).
+	// Also turns off the CRON_PATHS env merge.
 	DisableAutoExempts bool
 }
 
@@ -73,14 +81,21 @@ const bearerSchemePrefix = "Bearer "
 // non-exempt request. Returns 401 with a uniform error envelope; the "code"
 // field distinguishes failures (MISSING_TOKEN, INVALID_TOKEN, WRONG_TOKEN_TYPE,
 // TOKEN_REVOKED, AUTH_NOT_CONFIGURED).
+//
+// Cron requests carry no session — AuthSessionFrom returns ok=false on those
+// handlers, so a CronPaths route must not be wrapped in AdminOnly.
 func AuthenticationMiddlewareV2(cfg AuthMiddlewareV2Config) fiber.Handler {
 	exempt := composeExemptSet(cfg)
+	cron := composeCronMatcher(cfg)
 
 	return func(c fiber.Ctx) error {
 		if c.Method() == fiber.MethodOptions {
 			return c.Next()
 		}
 		if _, ok := exempt[c.Path()]; ok {
+			return c.Next()
+		}
+		if isAppEngineCronRequest(c, cron) {
 			return c.Next()
 		}
 
@@ -137,6 +152,16 @@ func composeExemptSet(cfg AuthMiddlewareV2Config) map[string]struct{} {
 		exact[p] = struct{}{}
 	}
 	return exact
+}
+
+// composeCronMatcher builds the cron path matcher from env + caller config.
+func composeCronMatcher(cfg AuthMiddlewareV2Config) *publicPathMatcher {
+	var merged []string
+	if !cfg.DisableAutoExempts {
+		merged = append(merged, CronPathsFromEnv()...)
+	}
+	merged = append(merged, cfg.CronPaths...)
+	return newPathMatcher(merged)
 }
 
 // extractBearerToken pulls the token from the Authorization header. Returns
