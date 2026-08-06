@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	maxWakeUpMinute     = 10
-	defaultWakeUpMinute = 5
+	maxWakeUpMinute = 120
 
 	gaeVersionCheckOp = "gae_version_check"
 )
@@ -24,18 +23,11 @@ const (
 // Transport per request.
 var wakeUpHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
-// wakeUpInterval reads WAKE_UP_MINUTE.
-// Empty/invalid → 5 min. "0" → disabled. Capped at 10.
+// wakeUpInterval reads WAKE_UP_MINUTE. Empty, "0", or invalid → 0 (disabled);
+// the loop is opt-in because GAE charges per request. Capped at 120.
 func wakeUpInterval() time.Duration {
-	raw := strings.TrimSpace(os.Getenv("WAKE_UP_MINUTE"))
-	if raw == "" {
-		return defaultWakeUpMinute * time.Minute
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil {
-		return defaultWakeUpMinute * time.Minute
-	}
-	if n <= 0 {
+	n, err := strconv.Atoi(strings.TrimSpace(os.Getenv("WAKE_UP_MINUTE")))
+	if err != nil || n <= 0 {
 		return 0
 	}
 	if n > maxWakeUpMinute {
@@ -98,7 +90,7 @@ func resolveGAECheckParams(logger *Logger) (project, version string, interval ti
 	}
 	interval = wakeUpInterval()
 	if interval == 0 {
-		logCheckDisabled(logger, "WAKE_UP_MINUTE explicitly set to 0")
+		logCheckDisabled(logger, "WAKE_UP_MINUTE unset, 0, or invalid")
 		return "", "", 0, false
 	}
 	return project, version, interval, true
