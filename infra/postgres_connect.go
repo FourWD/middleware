@@ -12,6 +12,9 @@ import (
 // sets the session timezone to Asia/Bangkok, and applies the connection pool
 // limits. Panics on connection failure (callers expect this at boot).
 // Mirrors the structure of ConnectMySqlDatabase.
+//
+// Deprecated: ใช้ infra.OpenDB แทน ตัวนี้ใช้ lib/pq ขณะที่ OpenDB ใช้ pgx และไม่มี
+// ผู้เรียกภายในโมดูลแล้ว
 func ConnectPostgresDatabase(dns string, maxOpenConns int, maxIdleConns int) (*gorm.DB, *sql.DB) {
 	dataGorm, errGorm := gorm.Open(postgres.Open(dns), &gorm.Config{
 		SkipDefaultTransaction: true,
@@ -35,22 +38,9 @@ func ConnectPostgresDatabase(dns string, maxOpenConns int, maxIdleConns int) (*g
 		panic(err)
 	}
 
-	// Postgres SET TIME ZONE does not accept bind parameters — the value
-	// must be embedded as a literal.
-	const setTZ = "SET TIME ZONE 'Asia/Bangkok'"
-	if _, err := dbSql.Exec(setTZ); err != nil {
-		AppLog.EventError(err, "DB_SET_TIMEZONE_FAILURE", nil, "",
-			WithComponent(ComponentDB),
-			WithOperation("set_timezone"),
-			WithLogKind(LogKindError))
-	}
-	if err := dataGorm.Exec(setTZ).Error; err != nil {
-		AppLog.EventError(err, "DB_GORM_SET_TIMEZONE_FAILURE", nil, "",
-			WithComponent(ComponentDB),
-			WithOperation("set_timezone"),
-			WithLogKind(LogKindError))
-	}
-
+	// เดิมที่นี่ hardcode "SET TIME ZONE 'Asia/Bangkok'" ซึ่งขัดกับ default ของ
+	// LoadDatabaseConfig (TimeZone=UTC) — โมดูลเดียวกันบอกคนละอย่าง ตอนนี้ปล่อยให้
+	// timezone มาจากพารามิเตอร์ TimeZone ใน DSN ที่ผู้เรียกกำหนดเองแหล่งเดียว
 	LogInfraEvent("DB_POSTGRES_CONNECT_SUCCESS", ComponentDB, "connect", nil)
 	initDatabaseConnectionPool(dbSql, maxOpenConns, maxIdleConns)
 

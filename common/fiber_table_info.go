@@ -32,9 +32,24 @@ func FiberTableInfo(app *fiber.App) {
 			return infra.FiberError(c, "1003", "not allowed in production environment")
 		}
 
-		rows, err := DatabaseSql.Query(`SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE,
-		CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ?
-		ORDER BY TABLE_NAME, COLUMN_NAME`, infra.GetEnv("DB_NAME", ""))
+		// information_schema.table_schema มีความหมายต่างกันสองเอนจิน: MySQL คือชื่อ
+		// database ส่วน PostgreSQL คือ schema (public) การส่ง DB_NAME ให้ PostgreSQL
+		// จึงคืน 0 แถวเงียบ ๆ — และ database/sql ดิบก็ต้องใช้ $1 ไม่ใช่ ? จึงย้ายมาใช้
+		// gorm ที่แปลง placeholder ให้เองทั้งสองเอนจิน
+		const cols = `SELECT table_name, column_name, data_type, character_maximum_length
+		FROM information_schema.columns WHERE table_schema = `
+
+		var (
+			rows *sql.Rows
+			err  error
+		)
+		if Database.Dialector.Name() == "postgres" {
+			rows, err = Database.Raw(cols + `current_schema()
+			ORDER BY table_name, column_name`).Rows()
+		} else {
+			rows, err = Database.Raw(cols+`?
+			ORDER BY table_name, column_name`, infra.GetEnv("DB_NAME", "")).Rows()
+		}
 		if err != nil {
 			return c.Status(http.StatusInternalServerError).SendString("Error executing query")
 		}

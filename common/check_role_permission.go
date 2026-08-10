@@ -18,11 +18,14 @@ func CheckRolePermission(c fiber.Ctx, path string, action string) error {
 
 	var permission kit.Permission
 
+	// is_read/is_create/is_update/is_delete เป็น bool ใน orm ส่วน kit.Permission เป็น int
+	// COALESCE(bool, 0) ใช้ไม่ได้บน PostgreSQL ("COALESCE types boolean and integer
+	// cannot be matched") — ห่อด้วย CASE จึงคืน int ให้ตรงกับ struct และรันได้ทั้งสอง engine
 	sql := `SELECT
-	COALESCE(rup.is_read, 0) "read",
-	COALESCE(rup.is_create, 0) "create",
-	COALESCE(rup.is_update, 0) "update",
-	COALESCE(rup.is_delete, 0) "delete"
+	CASE WHEN COALESCE(rup.is_read, false)   THEN 1 ELSE 0 END AS "read",
+	CASE WHEN COALESCE(rup.is_create, false) THEN 1 ELSE 0 END AS "create",
+	CASE WHEN COALESCE(rup.is_update, false) THEN 1 ELSE 0 END AS "update",
+	CASE WHEN COALESCE(rup.is_delete, false) THEN 1 ELSE 0 END AS "delete"
 	FROM role_menus AS rm
 	LEFT JOIN role_user_permissions rup ON rup.role_menu_id = rm.id AND rup.user_id = ?
 	WHERE LOWER(rm.path) = ?`

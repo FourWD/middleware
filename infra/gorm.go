@@ -44,7 +44,13 @@ func loadDatabaseConfigWithPrefix(prefix string) DatabaseConfig {
 
 	defaultParams := "charset=utf8mb4&parseTime=True&loc=Local"
 	if driver == DBDriverPostgres {
-		defaultParams = "sslmode=disable TimeZone=UTC"
+		// sslmode=prefer คือ default ของ libpq เอง: ลอง TLS ก่อน ถ้าเซิร์ฟเวอร์ไม่รองรับ
+		// จึงถอยไป plaintext เดิมเป็น disable ซึ่งถูกปฏิเสธทันทีโดย Cloud SQL ที่ตั้ง
+		// sslMode=ENCRYPTED_ONLY ("pg_hba.conf rejects connection ... no encryption")
+		//
+		// TimeZone ยังเป็น UTC โดยตั้งใจ เปลี่ยนเมื่อไรคือเลื่อนเวลาของทุก service ที่ไม่ได้
+		// ตั้ง DB_PARAMS เอง service ที่ต้องการเวลาไทยให้ตั้ง DB_PARAMS ระบุมาเอง
+		defaultParams = "sslmode=prefer TimeZone=UTC"
 	}
 
 	return DatabaseConfig{
