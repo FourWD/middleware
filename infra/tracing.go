@@ -5,10 +5,18 @@ import (
 	"errors"
 	"time"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// Tracer returns the named tracer from the global provider InitOTel installs.
+// Every Trace/TraceResult call needs one; a service names it after itself so
+// spans group per service rather than per package.
+func Tracer(name string) trace.Tracer {
+	return otel.Tracer(name)
+}
 
 type IgnoreErrorStruct struct {
 	err error

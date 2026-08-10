@@ -127,7 +127,9 @@
     <p>The <dfn>token manager</dfn> is <code>infra.TokenManager</code> — it owns access/refresh JWT generation, parsing, refresh rotation and revocation, backed by a <code>RefreshTokenStore</code>.</p>
     <p>The <dfn>blacklist</dfn> is <code>infra.BlacklistStore</code> — a Mongo- or Redis-backed set of revoked access-token strings consulted by Auth V2 on every authenticated request.</p>
     <p>The <dfn>heartbeat</dfn> is the in-process scheduler that pings configured liveness probes on an interval; its current circuit state is exposed via <code>/debug/background-jobs/heartbeat/circuit-state</code>.</p>
-    <p>A <dfn>worker</dfn> is a long-running background goroutine registered via <code>deps.Runtime.RegisterWorker</code>; <code>App.Run</code> manages its lifecycle alongside the HTTP server.</p>
+    <p>A <dfn>worker</dfn> is a long-running background goroutine registered via <code>deps.Runtime.RegisterWorker</code>; <code>App.Run</code> manages its lifecycle alongside the HTTP server. <code>infra.RunLoop</code> is the usual body for one — it calls the work function on an interval and recovers a panic instead of letting it kill the goroutine.</p>
+    <p>The <dfn>leader</dfn> is <code>infra.Leader</code> — a session-scoped database lock (MySQL <code>GET_LOCK</code> or PostgreSQL <code>pg_advisory_lock</code>, chosen by <code>DB_DRIVER</code>) that keeps a multi-instance deploy single-writer. Its <code>Run</code> registers as a worker; other workers guard their writes with <code>IsLeader()</code>. Because the lock is bound to one dedicated connection, the server drops it the instant the holder dies — see <a href="deployment.html#leader">Leader lock</a>.</p>
+    <p>A <dfn>scoped logger</dfn> is <code>logger.Scoped(component)</code> — a <code>*Logger</code> view with its component pinned, so an engine names itself once at construction instead of on every call.</p>
 
     <div class="cards">
       <a class="card" href="ui-flow.html">

@@ -16,6 +16,7 @@ const (
 	ComponentMail       = "mail"        // Mailgun
 	ComponentHTTPClient = "http_client" // outbound HTTP requests
 	ComponentCron       = "cron"        // scheduled jobs
+	ComponentLeader     = "leader"      // active/standby leader lock
 	ComponentHandler    = "handler"     // route handler (service repo)
 	ComponentRepo       = "repo"        // repository layer (service repo)
 	ComponentPayment    = "payment"     // payment gateway integrations

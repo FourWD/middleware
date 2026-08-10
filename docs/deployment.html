@@ -254,6 +254,36 @@
       </tbody>
     </table>
 
+    <h3 id="leader">Leader lock (active/standby)</h3>
+    <p>
+      Read by <code>infra.LoadLeaderConfig</code>. A service that registers
+      <code>infra.NewLeader(...).Run</code> as a worker and guards its writes with
+      <code>IsLeader()</code> stays single-writer across a multi-instance deploy. The lock is a
+      <em>session</em> lock on a dedicated connection — MySQL <code>GET_LOCK</code> or PostgreSQL
+      <code>pg_advisory_lock</code>, picked from <code>DB_DRIVER</code> — so the server releases it
+      the moment the holder's connection drops. No lease row, no stale-leader window, no cleanup job.
+      Failover latency is about <code>LOCK_TIMEOUT + RETRY_INTERVAL</code>.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Default</th><th>Missing behavior</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>LEADER_ENABLED</code></td><td>bool</td><td><code>true</code></td><td><code>false</code> makes <code>IsLeader()</code> permanently true and <code>Run</code> a no-op — the right setting for a one-instance deploy, where the lock adds a dependency and no safety.</td></tr>
+        <tr><td><code>LEADER_LOCK_NAME</code></td><td>string</td><td><code>&lt;APP_ID&gt;:leader:v1</code></td><td>Everything sharing a name contends for one leadership. The default keys off <code>APP_ID</code> so two unrelated services can't collide by accident; set it explicitly only when several deploys must share one.</td></tr>
+        <tr><td><code>LEADER_LOCK_TIMEOUT_SECS</code></td><td>int</td><td><code>5</code></td><td>Bounds one acquire attempt. On PostgreSQL there is no timeout variant of <code>pg_advisory_lock</code>, so the driver polls <code>pg_try_advisory_lock</code> once a second until this elapses.</td></tr>
+        <tr><td><code>LEADER_RETRY_INTERVAL_SECS</code></td><td>int</td><td><code>3</code></td><td>How long a standby waits before re-attempting.</td></tr>
+        <tr><td><code>LEADER_KEEPALIVE_INTERVAL_SECS</code></td><td>int</td><td><code>30</code></td><td>How often the holder pings its lock connection, and the deadline for that ping — a momentarily slow server shouldn't cost leadership.</td></tr>
+      </tbody>
+    </table>
+    <p>
+      The lock connection defaults to the primary database (<code>DB_*</code>) but is a separate
+      single-connection pool on purpose: a pooled connection returned to the pool still carries the
+      session lock, and any later reuse or recycle would release it silently. Point the lock
+      elsewhere by setting <code>LeaderConfig.Driver</code> and <code>.DSN</code> in code.
+      <code>LeaderState</code> (<code>State()</code>) is JSON-ready for a service's own status endpoint.
+    </p>
+
     <h2 id="config-toml">5.2 config.toml</h2>
     <p>
       Not applicable. The library never reads <code>config.toml</code>,
