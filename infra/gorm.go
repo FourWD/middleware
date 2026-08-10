@@ -143,8 +143,15 @@ func BuildMySQLDSN(cfg DatabaseConfig) string {
 }
 
 func BuildPostgresDSN(cfg DatabaseConfig) string {
+	// Instance ชนะ Host เหมือนฝั่ง BuildMySQLDSN — libpq/pgx ถือว่า host ที่ขึ้นต้นด้วย /
+	// คือ unix socket directory ซึ่งเป็นวิธีที่ App Engine / Cloud Run ต่อ Cloud SQL
+	host := cfg.Host
+	if cfg.Instance != "" {
+		host = "/cloudsql/" + cfg.Instance
+	}
+
 	return fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d %s",
-		cfg.Host, cfg.User, cfg.Password, cfg.Name, cfg.Port, cfg.Params,
+		host, cfg.User, cfg.Password, cfg.Name, cfg.Port, cfg.Params,
 	)
 }
