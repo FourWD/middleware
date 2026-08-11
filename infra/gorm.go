@@ -91,14 +91,27 @@ func BindDatabase(dbs Databases) (*gorm.DB, *sql.DB, error) {
 	return dbs.Primary, sqlDB, nil
 }
 
-func OpenDB(cfg DatabaseConfig, appLogger *Logger) (*gorm.DB, error) {
-	var dialector gorm.Dialector
+// OpenDialector builds the gorm dialector for cfg, registering the Cloud SQL
+// connector driver when DB_INSTANCE is dialed through it.
+func OpenDialector(cfg DatabaseConfig) (gorm.Dialector, error) {
+	// Left empty outside connector mode so gorm keeps its own default driver.
+	driverName := CloudSQLDriverName(cfg)
+	if driverName != "" {
+		if err := EnsureCloudSQLDriver(driverName); err != nil {
+			return nil, err
+		}
+	}
 
-	switch cfg.Driver {
-	case DBDriverPostgres:
-		dialector = postgres.Open(BuildPostgresDSN(cfg))
-	default:
-		dialector = mysql.Open(BuildMySQLDSN(cfg))
+	if cfg.Driver == DBDriverPostgres {
+		return postgres.New(postgres.Config{DriverName: driverName, DSN: BuildPostgresDSN(cfg)}), nil
+	}
+	return mysql.New(mysql.Config{DriverName: driverName, DSN: BuildMySQLDSN(cfg)}), nil
+}
+
+func OpenDB(cfg DatabaseConfig, appLogger *Logger) (*gorm.DB, error) {
+	dialector, err := OpenDialector(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	db, err := gorm.Open(dialector, &gorm.Config{
@@ -122,10 +135,11 @@ func OpenDB(cfg DatabaseConfig, appLogger *Logger) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.MaxLifetime) * time.Minute)
 
 	appLogger.LifecycleEvent("DB_CONNECT_SUCCESS", map[string]any{
-		"driver":   cfg.Driver,
-		"host":     cfg.Host,
-		"instance": cfg.Instance,
-		"database": cfg.Name,
+		"driver":    cfg.Driver,
+		"host":      cfg.Host,
+		"instance":  cfg.Instance,
+		"database":  cfg.Name,
+		"connector": UseCloudSQLConnector(cfg),
 	},
 		WithComponent(ComponentDB),
 		WithOperation("connect"),
@@ -136,9 +150,16 @@ func OpenDB(cfg DatabaseConfig, appLogger *Logger) (*gorm.DB, error) {
 
 func BuildMySQLDSN(cfg DatabaseConfig) string {
 	if cfg.Instance != "" {
+		network := fmt.Sprintf("unix(/cloudsql/%s)", cfg.Instance)
+		if UseCloudSQLConnector(cfg) {
+			// The connector registers its dialer under the driver name, so the
+			// DSN addresses the instance directly instead of a socket path.
+			network = fmt.Sprintf("%s(%s)", CloudSQLMySQLDriver, cfg.Instance)
+		}
+
 		return fmt.Sprintf(
-			"%s:%s@unix(/cloudsql/%s)/%s?%s",
-			cfg.User, cfg.Password, cfg.Instance, cfg.Name, cfg.Params,
+			"%s:%s@%s/%s?%s",
+			cfg.User, cfg.Password, network, cfg.Name, cfg.Params,
 		)
 	}
 
@@ -152,12 +173,19 @@ func BuildPostgresDSN(cfg DatabaseConfig) string {
 	// Instance ชนะ Host เหมือนฝั่ง BuildMySQLDSN — libpq/pgx ถือว่า host ที่ขึ้นต้นด้วย /
 	// คือ unix socket directory ซึ่งเป็นวิธีที่ App Engine / Cloud Run ต่อ Cloud SQL
 	host := cfg.Host
+	params := cfg.Params
 	if cfg.Instance != "" {
 		host = "/cloudsql/" + cfg.Instance
+		if UseCloudSQLConnector(cfg) {
+			// The connector driver reads the instance connection name out of
+			// host and replaces the dial address itself.
+			host = cfg.Instance
+			params = connectorSSLMode(params)
+		}
 	}
 
 	return fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d %s",
-		host, cfg.User, cfg.Password, cfg.Name, cfg.Port, cfg.Params,
+		host, cfg.User, cfg.Password, cfg.Name, cfg.Port, params,
 	)
 }

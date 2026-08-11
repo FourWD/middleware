@@ -26,6 +26,9 @@ func CreateMySqlDSN(dsn DNS) string {
 
 	if dsn.Instance != "" {
 		protocol = fmt.Sprintf("unix(/cloudsql/%s)", dsn.Instance)
+		if UseCloudSQLConnector(DatabaseConfig{Instance: dsn.Instance}) {
+			protocol = fmt.Sprintf("%s(%s)", CloudSQLMySQLDriver, dsn.Instance)
+		}
 	} else {
 		protocol = fmt.Sprintf("tcp(%s:3306)", dsn.IP)
 		setting += "&loc=Local"

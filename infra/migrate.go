@@ -11,8 +11,6 @@ import (
 	migratemysql "github.com/golang-migrate/migrate/v4/database/mysql"
 	migratepostgres "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	gormmysql "gorm.io/driver/mysql"
-	gormpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -22,9 +20,9 @@ func RunMigrations(cfg CommonConfig) error {
 		return nil
 	}
 
-	dialector := gormmysql.Open(BuildMySQLDSN(cfg.Database))
-	if cfg.Database.Driver == DBDriverPostgres {
-		dialector = gormpostgres.Open(BuildPostgresDSN(cfg.Database))
+	dialector, err := OpenDialector(cfg.Database)
+	if err != nil {
+		return fmt.Errorf("build dialector for migrations: %w", err)
 	}
 
 	db, err := gorm.Open(dialector, &gorm.Config{})

@@ -13,7 +13,21 @@ import (
 // session timezone to Asia/Bangkok, and applies the connection pool limits.
 // Panics on connection failure (callers expect this at boot).
 func ConnectMySqlDatabase(dns string, maxOpenConns int, maxIdleConns int) (*gorm.DB, *sql.DB) {
-	dataGorm, errGorm := gorm.Open(mysql.Open(dns+"&loc=Asia%2FBangkok"), &gorm.Config{
+	dsn := dns + "&loc=Asia%2FBangkok"
+
+	driverName := DBDriverMySQL
+	if mysqlConnectorDSN(dsn) {
+		if err := EnsureCloudSQLDriver(CloudSQLMySQLDriver); err != nil {
+			AppLog.EventError(err, "DB_CLOUDSQL_REGISTER_FAILURE", nil, "",
+				WithComponent(ComponentDB),
+				WithOperation("connect"),
+				WithLogKind(LogKindError))
+			panic(err)
+		}
+		driverName = CloudSQLMySQLDriver
+	}
+
+	dataGorm, errGorm := gorm.Open(mysql.New(mysql.Config{DriverName: driverName, DSN: dsn}), &gorm.Config{
 		SkipDefaultTransaction: true,
 		PrepareStmt:            true,
 	})
@@ -26,7 +40,7 @@ func ConnectMySqlDatabase(dns string, maxOpenConns int, maxIdleConns int) (*gorm
 		panic(errGorm)
 	}
 
-	dbSql, err := sql.Open("mysql", dns+"&loc=Asia%2FBangkok")
+	dbSql, err := sql.Open(driverName, dsn)
 	if err != nil {
 		AppLog.EventError(err, "DB_MYSQL_CONNECT_FAILURE", nil, "",
 			WithComponent(ComponentDB),

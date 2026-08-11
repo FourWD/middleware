@@ -10,9 +10,21 @@ func ConnectDatabaseMySqlGoogle(dsn DNS) (*sql.DB, error) {
 		dsn.Instance = ""
 	}
 
-	rawDSN := CreateMySqlDSN(dsn)
+	rawDSN := CreateMySqlDSN(dsn) + "&loc=Asia%2FBangkok"
 
-	database, err := sql.Open("mysql", rawDSN+"&loc=Asia%2FBangkok")
+	driverName := DBDriverMySQL
+	if mysqlConnectorDSN(rawDSN) {
+		if err := EnsureCloudSQLDriver(CloudSQLMySQLDriver); err != nil {
+			AppLog.EventError(err, "DB_CLOUDSQL_REGISTER_FAILURE", nil, "",
+				WithComponent(ComponentDB),
+				WithOperation("connect"),
+				WithLogKind(LogKindError))
+			return nil, err
+		}
+		driverName = CloudSQLMySQLDriver
+	}
+
+	database, err := sql.Open(driverName, rawDSN)
 	if err != nil {
 		AppLog.EventError(err, "DB_MYSQL_CLOUDSQL_CONNECT_FAILURE", nil, "",
 			WithComponent(ComponentDB),

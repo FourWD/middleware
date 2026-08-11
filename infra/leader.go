@@ -204,15 +204,21 @@ func (c LeaderConfig) resolveDSN() (driver, dsn string, err error) {
 		if c.DSN != "" {
 			return "pgx", c.DSN, nil
 		}
-		return "pgx", BuildPostgresDSN(dbCfg), nil
+		dbCfg.Driver = DBDriverPostgres
 	case DBDriverMySQL, "":
 		if c.DSN != "" {
 			return DBDriverMySQL, c.DSN, nil
 		}
-		return DBDriverMySQL, BuildMySQLDSN(dbCfg), nil
+		dbCfg.Driver = DBDriverMySQL
 	default:
 		return "", "", fmt.Errorf("leader: unsupported driver %q", kind)
 	}
+
+	driver, dsn, err = SQLDriverDSN(dbCfg)
+	if err != nil {
+		return "", "", fmt.Errorf("leader: %w", err)
+	}
+	return driver, dsn, nil
 }
 
 // Gained is closed exactly once, when this instance first acquires the lock.
