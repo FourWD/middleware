@@ -128,12 +128,14 @@ func LoadCommonConfig() CommonConfig {
 		MongoMiddleware:        LoadMongoMiddlewareConfig(),
 		MongoMiddlewareEnabled: GetEnvBool("MONGO_MIDDLEWARE_ENABLED", false),
 		Firebase: FirebaseConfig{
-			CredentialsFile:             GetEnv("FIREBASE_CREDENTIALS", ""),
-			NotificationCredentialsFile: GetEnv("FIREBASE_NOTIFICATION_CREDENTIALS", ""),
+			CredentialsFile: GetEnv("FIREBASE_CREDENTIALS", ""),
+			// FCM runs on the same service account as Firestore.
+			NotificationCredentialsFile: GetEnv("FIREBASE_CREDENTIALS", ""),
 		},
 		PubSub: PubSubConfig{
-			Enabled:         GetEnvBool("PUBSUB_ENABLED", false),
-			ProjectID:       GetEnv("PUBSUB_PROJECT_ID", ""),
+			Enabled: GetEnvBool("PUBSUB_ENABLED", false),
+			// Topics live in the service's own project.
+			ProjectID:       GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 			CredentialsFile: GetEnv("PUBSUB_CREDENTIALS_FILE", ""),
 		},
 		Storage: StorageConfig{
@@ -628,7 +630,7 @@ func validateCommonConfig(cfg CommonConfig) error {
 		return fmt.Errorf("JWT_BLACKLIST_ENABLED requires MONGO_MIDDLEWARE_ENABLED or REDIS_ENABLED")
 	}
 	if cfg.PubSub.Enabled && strings.TrimSpace(cfg.PubSub.ProjectID) == "" {
-		return fmt.Errorf("PUBSUB_PROJECT_ID is required when PUBSUB_ENABLED=true")
+		return fmt.Errorf("GOOGLE_CLOUD_PROJECT is required when PUBSUB_ENABLED=true")
 	}
 	if cfg.Storage.Enabled && strings.TrimSpace(cfg.Storage.Bucket) == "" {
 		return fmt.Errorf("STORAGE_BUCKET is required when STORAGE_ENABLED=true")

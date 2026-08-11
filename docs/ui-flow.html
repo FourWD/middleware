@@ -198,7 +198,7 @@ SIGINT / SIGTERM
         <tr><td><code>REDIS_ADDR</code></td><td>non-empty when <code>REDIS_ENABLED=true</code></td><td><code>invalid REDIS_ADDR</code></td></tr>
         <tr><td><code>JWT_SECRET</code></td><td>always required (BR-3)</td><td><code>invalid JWT_SECRET</code></td></tr>
         <tr><td><code>JWT_BLACKLIST_ENABLED</code></td><td>requires <code>MONGO_MIDDLEWARE_ENABLED</code> or <code>REDIS_ENABLED</code> (BR-5)</td><td><code>JWT_BLACKLIST_ENABLED requires MONGO_MIDDLEWARE_ENABLED or REDIS_ENABLED</code></td></tr>
-        <tr><td><code>PUBSUB_PROJECT_ID</code></td><td>required when <code>PUBSUB_ENABLED=true</code></td><td><code>PUBSUB_PROJECT_ID is required when PUBSUB_ENABLED=true</code></td></tr>
+        <tr><td><code>GOOGLE_CLOUD_PROJECT</code></td><td>required when <code>PUBSUB_ENABLED=true</code></td><td><code>GOOGLE_CLOUD_PROJECT is required when PUBSUB_ENABLED=true</code></td></tr>
         <tr><td><code>STORAGE_BUCKET</code></td><td>required when <code>STORAGE_ENABLED=true</code></td><td><code>STORAGE_BUCKET is required when STORAGE_ENABLED=true</code></td></tr>
         <tr><td><code>MAILGUN_DOMAIN</code> / <code>MAILGUN_API_KEY</code></td><td>both required when <code>MAIL_ENABLED=true</code></td><td><code>MAILGUN_DOMAIN is required when MAIL_ENABLED=true</code> / <code>MAILGUN_API_KEY is required when MAIL_ENABLED=true</code></td></tr>
       </tbody>

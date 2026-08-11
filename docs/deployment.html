@@ -179,7 +179,6 @@
       </thead>
       <tbody>
         <tr><td><code>FIREBASE_CREDENTIALS</code></td><td>file path</td><td>empty</td><td>Empty disables Firestore/Auth client.</td></tr>
-        <tr><td><code>FIREBASE_NOTIFICATION_CREDENTIALS</code></td><td>file path</td><td>empty</td><td>Empty disables FCM messaging client.</td></tr>
       </tbody>
     </table>
 
@@ -192,7 +191,6 @@
         <tr><td><code>GOOGLE_CLOUD_PROJECT</code></td><td>string</td><td>empty</td><td>Auto-set on GAE; used to build the version-check URL.</td></tr>
         <tr><td><code>WAKE_UP_MINUTE</code></td><td>int (0–120)</td><td>0 (disabled)</td><td>The GAE wake-up loop is opt-in: empty, <code>0</code>, or invalid leaves it off. Set 1–120 to enable; values above 120 are clamped.</td></tr>
         <tr><td><code>PUBSUB_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — Pub/Sub client not built.</td></tr>
-        <tr><td><code>PUBSUB_PROJECT_ID</code></td><td>string</td><td>empty</td><td>Required when Pub/Sub enabled.</td></tr>
         <tr><td><code>PUBSUB_CREDENTIALS_FILE</code></td><td>file path</td><td>empty</td><td>Falls back to ADC when empty.</td></tr>
         <tr><td><code>STORAGE_ENABLED</code></td><td>bool</td><td><code>false</code></td><td>Off — Storage client not built.</td></tr>
         <tr><td><code>STORAGE_BUCKET</code></td><td>string</td><td>empty</td><td>Required when Storage enabled.</td></tr>

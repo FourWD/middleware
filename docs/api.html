@@ -138,14 +138,14 @@
     <h3>Firebase (Firestore + Auth + FCM)</h3>
     <ul>
       <li><strong>Auth</strong> — service-account JSON at <code>FIREBASE_CREDENTIALS</code>; client built once via <code>firebase.NewApp</code>.</li>
-      <li><strong>Modules</strong> — <code>firebase.App.Firestore()</code> for Firestore, <code>firebase.App.Auth()</code> for ID-token verification, <code>FIREBASE_NOTIFICATION_CREDENTIALS</code> for the FCM messaging client (can be the same file).</li>
+      <li><strong>Modules</strong> — <code>firebase.App.Firestore()</code> for Firestore, <code>firebase.App.Auth()</code> for ID-token verification, the same <code>FIREBASE_CREDENTIALS</code> file for the FCM messaging client.</li>
       <li><strong>Failure</strong> — startup error if credentials are present but invalid; if both env vars are empty the client is simply not built.</li>
     </ul>
 
     <h3>Google Cloud Pub/Sub (v2)</h3>
     <ul>
       <li><strong>Auth</strong> — <code>PUBSUB_CREDENTIALS_FILE</code> (or ADC on GAE/GCE).</li>
-      <li><strong>Boot guard</strong> — <code>PUBSUB_ENABLED=true</code> requires <code>PUBSUB_PROJECT_ID</code>; missing project ID fails fast.</li>
+      <li><strong>Boot guard</strong> — <code>PUBSUB_ENABLED=true</code> requires <code>GOOGLE_CLOUD_PROJECT</code>; missing project ID fails fast.</li>
       <li><strong>Client</strong> — <code>NewPubSubClient</code> wraps <code>cloud.google.com/go/pubsub/v2</code>; registered as <code>deps.Cloud.PubSub</code>; close hook runs at shutdown.</li>
     </ul>
 
