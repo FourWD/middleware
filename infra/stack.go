@@ -30,7 +30,9 @@ type StackConfig struct {
 
 	// CORS
 	AllowOrigins string
-	AllowHeaders string
+	// AllowHeadersExtra adds to the default allow-list, it does not replace it.
+	AllowHeadersExtra string
+	CORSMaxAge        int
 
 	// Envelope wrapper
 	EnvelopeEnabled bool
@@ -53,7 +55,8 @@ func LoadStackConfig() StackConfig {
 		RequestLogOmitResponseHeaders: GetEnvBool("HTTP_REQUEST_LOG_OMIT_RESPONSE_HEADERS", true),
 		RequestLogMaxBodyBytes:        GetEnvInt("HTTP_REQUEST_LOG_MAX_BODY_BYTES", 4096),
 		AllowOrigins:                  GetEnv("HTTP_ALLOW_ORIGINS", "*"),
-		AllowHeaders:                  GetEnv("HTTP_ALLOW_HEADERS", defaultCORSAllowHeaders()),
+		AllowHeadersExtra:             GetEnv("HTTP_ALLOW_HEADERS_EXTRA", ""),
+		CORSMaxAge:                    GetEnvInt("HTTP_CORS_MAX_AGE", 600),
 		EnvelopeEnabled:               GetEnvBool("HTTP_ENVELOPE_ENABLED", false),
 		SentryEnabled:                 GetEnvBool("SENTRY_ENABLED", false),
 		MetricsNamespace:              GetEnv("METRICS_NAMESPACE", "app"),
@@ -67,9 +70,6 @@ func (c StackConfig) normalized() StackConfig {
 	}
 	if strings.TrimSpace(cfg.AllowOrigins) == "" {
 		cfg.AllowOrigins = "*"
-	}
-	if strings.TrimSpace(cfg.AllowHeaders) == "" {
-		cfg.AllowHeaders = defaultCORSAllowHeaders()
 	}
 	if strings.TrimSpace(cfg.MetricsNamespace) == "" {
 		cfg.MetricsNamespace = "app"
@@ -139,21 +139,40 @@ func registerCORS(app *fiber.App, cfg StackConfig) {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:  SplitCSV(cfg.AllowOrigins),
 		AllowMethods:  []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:  SplitCSV(cfg.AllowHeaders),
+		AllowHeaders:  allowHeaders(cfg.AllowHeadersExtra),
 		ExposeHeaders: []string{RequestIDHeader},
+		MaxAge:        cfg.CORSMaxAge,
 	}))
 }
 
-func defaultCORSAllowHeaders() string {
-	return strings.Join([]string{
+// allowHeaders returns the default CORS allow-list plus extra, de-duplicated
+// case-insensitively. Extras never remove a default, so no deployment can
+// accidentally drop Authorization and break every browser request.
+//
+// The defaults cover what a browser genuinely needs. Client-specific headers
+// (X-Requested-With, or response headers a frontend wrongly sends such as
+// X-Content-Type-Options) belong in HTTP_ALLOW_HEADERS_EXTRA per service.
+func allowHeaders(extra string) []string {
+	out := []string{
 		"Origin",
 		"Content-Type",
 		"Accept",
 		"Authorization",
 		RequestIDHeader,
-		"X-Content-Type-Options",
-		"X-Requested-With",
-	}, ",")
+	}
+
+	seen := make(map[string]bool, len(out))
+	for _, h := range out {
+		seen[strings.ToLower(h)] = true
+	}
+	for _, h := range SplitCSV(extra) {
+		if k := strings.ToLower(h); !seen[k] {
+			seen[k] = true
+			out = append(out, h)
+		}
+	}
+
+	return out
 }
 
 // SplitCSV splits a comma-separated string, trims each element, and drops empties.

@@ -75,6 +75,8 @@
       <tbody>
         <tr><td><code>HTTP_ADDRESS</code></td><td>port or host:port</td><td><code>:8080</code></td><td>Bare port (<code>8080</code>) is normalised to <code>:8080</code>. <code>PORT</code> is honoured as a fallback (GAE-style).</td></tr>
         <tr><td><code>HTTP_ALLOW_ORIGINS</code></td><td>CSV</td><td><code>*</code></td><td>Passed to Fiber CORS middleware.</td></tr>
+        <tr><td><code>HTTP_ALLOW_HEADERS_EXTRA</code></td><td>CSV</td><td>empty</td><td>Appended to the default CORS allow-headers (<code>Origin</code>, <code>Content-Type</code>, <code>Accept</code>, <code>Authorization</code>, <code>X-Request-ID</code>). It never replaces them, so no deployment can drop <code>Authorization</code>. Set client-specific headers here — e.g. <code>X-Requested-With</code>, or <code>X-Content-Type-Options</code> if a frontend wrongly sends that response header on requests.</td></tr>
+        <tr><td><code>HTTP_CORS_MAX_AGE</code></td><td>int (seconds)</td><td><code>600</code></td><td><code>Access-Control-Max-Age</code> on preflight responses. <code>0</code> omits the header and browsers fall back to their own short cache.</td></tr>
         <tr><td><code>HTTP_PUBLIC_PATHS</code></td><td>CSV</td><td>empty</td><td>Exact-match paths added to the Auth V2 exempt set (<a href="index.html#br-8">BR-8</a>).</td></tr>
         <tr><td><code>CRON_PATHS</code></td><td>CSV</td><td>empty</td><td>Routes an App Engine Cron job may call without a token. Requires <code>X-Appengine-Cron: true</code>; every other caller still gets 401 (<a href="index.html#br-11">BR-11</a>).</td></tr>
         <tr><td><code>HTTP_PROXY_HEADER</code></td><td>string</td><td>empty</td><td>Header from which Fiber reads the client IP (e.g. <code>X-Forwarded-For</code>).</td></tr>

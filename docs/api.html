@@ -263,7 +263,7 @@
 
     <h3>Security headers &amp; CORS</h3>
     <ul>
-      <li><strong>CORS</strong> — <code>HTTP_ALLOW_ORIGINS</code> (CSV; <code>*</code> by default). Mounted by <code>RegisterStack</code>.</li>
+      <li><strong>CORS</strong> — <code>HTTP_ALLOW_ORIGINS</code> (CSV; <code>*</code> by default). Allow-headers are a fixed default list; add to it with <code>HTTP_ALLOW_HEADERS_EXTRA</code> (CSV) — extras are appended, never substituted. Preflight caching via <code>HTTP_CORS_MAX_AGE</code> (default <code>600</code>s). Mounted by <code>RegisterStack</code>.</li>
       <li><strong>Security headers</strong> — <code>X-Frame-Options: DENY</code>, <code>X-Content-Type-Options: nosniff</code>, and friends are applied by <code>infra/security_headers.go</code>.</li>
       <li><strong>Proxy header</strong> — <code>HTTP_PROXY_HEADER</code> (e.g. <code>X-Forwarded-For</code>) makes Fiber trust the upstream IP so request logs and rate-limit subjects are accurate behind a load balancer.</li>
     </ul>
