@@ -30,6 +30,7 @@ type StackConfig struct {
 
 	// CORS
 	AllowOrigins string
+	AllowHeaders string
 
 	// Envelope wrapper
 	EnvelopeEnabled bool
@@ -51,10 +52,11 @@ func LoadStackConfig() StackConfig {
 		RequestLogOmitRequestHeaders:  GetEnvBool("HTTP_REQUEST_LOG_OMIT_REQUEST_HEADERS", true),
 		RequestLogOmitResponseHeaders: GetEnvBool("HTTP_REQUEST_LOG_OMIT_RESPONSE_HEADERS", true),
 		RequestLogMaxBodyBytes:        GetEnvInt("HTTP_REQUEST_LOG_MAX_BODY_BYTES", 4096),
-		AllowOrigins:               GetEnv("HTTP_ALLOW_ORIGINS", "*"),
-		EnvelopeEnabled:            GetEnvBool("HTTP_ENVELOPE_ENABLED", false),
-		SentryEnabled:              GetEnvBool("SENTRY_ENABLED", false),
-		MetricsNamespace:           GetEnv("METRICS_NAMESPACE", "app"),
+		AllowOrigins:                  GetEnv("HTTP_ALLOW_ORIGINS", "*"),
+		AllowHeaders:                  GetEnv("HTTP_ALLOW_HEADERS", defaultCORSAllowHeaders()),
+		EnvelopeEnabled:               GetEnvBool("HTTP_ENVELOPE_ENABLED", false),
+		SentryEnabled:                 GetEnvBool("SENTRY_ENABLED", false),
+		MetricsNamespace:              GetEnv("METRICS_NAMESPACE", "app"),
 	}
 }
 
@@ -65,6 +67,9 @@ func (c StackConfig) normalized() StackConfig {
 	}
 	if strings.TrimSpace(cfg.AllowOrigins) == "" {
 		cfg.AllowOrigins = "*"
+	}
+	if strings.TrimSpace(cfg.AllowHeaders) == "" {
+		cfg.AllowHeaders = defaultCORSAllowHeaders()
 	}
 	if strings.TrimSpace(cfg.MetricsNamespace) == "" {
 		cfg.MetricsNamespace = "app"
@@ -134,9 +139,21 @@ func registerCORS(app *fiber.App, cfg StackConfig) {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:  SplitCSV(cfg.AllowOrigins),
 		AllowMethods:  []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", RequestIDHeader},
+		AllowHeaders:  SplitCSV(cfg.AllowHeaders),
 		ExposeHeaders: []string{RequestIDHeader},
 	}))
+}
+
+func defaultCORSAllowHeaders() string {
+	return strings.Join([]string{
+		"Origin",
+		"Content-Type",
+		"Accept",
+		"Authorization",
+		RequestIDHeader,
+		"X-Content-Type-Options",
+		"X-Requested-With",
+	}, ",")
 }
 
 // SplitCSV splits a comma-separated string, trims each element, and drops empties.
