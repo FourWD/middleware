@@ -48,10 +48,10 @@ func FirebaseBatchUpdate(docPaths map[string]map[string]interface{}) error {
 
 	if firstErr != nil {
 		AppLog.EventError(firstErr, "FIREBASE_BATCH_FAILURE", map[string]any{
-			"batch_id":     batchID,
-			"doc_count":    len(docPaths),
-			"fail_count":   failCount,
-			"duration_ms":  time.Since(start).Milliseconds(),
+			"batch_id":    batchID,
+			"doc_count":   len(docPaths),
+			"fail_count":  failCount,
+			"duration_ms": time.Since(start).Milliseconds(),
 		}, batchID,
 			WithComponent(ComponentFirebase),
 			WithOperation("batch_update"),

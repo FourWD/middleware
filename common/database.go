@@ -26,4 +26,3 @@ func ConnectDatabaseViper(maxOpenConns int, maxIdleConns int) error {
 	Database, DatabaseSql = infra.ConnectMySqlDatabase(infra.CreateMySqlDSN(dns), maxOpenConns, maxIdleConns)
 	return nil
 }
-

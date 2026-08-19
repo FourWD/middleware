@@ -577,4 +577,3 @@ func TestRequestLog_EndToEnd_ErrorStatusUsesErrorLevel(t *testing.T) {
 		"5xx responses must emit at log_level=error")
 	require.EqualValues(t, fiber.StatusInternalServerError, entry["status"])
 }
-

@@ -1,8 +1,8 @@
 package infra
 
 import (
-	"log/slog"
 	stdlog "log"
+	"log/slog"
 	"strings"
 )
 

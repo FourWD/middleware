@@ -198,4 +198,3 @@ func (r *RateLimiter) build(tier string, max int, window time.Duration) fiber.Ha
 		return c.Next()
 	}
 }
-

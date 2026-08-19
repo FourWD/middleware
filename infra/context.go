@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	LocalRequestID    = "request_id"
-	LocalAuthUser     = "auth_user_id"
-	LocalAuthEmail    = "auth_email"
-	LocalAuthRole     = "auth_role"
+	LocalRequestID     = "request_id"
+	LocalAuthUser      = "auth_user_id"
+	LocalAuthEmail     = "auth_email"
+	LocalAuthRole      = "auth_role"
 	LocalAuthNotiToken = "auth_noti_token"
 )
 
