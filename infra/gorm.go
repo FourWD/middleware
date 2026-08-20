@@ -42,21 +42,26 @@ func LoadSecondaryDatabaseConfig() DatabaseConfig {
 func loadDatabaseConfigWithPrefix(prefix string) DatabaseConfig {
 	driver := GetEnv(prefix+"_DRIVER", DBDriverMySQL)
 
+	defaultPort := 3306
 	defaultParams := "charset=utf8mb4&parseTime=True&loc=Local"
 	if driver == DBDriverPostgres {
+		defaultPort = 5432
 		// sslmode=prefer คือ default ของ libpq เอง: ลอง TLS ก่อน ถ้าเซิร์ฟเวอร์ไม่รองรับ
 		// จึงถอยไป plaintext เดิมเป็น disable ซึ่งถูกปฏิเสธทันทีโดย Cloud SQL ที่ตั้ง
 		// sslMode=ENCRYPTED_ONLY ("pg_hba.conf rejects connection ... no encryption")
 		//
-		// TimeZone ยังเป็น UTC โดยตั้งใจ เปลี่ยนเมื่อไรคือเลื่อนเวลาของทุก service ที่ไม่ได้
-		// ตั้ง DB_PARAMS เอง service ที่ต้องการเวลาไทยให้ตั้ง DB_PARAMS ระบุมาเอง
-		defaultParams = "sslmode=prefer TimeZone=UTC"
+		// TimeZone matches the MySQL side (loc=Asia/Bangkok) and APP_TIMEZONE so
+		// CURRENT_DATE / date_trunc land on Thai business days. pgx forwards unknown
+		// DSN keys as startup runtime params, so this applies on the Cloud SQL
+		// connector path too. BREAKING for services previously on the UTC default —
+		// they must pin DB_PARAMS explicitly.
+		defaultParams = "sslmode=prefer TimeZone=Asia/Bangkok"
 	}
 
 	return DatabaseConfig{
 		Driver:       driver,
 		Host:         GetEnv(prefix+"_HOST", "127.0.0.1"),
-		Port:         GetEnvInt(prefix+"_PORT", 3306),
+		Port:         GetEnvInt(prefix+"_PORT", defaultPort),
 		Instance:     GetEnv(prefix+"_INSTANCE", ""),
 		User:         GetEnv(prefix+"_USER", "root"),
 		Password:     GetEnv(prefix+"_PASSWORD", "root"),

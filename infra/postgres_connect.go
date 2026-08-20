@@ -8,9 +8,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// ConnectPostgresDatabase opens Postgres using both gorm and database/sql,
-// sets the session timezone to Asia/Bangkok, and applies the connection pool
-// limits. Panics on connection failure (callers expect this at boot).
+// ConnectPostgresDatabase opens Postgres using both gorm and database/sql and
+// applies the connection pool limits. The session timezone comes from the DSN.
+// Panics on connection failure (callers expect this at boot).
 // Mirrors the structure of ConnectMySqlDatabase.
 //
 // Deprecated: ใช้ infra.OpenDB แทน ตัวนี้ใช้ lib/pq ขณะที่ OpenDB ใช้ pgx และไม่มี
@@ -40,9 +40,9 @@ func ConnectPostgresDatabase(dns string, maxOpenConns int, maxIdleConns int) (*g
 
 	RegisterSQLDialect(dbSql, DBDriverPostgres)
 
-	// เดิมที่นี่ hardcode "SET TIME ZONE 'Asia/Bangkok'" ซึ่งขัดกับ default ของ
-	// LoadDatabaseConfig (TimeZone=UTC) — โมดูลเดียวกันบอกคนละอย่าง ตอนนี้ปล่อยให้
-	// timezone มาจากพารามิเตอร์ TimeZone ใน DSN ที่ผู้เรียกกำหนดเองแหล่งเดียว
+	// Timezone comes from the caller's DSN alone. A hardcoded
+	// "SET TIME ZONE" here would only bind one pooled connection, and it
+	// previously contradicted the LoadDatabaseConfig default.
 	LogInfraEvent("DB_POSTGRES_CONNECT_SUCCESS", ComponentDB, "connect", nil)
 	initDatabaseConnectionPool(dbSql, maxOpenConns, maxIdleConns)
 
