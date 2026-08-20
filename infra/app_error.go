@@ -2,8 +2,6 @@ package infra
 
 import "github.com/gofiber/fiber/v3"
 
-// AppError is a domain error that carries an HTTP status code and machine-readable code.
-// Handlers can return AppError and the global error handler maps it automatically.
 type AppError struct {
 	Status  int
 	Code    string
