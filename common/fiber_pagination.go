@@ -10,16 +10,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// nullDateMarker is the sentinel "default" date that some legacy MySQL
-// columns use in place of NULL. Rows that begin with this date are
-// surfaced to API clients as JSON null.
-const nullDateMarker = "1900-01-01"
-
-// tzSuffix is the trailing tokens that database/sql appends to TIMESTAMP
-// values when the session timezone is Asia/Bangkok — strip them so JSON
-// clients see plain "YYYY-MM-DD HH:MM:SS".
-const tzSuffix = " +0700 +07"
-
 func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) error {
 	page, limit, offset := paginationParams(c)
 
@@ -32,7 +22,14 @@ func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) err
 		baseSQL, limit, offset,
 	)
 
-	rows, err := DatabaseSql.Query(paginatedSQL, values...)
+	dialect := infra.SQLDialect(DatabaseSql)
+
+	stmt := paginatedSQL
+	if dialect == infra.DBDriverPostgres {
+		stmt = kit.ToPostgresPlaceholders(paginatedSQL)
+	}
+
+	rows, err := DatabaseSql.Query(stmt, values...)
 	if err != nil {
 		return infra.FiberError(c, "1001", "sql error")
 	}
@@ -42,6 +39,7 @@ func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) err
 	if err != nil {
 		return infra.FiberError(c, "1001", "column read error")
 	}
+	dbTypes := infra.SQLColumnTypes(rows, len(columns), dialect)
 
 	var result []map[string]interface{}
 	totalItems := 0
@@ -58,7 +56,7 @@ func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) err
 
 		rowMap := make(map[string]interface{}, len(columns))
 		for i, col := range columns {
-			v := convertSQLValue(rowVals[i])
+			v := infra.ConvertSQLValue(rowVals[i], dialect, infra.SQLColumnTypeAt(dbTypes, i))
 			rowMap[col] = v
 			if strings.ToLower(col) == "full_count" {
 				totalItems = parseFullCount(v)
@@ -97,23 +95,6 @@ func paginationParams(c fiber.Ctx) (page, limit, offset int) {
 		limit = 10
 	}
 	return page, limit, (page - 1) * limit
-}
-
-// convertSQLValue normalises raw driver values for JSON output:
-// []byte → string, nil → nil, formatted time strings → trimmed string
-// or nil when they match the legacy "1900-01-01" sentinel.
-func convertSQLValue(val interface{}) interface{} {
-	if b, ok := val.([]byte); ok {
-		return string(b)
-	}
-	if val == nil {
-		return nil
-	}
-	s := strings.ReplaceAll(fmt.Sprintf("%v", val), tzSuffix, "")
-	if strings.HasPrefix(s, nullDateMarker) {
-		return nil
-	}
-	return s
 }
 
 func parseFullCount(v interface{}) int {

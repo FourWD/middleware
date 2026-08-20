@@ -5,54 +5,6 @@ import (
 	"testing"
 )
 
-func TestConvertSQLValue_ByteSliceToString(t *testing.T) {
-	got := convertSQLValue([]byte("hello"))
-	if got != "hello" {
-		t.Fatalf("got %v want %q", got, "hello")
-	}
-}
-
-func TestConvertSQLValue_NilPassesThrough(t *testing.T) {
-	if got := convertSQLValue(nil); got != nil {
-		t.Fatalf("got %v want nil", got)
-	}
-}
-
-func TestConvertSQLValue_StripsTimezoneSuffix(t *testing.T) {
-	got := convertSQLValue("2026-05-25 14:30:00 +0700 +07")
-	if got != "2026-05-25 14:30:00" {
-		t.Fatalf("got %q — tzSuffix not stripped", got)
-	}
-}
-
-func TestConvertSQLValue_NullDateMarkerBecomesNil(t *testing.T) {
-	cases := []string{
-		"1900-01-01",
-		"1900-01-01 00:00:00",
-		"1900-01-01 00:00:00 +0700 +07",
-	}
-	for _, in := range cases {
-		t.Run(in, func(t *testing.T) {
-			if got := convertSQLValue(in); got != nil {
-				t.Fatalf("got %v want nil for null-date sentinel %q", got, in)
-			}
-		})
-	}
-}
-
-func TestConvertSQLValue_NormalDateUnchanged(t *testing.T) {
-	got := convertSQLValue("2024-01-15")
-	if got != "2024-01-15" {
-		t.Fatalf("got %v want %q", got, "2024-01-15")
-	}
-}
-
-func TestConvertSQLValue_NumericStringifies(t *testing.T) {
-	if got := convertSQLValue(42); got != "42" {
-		t.Fatalf("got %v want %q", got, "42")
-	}
-}
-
 func TestParseFullCount_AllTypes(t *testing.T) {
 	cases := []struct {
 		name string

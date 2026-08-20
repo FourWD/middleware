@@ -70,7 +70,14 @@ func queryToJSON(db *sql.DB, sqlText string, values ...interface{}) ([]byte, str
 		return nil, "", errors.New("NOT ALLOW: only SELECT/WITH/SHOW/EXPLAIN/DESC statements are permitted")
 	}
 
-	rows, err := db.Query(sqlText, values...)
+	dialect := SQLDialect(db)
+
+	stmt := sqlText
+	if dialect == DBDriverPostgres {
+		stmt = kit.ToPostgresPlaceholders(sqlText)
+	}
+
+	rows, err := db.Query(stmt, values...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -80,6 +87,7 @@ func queryToJSON(db *sql.DB, sqlText string, values ...interface{}) ([]byte, str
 	if err != nil {
 		return nil, "", err
 	}
+	dbTypes := SQLColumnTypes(rows, len(columns), dialect)
 
 	result := make([]map[string]interface{}, 0)
 	for rows.Next() {
@@ -95,21 +103,7 @@ func queryToJSON(db *sql.DB, sqlText string, values ...interface{}) ([]byte, str
 
 		m := make(map[string]interface{})
 		for i, col := range columns {
-			var v interface{}
-			val := rowVals[i]
-			if b, ok := val.([]byte); ok {
-				v = string(b)
-			} else if val != nil {
-				temp := fmt.Sprintf("%v", val)
-				temp = strings.Replace(temp, " +0700 +07", "", -1)
-				v = temp
-				if len(temp) >= 10 && temp[0:10] == "1900-01-01" {
-					v = nil
-				}
-			} else {
-				v = val
-			}
-			m[col] = v
+			m[col] = ConvertSQLValue(rowVals[i], dialect, SQLColumnTypeAt(dbTypes, i))
 		}
 		result = append(result, m)
 	}

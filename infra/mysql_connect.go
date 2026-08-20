@@ -49,6 +49,8 @@ func ConnectMySqlDatabase(dns string, maxOpenConns int, maxIdleConns int) (*gorm
 		panic(err)
 	}
 
+	RegisterSQLDialect(dbSql, DBDriverMySQL)
+
 	timeZone := "Asia/Bangkok"
 	if _, err := dbSql.Exec("SET time_zone=?", timeZone); err != nil {
 		AppLog.EventError(err, "DB_SET_TIMEZONE_FAILURE", nil, "",

@@ -38,6 +38,8 @@ func ConnectPostgresDatabase(dns string, maxOpenConns int, maxIdleConns int) (*g
 		panic(err)
 	}
 
+	RegisterSQLDialect(dbSql, DBDriverPostgres)
+
 	// เดิมที่นี่ hardcode "SET TIME ZONE 'Asia/Bangkok'" ซึ่งขัดกับ default ของ
 	// LoadDatabaseConfig (TimeZone=UTC) — โมดูลเดียวกันบอกคนละอย่าง ตอนนี้ปล่อยให้
 	// timezone มาจากพารามิเตอร์ TimeZone ใน DSN ที่ผู้เรียกกำหนดเองแหล่งเดียว

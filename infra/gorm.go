@@ -130,6 +130,8 @@ func OpenDB(cfg DatabaseConfig, appLogger *Logger) (*gorm.DB, error) {
 		return nil, fmt.Errorf("resolve sql db: %w", err)
 	}
 
+	RegisterSQLDialect(sqlDB, cfg.Driver)
+
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.MaxLifetime) * time.Minute)

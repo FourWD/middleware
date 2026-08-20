@@ -40,7 +40,7 @@ func FirebaseSaveBySqlLimit1(client *firestore.Client, path string, sql string, 
 		return errors.New("DatabaseSql not initialized")
 	}
 
-	rows, err := DatabaseSql.Query(sql, values...)
+	rows, err := DatabaseSql.Query(PrepareSQL(DatabaseSql, sql), values...)
 	if err != nil {
 		return err
 	}
