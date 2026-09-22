@@ -97,12 +97,13 @@ func registerOTelTrace(app *fiber.App, cfg StackConfig) {
 		err := c.Next()
 
 		route := routePath(c)
+		status := responseStatus(c, err)
 		span.SetName(c.Method() + " " + route)
 		span.SetAttributes(
 			attribute.String("http.method", c.Method()),
 			attribute.String("http.route", route),
-			attribute.Int("http.status_code", c.Response().StatusCode()),
-			attribute.String("http.status_class", statusCodeClass(c.Response().StatusCode())),
+			attribute.Int("http.status_code", status),
+			attribute.String("http.status_class", statusCodeClass(status)),
 			attribute.String("app.request_id", GetRequestID(c)),
 		)
 

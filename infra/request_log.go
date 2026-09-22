@@ -150,7 +150,7 @@ func NewRequestLog(cfg RequestLogConfig) fiber.Handler {
 			return err
 		}
 
-		status := c.Response().StatusCode()
+		status := responseStatus(c, err)
 		if !shouldLog(cfg, status) {
 			return err
 		}

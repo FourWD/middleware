@@ -161,7 +161,7 @@ func registerMetrics(app *fiber.App, cfg StackConfig) {
 		startedAt := time.Now()
 		err := c.Next()
 		elapsed := time.Since(startedAt)
-		status := c.Response().StatusCode()
+		status := responseStatus(c, err)
 		statusClass := statusCodeClass(status)
 
 		attrs := metric.WithAttributes(
