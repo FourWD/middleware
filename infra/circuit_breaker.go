@@ -39,7 +39,12 @@ type CircuitBreaker struct {
 	success  int
 	openedAt time.Time
 	inFlight int
+	// generation changes on every state transition so results of calls
+	// admitted under an earlier state are not counted against the current one.
+	generation uint64
 }
+
+var errCircuitPanic = errors.New("circuit breaker: fn panicked")
 
 func defaultCircuitBreakerConfig() CircuitBreakerConfig {
 	return CircuitBreakerConfig{
@@ -74,12 +79,17 @@ func NewCircuitBreaker(cfg CircuitBreakerConfig) *CircuitBreaker {
 }
 
 func (cb *CircuitBreaker) Execute(ctx context.Context, fn func(context.Context) error) error {
-	if !cb.allow() {
+	gen, ok := cb.allow()
+	if !ok {
 		return ErrCircuitOpen
 	}
 
-	err := fn(ctx)
-	cb.afterExecution(err)
+	// Deferred so a panicking fn still releases its half-open slot and counts
+	// as a failure; the panic itself propagates unchanged.
+	err := errCircuitPanic
+	defer func() { cb.afterExecution(gen, err) }()
+
+	err = fn(ctx)
 	return err
 }
 
@@ -95,37 +105,40 @@ func (cb *CircuitBreaker) Snapshot() CircuitSnapshot {
 	}
 }
 
-func (cb *CircuitBreaker) allow() bool {
+func (cb *CircuitBreaker) allow() (uint64, bool) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
 	now := time.Now()
 	if cb.state == CircuitOpen && now.Sub(cb.openedAt) >= cb.cfg.OpenTimeout {
-		cb.state = CircuitHalfOpen
-		cb.failures = 0
-		cb.success = 0
-		cb.inFlight = 0
+		cb.transitionLocked(CircuitHalfOpen)
 	}
 
 	switch cb.state {
 	case CircuitClosed:
-		return true
+		return cb.generation, true
 	case CircuitOpen:
-		return false
+		return 0, false
 	case CircuitHalfOpen:
 		if cb.inFlight >= cb.cfg.HalfOpenMaxRequest {
-			return false
+			return 0, false
 		}
 		cb.inFlight++
-		return true
+		return cb.generation, true
 	default:
-		return false
+		return 0, false
 	}
 }
 
-func (cb *CircuitBreaker) afterExecution(err error) {
+func (cb *CircuitBreaker) afterExecution(gen uint64, err error) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
+
+	// Every transition resets inFlight, so a stale result has no slot to
+	// release and must not influence the new state.
+	if gen != cb.generation {
+		return
+	}
 
 	if cb.state == CircuitHalfOpen && cb.inFlight > 0 {
 		cb.inFlight--
@@ -154,17 +167,19 @@ func (cb *CircuitBreaker) afterExecution(err error) {
 }
 
 func (cb *CircuitBreaker) openLocked() {
-	cb.state = CircuitOpen
+	cb.transitionLocked(CircuitOpen)
 	cb.openedAt = time.Now()
-	cb.failures = 0
-	cb.success = 0
-	cb.inFlight = 0
 }
 
 func (cb *CircuitBreaker) closeLocked() {
-	cb.state = CircuitClosed
+	cb.transitionLocked(CircuitClosed)
 	cb.openedAt = time.Time{}
+}
+
+func (cb *CircuitBreaker) transitionLocked(state CircuitState) {
+	cb.state = state
 	cb.failures = 0
 	cb.success = 0
 	cb.inFlight = 0
+	cb.generation++
 }

@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,7 +21,14 @@ func RunMigrations(cfg CommonConfig) error {
 		return nil
 	}
 
-	dialector, err := OpenDialector(cfg.Database)
+	dbCfg := cfg.Database
+	if dbCfg.Driver != DBDriverPostgres {
+		// Migration files may hold several statements; the app DSN must not
+		// enable this, so it is only set on the migration connection.
+		dbCfg.Params = withMultiStatements(dbCfg.Params)
+	}
+
+	dialector, err := OpenDialector(dbCfg)
 	if err != nil {
 		return fmt.Errorf("build dialector for migrations: %w", err)
 	}
@@ -64,12 +72,38 @@ func RunMigrations(cfg CommonConfig) error {
 	if err != nil {
 		return fmt.Errorf("create migrator: %w", err)
 	}
+	defer closeMigrator(m)
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 
 	return nil
+}
+
+func closeMigrator(m *migrate.Migrate) {
+	srcErr, dbErr := m.Close()
+	if err := errors.Join(srcErr, dbErr); err != nil && AppLog != nil {
+		AppLog.LifecycleError(err, "DB_MIGRATE_CLOSE_FAILURE", nil,
+			WithComponent(ComponentDB),
+			WithOperation("close_migrator"))
+	}
+}
+
+// withMultiStatements adds multiStatements=true to MySQL DSN params unless the
+// key is already present.
+func withMultiStatements(params string) string {
+	params = strings.TrimPrefix(params, "?")
+	for _, kv := range strings.Split(params, "&") {
+		key, _, _ := strings.Cut(kv, "=")
+		if strings.EqualFold(key, "multiStatements") {
+			return params
+		}
+	}
+	if params == "" {
+		return "multiStatements=true"
+	}
+	return params + "&multiStatements=true"
 }
 
 func hasMigrationFiles(path string) (bool, error) {

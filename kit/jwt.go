@@ -16,7 +16,7 @@ func DecodeJWT(token string, secret string) (map[string]any, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return []byte(secret), nil
-	})
+	}, jwt.WithStrictDecoding())
 	if err != nil {
 		return claims, err
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -26,7 +27,11 @@ func otpRequestToServer(mobile string) (model.OtpResult, error) {
 	var result model.OtpResult
 	app := getOtpApp()
 
-	payload := "key=" + app.AppKey + "&secret=" + app.AppSecret + "&msisdn=" + mobile
+	payload := url.Values{
+		"key":    {app.AppKey},
+		"secret": {app.AppSecret},
+		"msisdn": {mobile},
+	}.Encode()
 	body, err := postOtpForm(infra.GetEnv("OTP_URL_REQUEST", ""), payload)
 	if err != nil {
 		infra.AppLog.EventError(err, "OTP_REQUEST_FAILURE", map[string]any{
@@ -67,7 +72,12 @@ func otpVerifyServer(payload model.OtpVerifyPayload) (model.OtpVeriyResult, erro
 	var result model.OtpVeriyResult
 	app := getOtpApp()
 
-	form := "key=" + app.AppKey + "&secret=" + app.AppSecret + "&token=" + payload.Token + "&pin=" + payload.Pin
+	form := url.Values{
+		"key":    {app.AppKey},
+		"secret": {app.AppSecret},
+		"token":  {payload.Token},
+		"pin":    {payload.Pin},
+	}.Encode()
 	body, err := postOtpForm(infra.GetEnv("OTP_URL_VERIFY", ""), form)
 	if err != nil {
 		infra.AppLog.EventError(err, "OTP_VERIFY_FAILURE", nil, "",

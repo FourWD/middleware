@@ -18,9 +18,12 @@ import (
 // single-writer: only the holder runs the work its Run guards. The lock lives
 // on a *dedicated connection* — the moment that connection drops (process
 // death, network blip, server restart, failed keepalive) the server releases
-// it and a standby claims it on its next attempt. That is the whole point of a
-// session lock over a row-based lease: no stale-leader window, no clock-skew
-// worry, no cleanup job.
+// it and a standby claims it on its next attempt. No clock-skew worry and no
+// cleanup job, unlike a row-based lease.
+//
+// The stale-leader window is bounded, not zero (see KeepaliveInterval): a
+// standby may already hold the lock while IsLeader() is still true, so work
+// guarded by IsLeader should tolerate a short overlap.
 //
 // Both dialects are supported and behave the same from the caller's side, but
 // the primitives differ in ways worth knowing rather than discovering:
@@ -79,9 +82,11 @@ type LeaderConfig struct {
 	// failed or timed-out acquire.
 	RetryInterval time.Duration
 
-	// KeepaliveInterval is how often the holder pings its lock connection to
-	// notice a silently-dropped socket. It doubles as the ping deadline, so a
-	// momentarily slow server does not drop leadership unnecessarily.
+	// KeepaliveInterval is how often the holder verifies it still owns the
+	// lock on its connection. Each check has a deadline of
+	// min(KeepaliveInterval/2, 3s); a failed or slow check drops leadership,
+	// so IsLeader() stays true at most KeepaliveInterval + that deadline
+	// after the lock is lost.
 	KeepaliveInterval time.Duration
 
 	// Driver and DSN default to the primary database (LoadDatabaseConfig) when
@@ -92,9 +97,13 @@ type LeaderConfig struct {
 }
 
 const (
-	defaultLeaderLockTimeout       = 5 * time.Second
-	defaultLeaderRetryInterval     = 3 * time.Second
-	defaultLeaderKeepaliveInterval = 30 * time.Second
+	defaultLeaderLockTimeout   = 5 * time.Second
+	defaultLeaderRetryInterval = 3 * time.Second
+	// Below LockTimeout+RetryInterval so a holder usually notices a lost lock
+	// before a standby takes over.
+	defaultLeaderKeepaliveInterval = 3 * time.Second
+
+	leaderMaxVerifyTimeout = 3 * time.Second
 
 	// leaderPollInterval is how often the Postgres path retries
 	// pg_try_advisory_lock inside one acquire attempt. MySQL needs no
@@ -117,7 +126,7 @@ func LoadLeaderConfig() LeaderConfig {
 		LockName:          name,
 		LockTimeout:       time.Duration(GetEnvInt("LEADER_LOCK_TIMEOUT_SECS", 5)) * time.Second,
 		RetryInterval:     time.Duration(GetEnvInt("LEADER_RETRY_INTERVAL_SECS", 3)) * time.Second,
-		KeepaliveInterval: time.Duration(GetEnvInt("LEADER_KEEPALIVE_INTERVAL_SECS", 30)) * time.Second,
+		KeepaliveInterval: time.Duration(GetEnvInt("LEADER_KEEPALIVE_INTERVAL_SECS", int(defaultLeaderKeepaliveInterval/time.Second))) * time.Second,
 	}
 }
 
@@ -161,7 +170,7 @@ func NewLeader(cfg LeaderConfig, logger *Logger) (*Leader, error) {
 	}
 	// One connection, never recycled: the lock is connection-scoped, so a pool
 	// that swaps connections underneath would drop leadership silently. The
-	// keepalive ping is what catches a genuinely dead connection.
+	// keepalive verify is what catches a genuinely dead connection.
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(0)
@@ -330,14 +339,48 @@ func (l *Leader) acquireAndHold(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-tick.C:
-			pingCtx, cancel := context.WithTimeout(ctx, l.cfg.KeepaliveInterval)
-			err := conn.PingContext(pingCtx)
+			verifyCtx, cancel := context.WithTimeout(ctx, leaderVerifyTimeout(l.cfg.KeepaliveInterval))
+			held, err := l.verify(verifyCtx, conn)
 			cancel()
+			if err == nil && !held {
+				err = errors.New("lock no longer held by this connection")
+			}
 			if err != nil {
-				return fmt.Errorf("keepalive ping: %w", err)
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				// Drop the flag before anything else so callers stop acting as
+				// leader without waiting for release to finish.
+				l.flag.Store(false)
+				return fmt.Errorf("keepalive verify: %w", err)
 			}
 		}
 	}
+}
+
+func leaderVerifyTimeout(keepalive time.Duration) time.Duration {
+	return min(keepalive/2, leaderMaxVerifyTimeout)
+}
+
+// verify asks the server whether this session still holds the lock. The
+// query runs on the held connection, so a dead socket fails it too.
+func (l *Leader) verify(ctx context.Context, conn *sql.Conn) (bool, error) {
+	if l.driver == DBDriverMySQL {
+		// NULL when the lock is free, 0 when another session holds it.
+		var owned sql.NullInt64
+		if err := conn.QueryRowContext(ctx, "SELECT IS_USED_LOCK(?) = CONNECTION_ID()", l.cfg.LockName).Scan(&owned); err != nil {
+			return false, fmt.Errorf("is_used_lock: %w", err)
+		}
+		return owned.Valid && owned.Int64 == 1, nil
+	}
+
+	// A session-level advisory lock is only released when the session ends,
+	// so a live connection proves ownership; pg_locks would scan the whole
+	// lock table every tick.
+	if err := conn.PingContext(ctx); err != nil {
+		return false, fmt.Errorf("ping: %w", err)
+	}
+	return true, nil
 }
 
 // acquire returns (true, nil) on success, (false, nil) when the lock is held

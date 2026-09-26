@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -50,7 +51,7 @@ func itOpen(t *testing.T, cfg DatabaseConfig) *sql.DB {
 func itRows(t *testing.T, db *sql.DB, query string, args ...any) []map[string]any {
 	t.Helper()
 
-	jsonBytes, _, err := queryToJSON(db, query, args...)
+	jsonBytes, _, err := queryToJSON(context.Background(), db, query, args...)
 	if err != nil {
 		t.Fatalf("queryToJSON(%s): %v", query, err)
 	}

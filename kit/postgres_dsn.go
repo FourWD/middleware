@@ -1,6 +1,9 @@
 package kit
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // PostgresDSN holds the fields needed to build a Postgres connection string.
 type PostgresDSN struct {
@@ -31,5 +34,19 @@ func CreatePostgresDSN(dsn PostgresDSN) string {
 	// sslmode=prefer ไม่ใช่ disable: ลอง TLS ก่อนแล้วค่อยถอย เพื่อให้ต่อ Cloud SQL ที่ตั้ง
 	// sslMode=ENCRYPTED_ONLY ได้ด้วย
 	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=prefer",
-		host, dsn.Username, dsn.Password, dsn.Database, port)
+		QuotePostgresDSNValue(host), QuotePostgresDSNValue(dsn.Username),
+		QuotePostgresDSNValue(dsn.Password), QuotePostgresDSNValue(dsn.Database), port)
+}
+
+// QuotePostgresDSNValue quotes a libpq keyword/value connection string value.
+// Plain values are returned unchanged so existing DSNs stay byte-identical;
+// empty values and those containing whitespace, quotes, backslashes or '='
+// are single-quoted with \ and ' backslash-escaped.
+func QuotePostgresDSNValue(v string) string {
+	if v != "" && !strings.ContainsAny(v, " \t\n\r\v\f'\\=") {
+		return v
+	}
+	v = strings.ReplaceAll(v, `\`, `\\`)
+	v = strings.ReplaceAll(v, `'`, `\'`)
+	return "'" + v + "'"
 }

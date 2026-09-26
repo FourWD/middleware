@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
@@ -9,9 +10,10 @@ import (
 
 // GoogleSubscribe is a legacy wrapper that ensures a subscription named
 // "SUB-<topicName>" exists, then blocks on Receive with a 2-second retry
-// loop on error (matching the pre-refactor behaviour). Handler must NOT call
-// msg.Ack() — this wrapper auto-acks after process returns, preserving the
-// original contract.
+// loop on error (matching the pre-refactor behaviour). The wrapper acks after
+// process returns; process may call msg.Nack() to request redelivery (the
+// first ack/nack wins). A panic is logged and the message nacked. Nacked
+// messages redeliver, so process must be idempotent.
 //
 // Prefer PubSub.Subscribe in new code — it surfaces errors and lets the
 // caller control ack/nack + retry policy.
@@ -61,8 +63,9 @@ func GoogleSubscribe(topicName string, process func(message *pubsub.Message)) {
 				WithComponent(ComponentPubSub),
 				WithOperation("receive"),
 				WithLogKind(LogKindBusiness))
-			process(msg)
-			msg.Ack()
+			if processRecovered(ctx, msg, process) {
+				msg.Ack()
+			}
 		})
 
 		if err != nil {
@@ -78,4 +81,18 @@ func GoogleSubscribe(topicName string, process func(message *pubsub.Message)) {
 			return
 		}
 	}
+}
+
+// processRecovered runs process and reports whether it returned normally. On
+// panic the message is nacked so Pub/Sub redelivers it.
+func processRecovered(ctx context.Context, msg *pubsub.Message, process func(*pubsub.Message)) (ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			LogCritical(ctx, fmt.Errorf("panic: %v", r), "PUBSUB_HANDLER_PANIC", ComponentPubSub, "process_message")
+			msg.Nack()
+			ok = false
+		}
+	}()
+	process(msg)
+	return true
 }

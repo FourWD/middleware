@@ -63,7 +63,11 @@ func ConnectMongo(ctx context.Context, cfg MongoConfig) (*MongoClient, error) {
 }
 
 // Collection returns a handle to the named collection.
+// Returns nil on a nil receiver, matching Database().
 func (mc *MongoClient) Collection(name string) *mongo.Collection {
+	if mc == nil || mc.database == nil {
+		return nil
+	}
 	return mc.database.Collection(name)
 }
 
@@ -85,7 +89,7 @@ func (mc *MongoClient) Database() *mongo.Database {
 
 // Close disconnects the MongoDB client.
 func (mc *MongoClient) Close(ctx context.Context) error {
-	if mc.client != nil {
+	if mc != nil && mc.client != nil {
 		return mc.client.Disconnect(ctx)
 	}
 	return nil

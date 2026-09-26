@@ -55,7 +55,7 @@ func extractClaimFromToken(tokenString string, claimKey string, allowExpired boo
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return secret, nil
-	})
+	}, jwt.WithStrictDecoding())
 
 	if err != nil {
 		if allowExpired && errors.Is(err, jwt.ErrTokenExpired) {

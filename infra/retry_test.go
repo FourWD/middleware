@@ -3,6 +3,7 @@ package infra
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -56,4 +57,21 @@ func TestRetryDo_ContextCancel(t *testing.T) {
 		return errors.New("should not execute")
 	})
 	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestExponentialBackoff_JitterBounds(t *testing.T) {
+	cfg := BackoffConfig{
+		BaseDelay:  100 * time.Millisecond,
+		MaxDelay:   time.Second,
+		Multiplier: 2,
+		Jitter:     5,
+	}
+	rng := rand.New(rand.NewSource(1))
+	for attempt := 1; attempt <= 10; attempt++ {
+		for i := 0; i < 200; i++ {
+			d := ExponentialBackoff(attempt, cfg, rng)
+			require.GreaterOrEqual(t, d, time.Duration(0))
+			require.LessOrEqual(t, d, cfg.MaxDelay)
+		}
+	}
 }

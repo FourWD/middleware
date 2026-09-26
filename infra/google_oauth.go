@@ -70,7 +70,8 @@ func NewGoogleVerifier(clientID string) *GoogleVerifier {
 	return &GoogleVerifier{
 		clientID: clientID,
 		jwks: &googleJWKSCache{
-			url: "https://www.googleapis.com/oauth2/v3/certs",
+			url:         "https://www.googleapis.com/oauth2/v3/certs",
+			minInterval: googleJWKSMinForcedRefresh,
 		},
 	}
 }
@@ -168,26 +169,53 @@ func googleAudMatches(aud any, want string) bool {
 	return false
 }
 
-// googleJWKSCache holds Google's RSA signing keys (one per kid). The
-// first miss for a kid triggers a synchronous fetch; entries older than
-// `googleJWKSCacheTTL` are treated as stale and re-fetched.
+// googleJWKSCache holds Google's RSA signing keys (one per kid). Entries
+// older than `googleJWKSCacheTTL` are treated as stale and re-fetched. An
+// unknown kid against a fresh cache forces a re-fetch at most once per
+// `googleJWKSMinForcedRefresh`, so random kids cannot amplify into one
+// outbound fetch per request. Refreshes are serialized and deduped.
 type googleJWKSCache struct {
 	url string
 
 	mu      sync.RWMutex
 	keys    map[string]*rsa.PublicKey
 	fetched time.Time
+
+	refreshMu   sync.Mutex
+	lastAttempt time.Time
+	minInterval time.Duration
 }
 
-const googleJWKSCacheTTL = time.Hour
+const (
+	googleJWKSCacheTTL         = time.Hour
+	googleJWKSMinForcedRefresh = time.Minute
+)
+
+func (c *googleJWKSCache) lookup(kid string) (k *rsa.PublicKey, found, fresh bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	k, found = c.keys[kid]
+	return k, found, c.keys != nil && time.Since(c.fetched) < googleJWKSCacheTTL
+}
 
 func (c *googleJWKSCache) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
-	c.mu.RLock()
-	if k, ok := c.keys[kid]; ok && time.Since(c.fetched) < googleJWKSCacheTTL {
-		c.mu.RUnlock()
+	if k, found, fresh := c.lookup(kid); found && fresh {
 		return k, nil
 	}
-	c.mu.RUnlock()
+
+	c.refreshMu.Lock()
+	defer c.refreshMu.Unlock()
+
+	// Another caller may have refreshed while we waited for the lock.
+	k, found, fresh := c.lookup(kid)
+	if found && fresh {
+		return k, nil
+	}
+	if fresh && time.Since(c.lastAttempt) < c.minInterval {
+		return nil, fmt.Errorf("kid %q not found in google jwks", kid)
+	}
+
+	c.lastAttempt = time.Now()
 	if err := c.refresh(ctx); err != nil {
 		return nil, err
 	}

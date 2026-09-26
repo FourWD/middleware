@@ -27,7 +27,8 @@ var requestPostClient = &http.Client{
 // may include or omit the "Bearer " prefix.
 func RequestPost(url string, token string, payload map[string]interface{}) (Result, error) {
 	requestID := uuid.NewString()
-	logData := map[string]any{"url": url}
+	safeURL := sanitizeOutboundURL(url)
+	logData := map[string]any{"url": safeURL}
 
 	AppLog.Event("HTTP_POST_START", logData, requestID,
 		WithComponent(ComponentHTTPClient),
@@ -38,13 +39,13 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 
 	body := new(bytes.Buffer)
 	if err := json.NewEncoder(body).Encode(payload); err != nil {
-		logHTTPPostFailure(err, "HTTP_POST_ENCODE_FAILURE", url, requestID)
+		logHTTPPostFailure(err, "HTTP_POST_ENCODE_FAILURE", safeURL, requestID)
 		return response, fmt.Errorf("encode payload: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, url, body)
 	if err != nil {
-		logHTTPPostFailure(err, "HTTP_POST_REQUEST_BUILD_FAILURE", url, requestID)
+		logHTTPPostFailure(err, "HTTP_POST_REQUEST_BUILD_FAILURE", safeURL, requestID)
 		return response, fmt.Errorf("new request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -56,14 +57,14 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 
 	res, err := requestPostClient.Do(req)
 	if err != nil {
-		logHTTPPostFailure(err, "HTTP_POST_EXECUTE_FAILURE", url, requestID)
+		logHTTPPostFailure(err, "HTTP_POST_EXECUTE_FAILURE", safeURL, requestID)
 		return response, fmt.Errorf("do request: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		AppLog.EventError(nil, "HTTP_POST_STATUS_FAILURE", map[string]any{
-			"url":    url,
+			"url":    safeURL,
 			"status": res.StatusCode,
 		}, requestID,
 			WithComponent(ComponentHTTPClient),
@@ -74,18 +75,18 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 
 	raw, err := io.ReadAll(res.Body)
 	if err != nil {
-		logHTTPPostFailure(err, "HTTP_POST_READ_FAILURE", url, requestID)
+		logHTTPPostFailure(err, "HTTP_POST_READ_FAILURE", safeURL, requestID)
 		return response, fmt.Errorf("read body: %w", err)
 	}
 
 	if err := json.Unmarshal(raw, &response); err != nil {
-		logHTTPPostFailure(err, "HTTP_POST_UNMARSHAL_FAILURE", url, requestID)
+		logHTTPPostFailure(err, "HTTP_POST_UNMARSHAL_FAILURE", safeURL, requestID)
 		return response, fmt.Errorf("unmarshal body: %w", err)
 	}
 
 	if response.Status != 1 {
 		AppLog.EventError(nil, "HTTP_POST_RESULT_FAILURE", map[string]any{
-			"url":           url,
+			"url":           safeURL,
 			"result_status": response.Status,
 			"result_code":   response.Code,
 		}, requestID,
@@ -98,8 +99,8 @@ func RequestPost(url string, token string, payload map[string]interface{}) (Resu
 	return response, nil
 }
 
-func logHTTPPostFailure(err error, label, url, requestID string) {
-	AppLog.EventError(err, label, map[string]any{"url": url}, requestID,
+func logHTTPPostFailure(err error, label, safeURL, requestID string) {
+	AppLog.EventError(redactURLError(err), label, map[string]any{"url": safeURL}, requestID,
 		WithComponent(ComponentHTTPClient),
 		WithOperation("post"),
 		WithLogKind(LogKindError))

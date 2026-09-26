@@ -118,7 +118,7 @@ func checkAuth(c fiber.Ctx) error {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return jwtSecret(), nil
-	})
+	}, jwt.WithStrictDecoding())
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenSignatureInvalid) {

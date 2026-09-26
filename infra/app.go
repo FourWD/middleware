@@ -449,7 +449,8 @@ func buildAppDeps(
 
 // Run starts workers + the HTTP server and blocks until a shutdown signal
 // is received. On shutdown: cancel workers → wait bounded → shutdown fiber
-// → run cleanup hooks.
+// → run cleanup hooks. Cleanup hooks run on every exit path, including a
+// server failure or a failed fiber shutdown.
 func (a *App) Run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -466,6 +467,7 @@ func (a *App) Run() error {
 			WithComponent(ComponentApp), WithOperation("http_server_run"))
 		engineCancel()
 		a.waitWorkers(wg)
+		a.runCleanupHooks()
 		return err
 	case <-ctx.Done():
 		a.logger.LifecycleEvent("APP_SHUTDOWN_SIGNAL", nil,
@@ -514,17 +516,25 @@ func (a *App) startHTTPServer() <-chan error {
 }
 
 func (a *App) gracefulShutdown() error {
+	var shutdownErr error
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
 	if err := a.fiber.ShutdownWithContext(shutdownCtx); err != nil {
 		a.logger.LifecycleError(err, "APP_HTTP_SHUTDOWN_FAILURE", nil,
 			WithComponent(ComponentApp), WithOperation("http_server_shutdown"))
-		return fmt.Errorf("shutdown fiber app: %w", err)
+		shutdownErr = fmt.Errorf("shutdown fiber app: %w", err)
 	}
+	cancel()
 
-	runShutdownHooks(shutdownCtx, a.shutdownHooks, a.logger)
-	return nil
+	a.runCleanupHooks()
+	return shutdownErr
+}
+
+// runCleanupHooks gives the hooks a fresh budget so a slow fiber shutdown
+// cannot starve telemetry flushes and DB closes.
+func (a *App) runCleanupHooks() {
+	ctx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+	defer cancel()
+	runShutdownHooks(ctx, a.shutdownHooks, a.logger)
 }
 
 func (a *App) waitWorkers(wg *sync.WaitGroup) {

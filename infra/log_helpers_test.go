@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -127,5 +129,38 @@ func assertContainsAll(t *testing.T, output string, needles ...string) {
 		if !strings.Contains(output, want) {
 			t.Errorf("output missing %q\n--- got ---\n%s", want, output)
 		}
+	}
+}
+
+func TestLogHTTPClientError_RedactsQuerySecrets(t *testing.T) {
+	ctx, buf := withTestLogger(t)
+	raw := "https://api.example.com/v1/x?key=secret123&access_token=tok456&q=ok"
+	uerr := &url.Error{Op: "Get", URL: raw, Err: errors.New("dial tcp: timeout")}
+	LogHTTPClientError(ctx, fmt.Errorf("fetch: %w", uerr), "execute", "GET", raw, 0)
+
+	out := buf.String()
+	for _, leak := range []string{"secret123", "tok456"} {
+		if strings.Contains(out, leak) {
+			t.Fatalf("log leaked %q: %s", leak, out)
+		}
+	}
+	assertContainsAll(t, out, `"message":"HTTP_EXECUTE_FAILURE"`, "q=ok", "dial tcp: timeout")
+}
+
+func TestRequestPost_RedactsQuerySecrets(t *testing.T) {
+	buf := CaptureLogs(t)
+	_, err := RequestPost("http://127.0.0.1:1/hook?key=secret123", "", map[string]interface{}{"a": 1})
+	if err == nil {
+		t.Fatal("want a connection error")
+	}
+	if strings.Contains(buf.String(), "secret123") {
+		t.Fatalf("log leaked the key: %s", buf.String())
+	}
+}
+
+func TestSanitizeOutboundURL_Unparseable(t *testing.T) {
+	got := sanitizeOutboundURL("http://[::1%zz/x?key=secret123")
+	if strings.Contains(got, "secret123") {
+		t.Fatalf("leaked: %s", got)
 	}
 }

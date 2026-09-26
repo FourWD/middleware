@@ -129,7 +129,7 @@ func (tm *TokenManager) Parse(tokenString string) (*Claims, error) {
 			return nil, fmt.Errorf("unexpected jwt signing method")
 		}
 		return []byte(tm.cfg.JWTSecret), nil
-	})
+	}, jwt.WithStrictDecoding())
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +175,8 @@ func (tm *TokenManager) Refresh(ctx context.Context, refreshToken string) (*Toke
 		return nil, ErrRevokedToken
 	}
 
+	// Built-in stores return ErrRevokedToken when nothing was deleted, so a
+	// concurrent replay that also passed IsActive loses the race here.
 	if err := tm.store.Revoke(ctx, claims.ID); err != nil {
 		return nil, err
 	}
@@ -197,5 +199,9 @@ func (tm *TokenManager) RevokeRefreshToken(ctx context.Context, refreshToken str
 		return ErrInvalidTokenType
 	}
 
-	return tm.store.Revoke(ctx, claims.ID)
+	// Logout stays idempotent: an already-revoked token is not an error.
+	if err := tm.store.Revoke(ctx, claims.ID); err != nil && !errors.Is(err, ErrRevokedToken) {
+		return err
+	}
+	return nil
 }

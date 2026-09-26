@@ -1,27 +1,32 @@
 package infra
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/FourWD/middleware/kit"
 	"github.com/jung-kurt/gofpdf"
 )
 
-// UploadPdfToGoogle saves a PDF to a local tmp directory then uploads it to
-// the "fourwd-auction" GCS bucket. Local path is "tmp/" or "/tmp/" depending
-// on whether the process runs on App Engine.
+// UploadPdfToGoogle saves a PDF to the OS temp directory, uploads it to the
+// given GCS bucket, then removes the local copy.
 func UploadPdfToGoogle(pdf *gofpdf.Fpdf, filename string, appID string, bucket string) (string, error) {
-	localPath := "tmp/"
-	if IsGAE() {
-		localPath = "/tmp/"
+	bucket = strings.TrimSpace(bucket)
+	if bucket == "" {
+		return "", errors.New("upload pdf: bucket is required")
 	}
 
-	path, err := kit.SavePdf(pdf, filename, localPath)
+	// Strip directory components so a caller-supplied name cannot escape the temp dir.
+	filename = filepath.Base(filename)
+
+	path, err := kit.SavePdf(pdf, filename, os.TempDir()+string(os.PathSeparator))
 	if err != nil {
 		return "", err
 	}
+	// GAE /tmp is memory-backed; leftover files count against instance RAM.
+	defer os.Remove(path)
 
-	uploaded, err := kit.UploadFileToGoogle(path, "auction", "fourwd-auction")
-	if err != nil {
-		return "", err
-	}
-	return uploaded, nil
+	return kit.UploadFileToGoogle(path, appID, bucket)
 }

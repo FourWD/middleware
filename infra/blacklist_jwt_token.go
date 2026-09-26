@@ -5,10 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
+
+const legacyBlacklistMinTTL = 3 * 24 * time.Hour
 
 // hashBlacklistToken returns the hex SHA-256 of the JWT. The blacklist
 // stores the hash, not the token itself, so an accidental DB/Redis dump
@@ -25,7 +29,7 @@ func hashBlacklistToken(token string) string {
 }
 
 // BlacklistJwtToken stores the SHA-256 hash of jwtToken in the
-// blacklist_tokens collection with a 3-day TTL. The caller supplies ctx
+// blacklist_tokens collection until max(now+3d, token exp). The caller supplies ctx
 // so the write inherits the request's deadline and trace.
 //
 // Migration note: pre-existing documents using the plaintext "token"
@@ -43,7 +47,30 @@ func BlacklistJwtToken(ctx context.Context, jwtToken string) error {
 	_, err := MongoMiddleware.Database().Collection("blacklist_tokens").InsertOne(ctx, bson.M{
 		"token_hash": hashBlacklistToken(jwtToken),
 		"createdAt":  now,
-		"expiresAt":  now.Add(3 * 24 * time.Hour),
+		"expiresAt":  legacyBlacklistExpiry(jwtToken, now),
 	})
 	return err
+}
+
+// legacyBlacklistExpiry keeps the entry at least until the token's own exp
+// so a long-lived token cannot outlive its blacklist row. The exp is read
+// unverified; unparsable input falls back to the 3-day minimum.
+func legacyBlacklistExpiry(jwtToken string, now time.Time) time.Time {
+	expiresAt := now.Add(legacyBlacklistMinTTL)
+	raw := strings.TrimSpace(jwtToken)
+	if t, err := ParseBearerToken(raw); err == nil {
+		raw = strings.TrimSpace(t)
+	}
+	claims := jwt.MapClaims{}
+	if _, _, err := jwt.NewParser().ParseUnverified(raw, claims); err != nil {
+		return expiresAt
+	}
+	exp, err := claims.GetExpirationTime()
+	if err != nil || exp == nil {
+		return expiresAt
+	}
+	if exp.After(expiresAt) {
+		return exp.Time
+	}
+	return expiresAt
 }

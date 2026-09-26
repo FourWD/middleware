@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/FourWD/middleware/kit"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -193,6 +194,8 @@ func BuildPostgresDSN(cfg DatabaseConfig) string {
 
 	return fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d %s",
-		host, cfg.User, cfg.Password, cfg.Name, cfg.Port, params,
+		kit.QuotePostgresDSNValue(host), kit.QuotePostgresDSNValue(cfg.User),
+		kit.QuotePostgresDSNValue(cfg.Password), kit.QuotePostgresDSNValue(cfg.Name),
+		cfg.Port, params,
 	)
 }

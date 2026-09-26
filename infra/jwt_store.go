@@ -42,8 +42,17 @@ func (s *RedisRefreshTokenStore) IsActive(ctx context.Context, tokenID string) (
 	return count == 1, nil
 }
 
+// Revoke returns ErrRevokedToken when the token was already gone, making
+// DEL the atomic single-use gate for refresh rotation.
 func (s *RedisRefreshTokenStore) Revoke(ctx context.Context, tokenID string) error {
-	return s.client.Del(ctx, s.key(tokenID)).Err()
+	n, err := s.client.Del(ctx, s.key(tokenID)).Result()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrRevokedToken
+	}
+	return nil
 }
 
 func (s *RedisRefreshTokenStore) key(tokenID string) string {
@@ -101,12 +110,20 @@ func (s *MongoRefreshTokenStore) IsActive(ctx context.Context, tokenID string) (
 	return n > 0, nil
 }
 
+// Revoke returns ErrRevokedToken when no document was deleted, making
+// DeleteOne the atomic single-use gate for refresh rotation.
 func (s *MongoRefreshTokenStore) Revoke(ctx context.Context, tokenID string) error {
-	_, err := s.collection.DeleteOne(ctx, bson.M{
+	res, err := s.collection.DeleteOne(ctx, bson.M{
 		"token_id": tokenID,
 		"issuer":   s.issuer,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return ErrRevokedToken
+	}
+	return nil
 }
 
 // EnsureIndexes creates the unique lookup + TTL indexes the store needs.

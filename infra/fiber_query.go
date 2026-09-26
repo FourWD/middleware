@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -14,7 +15,7 @@ import (
 // FiberQueryWithCustomDB runs the read-only SQL on the given db and writes
 // the result rows as a JSON array via FiberSendData.
 func FiberQueryWithCustomDB(c fiber.Ctx, db *sql.DB, sqlText string, values ...interface{}) error {
-	jsonBytes, sqlDebug, err := queryToJSON(db, sqlText, values...)
+	jsonBytes, sqlDebug, err := queryToJSON(c.Context(), db, sqlText, values...)
 	if err != nil {
 		return FiberError(c, "1001", "sql error", err)
 	}
@@ -24,7 +25,7 @@ func FiberQueryWithCustomDB(c fiber.Ctx, db *sql.DB, sqlText string, values ...i
 // FiberQueryWithCustomDBLimit1 is FiberQueryWithCustomDB but returns only
 // the first row as an object (rather than a single-element array).
 func FiberQueryWithCustomDBLimit1(c fiber.Ctx, db *sql.DB, sqlText string, values ...interface{}) error {
-	jsonBytes, sqlDebug, err := queryToJSON(db, sqlText, values...)
+	jsonBytes, sqlDebug, err := queryToJSON(c.Context(), db, sqlText, values...)
 	if err != nil {
 		return FiberError(c, "1001", "sql error", err)
 	}
@@ -65,7 +66,7 @@ func rawSql(sqlText string, values ...interface{}) string {
 	return strings.TrimSpace(full)
 }
 
-func queryToJSON(db *sql.DB, sqlText string, values ...interface{}) ([]byte, string, error) {
+func queryToJSON(ctx context.Context, db *sql.DB, sqlText string, values ...interface{}) ([]byte, string, error) {
 	if !kit.IsReadOnlySQL(sqlText) {
 		return nil, "", errors.New("NOT ALLOW: only SELECT/WITH/SHOW/EXPLAIN/DESC statements are permitted")
 	}
@@ -77,7 +78,7 @@ func queryToJSON(db *sql.DB, sqlText string, values ...interface{}) ([]byte, str
 		stmt = kit.ToPostgresPlaceholders(sqlText)
 	}
 
-	rows, err := db.Query(stmt, values...)
+	rows, err := db.QueryContext(ctx, stmt, values...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -106,6 +107,9 @@ func queryToJSON(db *sql.DB, sqlText string, values ...interface{}) ([]byte, str
 			m[col] = ConvertSQLValue(rowVals[i], dialect, SQLColumnTypeAt(dbTypes, i))
 		}
 		result = append(result, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", err
 	}
 
 	raw := ""

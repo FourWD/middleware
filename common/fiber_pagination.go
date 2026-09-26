@@ -29,7 +29,7 @@ func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) err
 		stmt = kit.ToPostgresPlaceholders(paginatedSQL)
 	}
 
-	rows, err := DatabaseSql.Query(stmt, values...)
+	rows, err := DatabaseSql.QueryContext(c.Context(), stmt, values...)
 	if err != nil {
 		return infra.FiberError(c, "1001", "sql error")
 	}
@@ -63,6 +63,9 @@ func FiberPaginatedQuery(c fiber.Ctx, baseSQL string, values ...interface{}) err
 			}
 		}
 		result = append(result, rowMap)
+	}
+	if err := rows.Err(); err != nil {
+		return infra.FiberError(c, "1001", "sql error")
 	}
 
 	totalPages := (totalItems + limit - 1) / limit

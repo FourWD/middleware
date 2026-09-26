@@ -43,6 +43,9 @@ func (c BackoffConfig) normalized() BackoffConfig {
 	if cfg.Jitter < 0 {
 		cfg.Jitter = 0
 	}
+	if cfg.Jitter > 1 {
+		cfg.Jitter = 1
+	}
 
 	return cfg
 }
@@ -67,10 +70,11 @@ func ExponentialBackoff(attempt int, cfg BackoffConfig, rng *rand.Rand) time.Dur
 		r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
 
-	min := 1 - c.Jitter
-	max := 1 + c.Jitter
-	factor := min + r.Float64()*(max-min)
-	return time.Duration(backoff * factor)
+	lo := 1 - c.Jitter
+	hi := 1 + c.Jitter
+	factor := lo + r.Float64()*(hi-lo)
+	// Re-cap after jitter so MaxDelay stays a hard ceiling.
+	return time.Duration(min(backoff*factor, float64(c.MaxDelay)))
 }
 
 // RetryConfig controls retry behaviour.

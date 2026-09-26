@@ -383,15 +383,22 @@ func scrubValue(v any) any {
 // carries fragments, but a fragment may sneak in via internal redirects
 // or client-injected URLs, and a fragment can itself carry a token.
 func sanitizeURL(raw string) string {
+	clean, _ := sanitizeURLKeys(raw, nil)
+	return clean
+}
+
+// sanitizeURLKeys is sanitizeURL that also redacts the extra keys. ok is
+// false when raw cannot be parsed, in which case raw is returned unchanged.
+func sanitizeURLKeys(raw string, extra map[string]struct{}) (string, bool) {
 	if raw == "" {
-		return raw
+		return raw, true
 	}
 	// url.Parse handles both absolute and relative refs and preserves the
 	// Fragment; url.ParseRequestURI silently drops the fragment per RFC,
 	// which would leave a token in the fragment uncaught.
 	u, err := url.Parse(raw)
 	if err != nil {
-		return raw
+		return raw, false
 	}
 	dirty := false
 	if u.Fragment != "" {
@@ -402,7 +409,12 @@ func sanitizeURL(raw string) string {
 	if u.RawQuery != "" {
 		values := u.Query()
 		for k := range values {
-			if _, sensitive := sensitiveFieldNames[strings.ToLower(k)]; sensitive {
+			lk := strings.ToLower(k)
+			_, sensitive := sensitiveFieldNames[lk]
+			if _, ok := extra[lk]; ok {
+				sensitive = true
+			}
+			if sensitive {
 				values.Set(k, redactedFieldValue)
 				dirty = true
 			}
@@ -410,9 +422,9 @@ func sanitizeURL(raw string) string {
 		u.RawQuery = values.Encode()
 	}
 	if !dirty {
-		return raw
+		return raw, true
 	}
-	return u.String()
+	return u.String(), true
 }
 
 func marshalUnfailable(value any) string {

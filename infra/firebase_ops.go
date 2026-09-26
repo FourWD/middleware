@@ -71,6 +71,9 @@ func FirebaseSaveBySqlLimit1(client *firestore.Client, path string, sql string, 
 		}
 		result = append(result, row)
 	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
 
 	// Preserve original byte-level semantics by round-tripping through json
 	// (keeps the caller's expectation for types like timestamps unchanged).
@@ -92,7 +95,8 @@ func FirebaseDelete(client *firestore.Client, docPath string) error {
 }
 
 // FirebaseCount iterates the iterator to its end and returns the total count.
-// Iteration errors are logged but do not stop counting.
+// Iterator errors are sticky, so the first one is logged and the count so far
+// is returned.
 func FirebaseCount(documents *firestore.DocumentIterator) int {
 	count := 0
 	for {
@@ -102,6 +106,7 @@ func FirebaseCount(documents *firestore.DocumentIterator) int {
 		}
 		if err != nil {
 			LogFirebaseError(context.Background(), err, "iterator", "")
+			break
 		}
 		count++
 	}
@@ -109,7 +114,8 @@ func FirebaseCount(documents *firestore.DocumentIterator) int {
 }
 
 // FirebaseCountByField iterates the documents and returns the number of unique
-// string values observed at the given field.
+// string values observed at the given field. On an iterator error it logs once
+// and returns the count so far.
 func FirebaseCountByField(documents *firestore.DocumentIterator, groupByField string) int {
 	uniqueValues := []string{}
 
@@ -120,6 +126,7 @@ func FirebaseCountByField(documents *firestore.DocumentIterator, groupByField st
 		}
 		if err != nil {
 			LogFirebaseError(context.Background(), err, "iterator", "")
+			break
 		}
 
 		fieldValue, ok := doc.Data()[groupByField]

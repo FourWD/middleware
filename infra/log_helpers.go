@@ -2,6 +2,8 @@ package infra
 
 import (
 	"context"
+	"errors"
+	"net/url"
 	"strings"
 )
 
@@ -202,18 +204,18 @@ func LogCritical(ctx context.Context, err error, label, component, operation str
 //	    infra.LogHTTPClientError(ctx, fmt.Errorf("upstream 5xx"),
 //	        "status", req.Method, req.URL.String(), resp.StatusCode)
 //	}
-func LogHTTPClientError(ctx context.Context, err error, stage, method, url string, status int) {
+func LogHTTPClientError(ctx context.Context, err error, stage, method, rawURL string, status int) {
 	logger := LoggerFromContext(ctx)
 	if logger == nil {
 		return
 	}
 	label := "HTTP_" + strings.ToUpper(stage) + "_FAILURE"
-	logger.ErrorCtx(ctx, err, label, nil,
+	logger.ErrorCtx(ctx, redactURLError(err), label, nil,
 		WithComponent(ComponentHTTPClient),
 		WithOperation(strings.ToLower(method)),
 		WithLogKind(LogKindError),
 		WithField("stage", stage),
-		WithField("url", url),
+		WithField("url", sanitizeOutboundURL(rawURL)),
 		WithField("status", status),
 		WithCallerSkip(helperCallerSkip),
 	)
@@ -279,4 +281,50 @@ func LogInfraEvent(label, component, operation string, data map[string]any) {
 		WithOperation(operation),
 		WithCallerSkip(helperCallerSkip),
 	)
+}
+
+// outboundSensitiveQueryKeys extends sensitiveFieldNames for outbound URLs,
+// where API keys and signatures commonly travel in the query string.
+var outboundSensitiveQueryKeys = map[string]struct{}{
+	"key":              {},
+	"client_secret":    {},
+	"sig":              {},
+	"signature":        {},
+	"x-goog-signature": {},
+	"x-amz-signature":  {},
+}
+
+// sanitizeOutboundURL redacts credentials from a URL about to be logged.
+func sanitizeOutboundURL(raw string) string {
+	clean, ok := sanitizeURLKeys(raw, outboundSensitiveQueryKeys)
+	if ok {
+		return clean
+	}
+	// Unparseable: drop the whole query rather than risk leaking it.
+	if i := strings.IndexAny(raw, "?#"); i >= 0 {
+		return raw[:i] + "?" + redactedFieldValue
+	}
+	return raw
+}
+
+// redactedURLErr swaps the message of an error chain carrying a *url.Error
+// for one with a sanitized URL, keeping the chain intact for errors.As/Is.
+type redactedURLErr struct {
+	msg string
+	err error
+}
+
+func (e *redactedURLErr) Error() string { return e.msg }
+func (e *redactedURLErr) Unwrap() error { return e.err }
+
+func redactURLError(err error) error {
+	var ue *url.Error
+	if !errors.As(err, &ue) || ue.URL == "" {
+		return err
+	}
+	clean := sanitizeOutboundURL(ue.URL)
+	if clean == ue.URL {
+		return err
+	}
+	return &redactedURLErr{msg: strings.ReplaceAll(err.Error(), ue.URL, clean), err: err}
 }
